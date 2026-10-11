@@ -2,7 +2,7 @@
 
 最近一次设备记录时间为 **2026-10-11 16:12:55（北京时间）**，对应 [current-target.json](../test-app/devices/nx5/current-target.json) 的 `checked_at_utc`。本文保存观测快照，不实时探测设备；PID、端口和启动状态在操作前需重新确认。JSON 中的时钟、调度 CPU 成本及单周期调查仍保留各自报告的历史测量，不视为本轮重测。
 
-TDE 退出清理修复版已部署到 `/run/slint-bridge-mcp/display-mcp`，PID **2558**，参数为 `--textures --touch=/dev/input/event0`。SHA256 为 `e5ebaa6d9ca40e2e712a6b8b0b391c4826ffc1b14e4fb1cd4b53083807190666`；被测源码以 [部署清单](../evidence/nx5-tde-exit/2026-10-11/deployment-manifest.json) 中的基础提交和文件摘要记录。Slint 原生 MCP 监听设备 `127.0.0.1:9315`，主机转发到 `http://127.0.0.1:19315/mcp`；本轮验证查询、暂停/恢复和截图等 6/18 个工具，最终状态为 RUNNING。常驻实例关闭持续性能日志和故障注入。
+该快照对应 `177c18a` 的 TDE 退出清理修复版，部署到 `/run/slint-bridge-mcp/display-mcp`，PID **2558**，参数为 `--textures --touch=/dev/input/event0`。SHA256 为 `e5ebaa6d9ca40e2e712a6b8b0b391c4826ffc1b14e4fb1cd4b53083807190666`；被测源码以 [部署清单](../evidence/nx5-tde-exit/2026-10-11/deployment-manifest.json) 中的基础提交和文件摘要记录。Slint 原生 MCP 监听设备 `127.0.0.1:9315`，主机转发到 `http://127.0.0.1:19315/mcp`；本轮验证查询、暂停/恢复和截图等 6/18 个工具，最终状态为 RUNNING。常驻实例关闭持续性能日志和故障注入。
 
 [最新实机回归](nx5-tde-exit.md) 中三项硬件测试均通过：100 帧双页像素最大通道差 1/255，纯翻页 29.003 FPS。两轮正常退出各采集 300 个 WBC 样本，两轮 EIO 退出各采集 600 个，混色均为 0；EIO 后仍等待观察线程完成清理再返回错误。相同二进制的 60 秒纹理运行，启动窗口 28.43 FPS，后 10 个窗口均为 29.00 FPS，TDE 错误为 0。30/30 混色负对照属于 [前一轮回归](nx5-regression.md)，本轮没有重测该用例。
 

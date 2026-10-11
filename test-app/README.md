@@ -44,6 +44,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 `config_from_args()` 是测试工程的辅助函数，最终产生库的普通 `Config`。业务工程也可以直接构造 `Config`，不依赖本测试工程。
 
+也可先安装平台并投递创建/显示窗口的任务，再调用 `slint::run_event_loop()`；窗口尚未创建时任务和定时器仍可执行。首次显示因布局约束失败会回滚可见状态，修正同一组件后可以重试。运行行为与回归范围见 [窗口创建与显示失败](../docs/software-platform.md#窗口创建与显示失败)。
+
 选择设备由编译期 feature 决定；运行时路径由参数决定：
 
 | 项目 | 选择方式 |

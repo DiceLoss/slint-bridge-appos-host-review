@@ -50,19 +50,37 @@ impl Drop for Session {
 
 #[test]
 fn installed_platform_releases_resources_after_normal_exit() {
-    installed_platform_exit(false);
+    installed_platform_exit(Exit::Normal);
 }
 
 #[test]
 fn installed_platform_releases_resources_after_eio_exit() {
-    installed_platform_exit(true);
+    installed_platform_exit(Exit::Eio);
 }
 
-fn installed_platform_exit(eio: bool) {
-    let name = if eio {
-        "framebuffer::lifecycle_tests::installed_platform_releases_resources_after_eio_exit"
-    } else {
-        "framebuffer::lifecycle_tests::installed_platform_releases_resources_after_normal_exit"
+#[test]
+fn installed_platform_releases_resources_after_show_error() {
+    installed_platform_exit(Exit::ShowError);
+}
+
+#[derive(Clone, Copy)]
+enum Exit {
+    Normal,
+    Eio,
+    ShowError,
+}
+
+fn installed_platform_exit(exit: Exit) {
+    let name = match exit {
+        Exit::Normal => {
+            "framebuffer::lifecycle_tests::installed_platform_releases_resources_after_normal_exit"
+        }
+        Exit::Eio => {
+            "framebuffer::lifecycle_tests::installed_platform_releases_resources_after_eio_exit"
+        }
+        Exit::ShowError => {
+            "framebuffer::lifecycle_tests::installed_platform_releases_resources_after_show_error"
+        }
     };
     // Each installed Slint platform needs its own process-global proxy.
     if std::env::var("SLINT_BRIDGE_TEST_CHILD").as_deref() != Ok(name) {
@@ -81,10 +99,12 @@ fn installed_platform_exit(eio: bool) {
     }
     let events: Events = Arc::default();
     let observed = events.clone();
-    let inode = thread::spawn(move || {
+    let (inode, visible_after_exit) = thread::spawn(move || {
         slint::slint! {
             export component ExitScene inherits Window {
                 preferred-width: 8px; preferred-height: 6px;
+                in-out property<length> required-width: 0px;
+                min-width: root.required-width;
                 background: red;
             }
         }
@@ -130,7 +150,7 @@ fn installed_platform_exit(eio: bool) {
         }
         let mut inputs = Vec::new();
         let mut slave = None;
-        if eio {
+        if matches!(exit, Exit::Eio) {
             // Closing a PTY slave makes the actual master read syscall return EIO.
             let master =
                 unsafe { libc::posix_openpt(libc::O_RDWR | libc::O_NONBLOCK | libc::O_CLOEXEC) };
@@ -170,38 +190,46 @@ fn installed_platform_exit(eio: bool) {
         .unwrap();
         slint::platform::set_platform(Box::new(platform)).unwrap();
         let app = ExitScene::new().unwrap();
-        let control = thread::spawn(move || {
-            let rendered = frame_ready.recv_timeout(Duration::from_secs(3)).is_ok();
-            slint::invoke_from_event_loop(move || {
-                if rendered && eio {
-                    drop(slave);
-                } else {
-                    slint::quit_event_loop().unwrap();
-                }
-            })
-            .unwrap();
-            assert!(rendered, "no frame submitted before exit trigger");
-        });
-        let result = app.run();
-        control.join().unwrap();
-        if eio {
-            let error = result.unwrap_err().to_string();
-            assert!(
-                error.contains("read evdev input") && error.contains("os error 5"),
-                "{error}"
-            );
+        if matches!(exit, Exit::ShowError) {
+            app.set_required_width(200.0);
+            // A rejected first show never enters run_event_loop or submits a page.
+            let error = app.run().unwrap_err().to_string();
+            assert!(error.contains("window layout constraints"), "{error}");
         } else {
-            result.unwrap();
+            let control = thread::spawn(move || {
+                let rendered = frame_ready.recv_timeout(Duration::from_secs(3)).is_ok();
+                slint::invoke_from_event_loop(move || {
+                    if rendered && matches!(exit, Exit::Eio) {
+                        drop(slave);
+                    } else {
+                        slint::quit_event_loop().unwrap();
+                    }
+                })
+                .unwrap();
+                assert!(rendered, "no frame submitted before exit trigger");
+            });
+            let result = app.run();
+            control.join().unwrap();
+            if matches!(exit, Exit::Eio) {
+                let error = result.unwrap_err().to_string();
+                assert!(
+                    error.contains("read evdev input") && error.contains("os error 5"),
+                    "{error}"
+                );
+            } else {
+                result.unwrap();
+            }
         }
         // Leave the installed platform in Slint, exactly as an application does.
-        inode
+        (inode, app.window().is_visible())
     })
     .join()
     .unwrap();
     let events = observed.lock().unwrap();
-    assert!(
+    assert_eq!(
         events.iter().any(|event| event.name == "submission"),
-        "no frame rendered"
+        !matches!(exit, Exit::ShowError),
+        "unexpected submission state: {events:?}"
     );
     let releases: Vec<_> = events
         .iter()
@@ -227,6 +255,10 @@ fn installed_platform_exit(eio: bool) {
     assert!(
         !mapping_exists(inode),
         "framebuffer mapping retained after UI thread exit"
+    );
+    assert!(
+        !visible_after_exit,
+        "failed or exited window remained visible"
     );
 }
 

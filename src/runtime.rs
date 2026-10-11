@@ -27,6 +27,7 @@ pub(crate) struct BridgeWindow {
     visible: Cell<bool>,
     dirty: Cell<bool>,
     incompatible_layout: Cell<bool>,
+    rolling_back_show: Cell<bool>,
     wake: Arc<WakeQueue>,
 }
 
@@ -43,6 +44,7 @@ impl BridgeWindow {
                 visible: Cell::new(false),
                 dirty: Cell::new(true),
                 incompatible_layout: Cell::new(false),
+                rolling_back_show: Cell::new(false),
                 wake,
             }
         })
@@ -71,6 +73,21 @@ impl WindowAdapter for BridgeWindow {
 
     fn set_visible(&self, visible: bool) -> Result<(), PlatformError> {
         if visible && self.incompatible_layout.get() {
+            // Slint retains the visible component before calling set_visible.
+            // Balance that reference even if show fails before the loop starts.
+            struct Rollback<'a>(&'a Cell<bool>, bool);
+            impl Drop for Rollback<'_> {
+                fn drop(&mut self) {
+                    self.0.set(self.1);
+                }
+            }
+            let _rollback = Rollback(
+                &self.rolling_back_show,
+                self.rolling_back_show.replace(true),
+            );
+            if let Err(error) = self.window.hide() {
+                eprintln!("slint-bridge: hide after rejected show: {error}");
+            }
             return Err(PlatformError::from("window layout constraints do not fit the fixed panel size; use a responsive root Window".to_string()));
         }
         self.visible.set(visible);
@@ -167,10 +184,7 @@ impl BridgePlatform {
     }
 
     fn run(&self) -> Result<(), Error> {
-        let window = self.window.borrow().upgrade().ok_or(Error::InvalidConfig(
-            "event loop requires a live root window",
-        ))?;
-        let result = self.run_frames(&window);
+        let result = self.run_frames();
         // A quit or input/render error must still drain the submitted page.
         let completion = self.framebuffer.borrow_mut().wait_for_present();
         match (result, completion) {
@@ -186,7 +200,7 @@ impl BridgePlatform {
         }
     }
 
-    fn run_frames(&self, window: &BridgeWindow) -> Result<(), Error> {
+    fn run_frames(&self) -> Result<(), Error> {
         let mut next_frame = Instant::now();
         let mut events = std::mem::take(&mut *self.initial_events.borrow_mut());
         loop {
@@ -209,6 +223,13 @@ impl BridgePlatform {
             for input in self.inputs.borrow_mut().iter_mut() {
                 input.read_ready(&mut events)?;
             }
+            let Some(window) = self.window.borrow().upgrade() else {
+                // Timers and queued work may create the first root later. Keep
+                // draining input without accumulating events for a missing UI.
+                events.clear();
+                self.wait(platform::duration_until_next_timer_update())?;
+                continue;
+            };
             for event in events.drain(..) {
                 window.window.dispatch_event(event);
             }
@@ -245,14 +266,16 @@ impl BridgePlatform {
                 let frame_wait = next_frame.saturating_duration_since(Instant::now());
                 timeout = Some(timeout.map_or(frame_wait, |timer| timer.min(frame_wait)));
             }
-            if self.wake.has_tasks() {
-                timeout = Some(Duration::ZERO);
-            }
             self.wait(timeout)?;
         }
     }
 
     fn wait(&self, timeout: Option<Duration>) -> Result<(), Error> {
+        let timeout = if self.wake.has_tasks() {
+            Some(Duration::ZERO)
+        } else {
+            timeout
+        };
         let mut fds = vec![libc::pollfd {
             fd: self.wake.fd(),
             events: libc::POLLIN,
@@ -325,6 +348,18 @@ impl Platform for BridgePlatform {
     }
 
     fn new_event_loop_proxy(&self) -> Option<Box<dyn platform::EventLoopProxy>> {
+        // hide() balances Slint's keepalive and asks for a new proxy to quit
+        // when the last window closes. A rejected show is not a close: suppress
+        // only that rollback request. The installed public proxy remains live,
+        // preserving explicit quit requests and queued startup work.
+        if self
+            .window
+            .borrow()
+            .upgrade()
+            .is_some_and(|window| window.rolling_back_show.get())
+        {
+            return None;
+        }
         Some(Box::new(Proxy(self.wake.clone())))
     }
 }

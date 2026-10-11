@@ -284,3 +284,163 @@ fn real_event_loop_handles_evdev_timers_cross_thread_updates_and_quit() {
     );
     drop(writer);
 }
+
+#[test]
+fn failed_show_can_retry_without_losing_tasks_or_explicit_quit() {
+    const NAME: &str =
+        "tests::runtime::failed_show_can_retry_without_losing_tasks_or_explicit_quit";
+    if std::env::var("SLINT_BRIDGE_TEST_CHILD").as_deref() != Ok(NAME) {
+        for mode in ["retry", "explicit-quit"] {
+            let run = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", NAME, "--nocapture"])
+                .env("SLINT_BRIDGE_TEST_CHILD", NAME)
+                .env("SLINT_BRIDGE_TEST_STARTUP", mode)
+                .output()
+                .unwrap();
+            assert!(
+                run.status.success(),
+                "{mode}: {}{}",
+                String::from_utf8_lossy(&run.stdout),
+                String::from_utf8_lossy(&run.stderr)
+            );
+        }
+        return;
+    }
+    let explicit_quit =
+        std::env::var("SLINT_BRIDGE_TEST_STARTUP").as_deref() == Ok("explicit-quit");
+    let (presented, frame_ready) = mpsc::sync_channel(1);
+    let target = surface_with_completion(8, 6, 32, 0, move |_| {
+        let _ = presented.try_send(());
+        Ok(())
+    });
+    let commits = target.commits.clone();
+    let platform = crate::runtime::BridgePlatform::with_inputs(
+        Config::default(),
+        target.fb,
+        Vec::new(),
+        Vec::new(),
+    )
+    .unwrap();
+    slint::platform::set_platform(Box::new(platform)).unwrap();
+    let called = Arc::new(AtomicBool::new(false));
+    let observed = called.clone();
+    slint::invoke_from_event_loop(move || observed.store(true, Ordering::SeqCst)).unwrap();
+    if explicit_quit {
+        slint::quit_event_loop().unwrap();
+    }
+    let ui = LoopScene::new().unwrap();
+    ui.set_required_width(200.0);
+    for _ in 0..2 {
+        let error = ui.run().unwrap_err().to_string();
+        assert!(error.contains("window layout constraints"), "{error}");
+        assert!(
+            !ui.window().is_visible(),
+            "rejected show left a visible component reference"
+        );
+    }
+    ui.set_required_width(0.0);
+    ui.set_paint(slint::Color::from_rgb_u8(0, 255, 0));
+    if explicit_quit {
+        ui.run().unwrap();
+        assert!(
+            !called.load(Ordering::SeqCst),
+            "rollback lost the explicit quit"
+        );
+        assert!(commits.lock().unwrap().is_empty());
+    } else {
+        let control = thread::spawn(move || {
+            let rendered = frame_ready.recv_timeout(Duration::from_secs(3)).is_ok();
+            let _ = slint::quit_event_loop();
+            rendered
+        });
+        ui.run().unwrap();
+        assert!(
+            control.join().unwrap(),
+            "corrected component did not render"
+        );
+        assert!(
+            called.load(Ordering::SeqCst),
+            "rollback discarded queued work"
+        );
+        let frames = commits.lock().unwrap();
+        assert_eq!(&frames.last().unwrap()[..4], &[0, 255, 0, 255]);
+    }
+    assert!(!ui.window().is_visible());
+}
+
+#[test]
+fn event_loop_accepts_deferred_window_creation() {
+    const NAME: &str = "tests::runtime::event_loop_accepts_deferred_window_creation";
+    if std::env::var("SLINT_BRIDGE_TEST_CHILD").as_deref() != Ok(NAME) {
+        for mode in ["queued", "timer", "queued-retry"] {
+            let run = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", NAME, "--nocapture"])
+                .env("SLINT_BRIDGE_TEST_CHILD", NAME)
+                .env("SLINT_BRIDGE_TEST_STARTUP", mode)
+                .output()
+                .unwrap();
+            assert!(
+                run.status.success(),
+                "{mode}: {}{}",
+                String::from_utf8_lossy(&run.stdout),
+                String::from_utf8_lossy(&run.stderr)
+            );
+        }
+        return;
+    }
+    let (presented, frame_ready) = mpsc::sync_channel(1);
+    let target = surface_with_completion(8, 6, 32, 0, move |_| {
+        let _ = presented.try_send(());
+        Ok(())
+    });
+    let commits = target.commits.clone();
+    let platform = crate::runtime::BridgePlatform::with_inputs(
+        Config::default(),
+        target.fb,
+        Vec::new(),
+        Vec::new(),
+    )
+    .unwrap();
+    slint::platform::set_platform(Box::new(platform)).unwrap();
+    let root = Arc::new(Mutex::new(None));
+    let created = root.clone();
+    let mode = std::env::var("SLINT_BRIDGE_TEST_STARTUP").unwrap();
+    let retry = mode == "queued-retry";
+    let create = move || {
+        let ui = LoopScene::new().unwrap();
+        if retry {
+            ui.set_required_width(200.0);
+            assert!(ui.show().is_err());
+            assert!(!ui.window().is_visible());
+            ui.set_required_width(0.0);
+        }
+        ui.set_paint(slint::Color::from_rgb_u8(0, 255, 0));
+        ui.show().unwrap();
+        *created.lock().unwrap() = Some(ui.as_weak());
+    };
+    if mode != "timer" {
+        // Put root creation beyond one iteration's task budget. A windowless
+        // loop must keep consuming queued work instead of sleeping forever.
+        for _ in 0..128 {
+            slint::invoke_from_event_loop(|| {}).unwrap();
+        }
+        slint::invoke_from_event_loop(create).unwrap();
+    } else {
+        slint::Timer::single_shot(Duration::from_millis(10), create);
+    }
+    let control = thread::spawn(move || {
+        let rendered = frame_ready.recv_timeout(Duration::from_secs(3)).is_ok();
+        let _ = slint::quit_event_loop();
+        rendered
+    });
+    let result = slint::run_event_loop();
+    let rendered = control.join().unwrap();
+    result.unwrap();
+    assert!(rendered, "deferred component did not render");
+    let ui = root.lock().unwrap().take().unwrap().upgrade().unwrap();
+    ui.hide().unwrap();
+    assert_eq!(
+        &commits.lock().unwrap().last().unwrap()[..4],
+        &[0, 255, 0, 255]
+    );
+}
