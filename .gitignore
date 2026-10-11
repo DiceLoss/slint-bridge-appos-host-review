@@ -1,0 +1,9 @@
+/target/
+/evidence/
+__pycache__/
+*.py[cod]
+
+# Local tooling and credentials.
+/.agents/
+/.aws/
+/.codex/

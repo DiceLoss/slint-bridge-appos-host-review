@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: blob:">
+  <title>Slint Bridge · 双 framebuffer 并行时序</title>
+  <style>
+    :root { color-scheme: dark; --page:#0f0f1a; --panel:#0f172a; --border:#334155; --text:#e2e8f0; --muted:#94a3b8; --accent:#a855f7; }
+    html[data-theme="light"] { color-scheme:light; --page:#f8fafc; --panel:#fff; --border:#cbd5e1; --text:#0f172a; --muted:#475569; --accent:#7c3aed; }
+    * { box-sizing:border-box; }
+    html,body { width:100%; height:100%; margin:0; overflow:hidden; background:linear-gradient(135deg,var(--page),#1a1a2e); color:var(--text); font-family:'SF Mono','Fira Code',ui-monospace,monospace; }
+    body { display:grid; grid-template-rows:auto 1fr; }
+    .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:10px 14px; background:color-mix(in srgb,var(--panel) 92%,transparent); border-bottom:1px solid var(--border); z-index:2; }
+    .title { margin-right:auto; font-size:13px; font-weight:700; }
+    button,select { min-height:34px; padding:6px 10px; color:var(--text); background:var(--panel); border:1px solid var(--border); border-radius:8px; font:inherit; cursor:pointer; }
+    button:hover,button:focus-visible,select:focus-visible { border-color:var(--accent); outline:2px solid color-mix(in srgb,var(--accent) 35%,transparent); outline-offset:1px; }
+    #stage { position:relative; overflow:hidden; touch-action:none; cursor:grab; }
+    #stage.dragging { cursor:grabbing; }
+    #canvas { width:100%; height:100%; display:grid; place-items:center; transform-origin:0 0; will-change:transform; }
+    #canvas svg { max-width:calc(100vw - 40px); max-height:calc(100vh - 92px); width:auto; height:auto; filter:drop-shadow(0 22px 60px rgba(0,0,0,.28)); user-select:none; }
+    #status { min-width:76px; color:var(--muted); font-size:12px; text-align:center; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto!important; transition:none!important; } }
+  </style>
+</head>
+<body>
+  <header class="toolbar" aria-label="Diagram controls">
+    <span class="title">Slint Bridge · 双 framebuffer 并行时序</span>
+    <button type="button" data-action="zoom-out" aria-label="Zoom out">−</button>
+    <button type="button" data-action="reset" aria-label="Reset view">Reset</button>
+    <button type="button" data-action="zoom-in" aria-label="Zoom in">+</button>
+    <span id="status" aria-live="polite">100%</span>
+    <button type="button" data-action="theme" aria-label="Toggle theme">Theme</button>
+    <button type="button" data-action="copy" aria-label="Copy SVG source">Copy SVG</button>
+    <select id="scale" aria-label="Raster export scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option><option value="4">4×</option></select>
+    <select id="format" aria-label="Export format"><option>SVG</option><option>PNG</option><option>JPEG</option><option>WebP</option></select>
+    <button type="button" data-action="download">Export</button>
+  </header>
+  <main id="stage" tabindex="0" aria-label="Interactive diagram. Drag to pan; use plus and minus to zoom.">
+    <div id="canvas"><svg xmlns="http://www.w3.org/2000/svg" width="1840" height="1840" viewBox="0 0 1840 1840" data-generator="fireworks-tech-graph" data-style-id="1" data-diagram-type="sequence" data-quality-profile="showcase" role="img" focusable="false">
+<title>Slint Bridge · 双 framebuffer 并行运行时序</title>
+<desc>依据 src/runtime.rs、framebuffer.rs、presentation.rs、backends/mod.rs、backends/nx5/mod.rs。仅展示成功路径；初始 A 为前台、B 为后台。UI 在独立保留画布渲染 N+1，可与后台提交 N 的阻塞 PAN 并行。完成成功后才允许复用旧前台页。NX5 回调与通用提交器属于同一个后台线程。</desc>
+<style>text {font-family:'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',sans-serif;}</style>
+<defs>
+<marker id="arrow-call" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="#2563eb" /></marker>
+<marker id="arrow-async" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="#7c3aed" /></marker>
+<marker id="arrow-return" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="#15803d" /></marker>
+<marker id="arrow-driver" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="#c2410c" /></marker>
+</defs>
+<rect data-graph-role="background" x="0" y="0" width="1840" height="1840" rx="0" fill="#ffffff" stroke="none" stroke-width="1.6" />
+<text id="text-1" data-graph-role="label" data-graph-bounds="60.00,26,718.70,62" x="60" y="58" text-anchor="start" font-size="32" font-weight="700" fill="#111827">Slint Bridge · 双 framebuffer 并行运行时序</text>
+<text id="text-2" data-graph-role="label" data-graph-bounds="60.00,72,660.00,96" x="60" y="92" text-anchor="start" font-size="20" font-weight="400" fill="#475569">渲染下一帧与等待上一帧翻页重叠；页面复用由成功完成通知解锁。</text>
+<rect data-graph-role="decoration" x="60" y="119" width="1160" height="37" rx="9" fill="#eff6ff" stroke="none" stroke-width="1.6" />
+<rect data-graph-role="decoration" x="1240" y="119" width="540" height="37" rx="9" fill="#fff7ed" stroke="none" stroke-width="1.6" />
+<text id="text-3" data-graph-role="label" data-graph-bounds="80.00,127,494.00,149" x="80" y="145" text-anchor="start" font-size="18" font-weight="600" fill="#2563eb">通用层：调度、画布、页面所有权、提交与完成通知</text>
+<text id="text-4" data-graph-role="label" data-graph-bounds="1260.00,127,1443.48,149" x="1260" y="145" text-anchor="start" font-size="18" font-weight="600" fill="#c2410c">NX5 适配层及设备驱动</text>
+<rect data-graph-role="decoration" x="60" y="170" width="860" height="37" rx="9" fill="#f8fafc" stroke="none" stroke-width="1.6" />
+<rect data-graph-role="decoration" x="960" y="170" width="820" height="37" rx="9" fill="#faf5ff" stroke="none" stroke-width="1.6" />
+<text id="text-5" data-graph-role="label" data-graph-bounds="80.00,179,319.33,200" x="80" y="196" text-anchor="start" font-size="17" font-weight="500" fill="#475569">UI 线程执行的代码 / 管理的资源</text>
+<text id="text-6" data-graph-role="label" data-graph-bounds="980.00,179,1394.50,200" x="980" y="196" text-anchor="start" font-size="17" font-weight="500" fill="#7c3aed">fb-present 的调用栈：同步调用 NX5 回调，再进入驱动</text>
+<rect id="ui" data-graph-bounds="80,230,320,302" data-node-id="ui" data-graph-role="node" x="80" y="230" width="240" height="72" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" />
+<text id="text-7" data-graph-role="content" x="200" y="259" text-anchor="middle" font-size="20" font-weight="600" fill="#2563eb">UI 渲染线程</text>
+<text id="text-8" data-graph-role="content" x="200" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">runtime / framebuffer</text>
+<line data-graph-role="decoration" x1="200" y1="367" x2="200" y2="1460" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
+<rect id="canvas" data-graph-bounds="360,230,600,302" data-node-id="canvas" data-graph-role="node" x="360" y="230" width="240" height="72" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" />
+<text id="text-9" data-graph-role="content" x="480" y="259" text-anchor="middle" font-size="20" font-weight="600" fill="#2563eb">保留画布 retained</text>
+<text id="text-10" data-graph-role="content" x="480" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">UI 所有 · 独立于显示页</text>
+<line data-graph-role="decoration" x1="480" y1="367" x2="480" y2="1460" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
+<rect id="pages" data-graph-bounds="660,230,900,302" data-node-id="pages" data-graph-role="node" x="660" y="230" width="240" height="72" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" />
+<text id="text-11" data-graph-role="content" x="780" y="259" text-anchor="middle" font-size="20" font-weight="600" fill="#2563eb">物理显示页 A / B</text>
+<text id="text-12" data-graph-role="content" x="780" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">两张 framebuffer</text>
+<line data-graph-role="decoration" x1="780" y1="367" x2="780" y2="1460" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
+<rect id="worker" data-graph-bounds="960,230,1200,302" data-node-id="worker" data-graph-role="node" x="960" y="230" width="240" height="72" rx="9" fill="#faf5ff" stroke="#7c3aed" stroke-width="1.6" />
+<text id="text-13" data-graph-role="content" x="1080" y="259" text-anchor="middle" font-size="20" font-weight="600" fill="#7c3aed">后台提交线程</text>
+<text id="text-14" data-graph-role="content" x="1080" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">presentation.rs · fb-present</text>
+<line data-graph-role="decoration" x1="1080" y1="367" x2="1080" y2="1460" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
+<rect id="nx5" data-graph-bounds="1250,230,1490,302" data-node-id="nx5" data-graph-role="node" x="1250" y="230" width="240" height="72" rx="9" fill="#fff7ed" stroke="#c2410c" stroke-width="1.6" />
+<text id="text-15" data-graph-role="content" x="1370" y="259" text-anchor="middle" font-size="20" font-weight="600" fill="#c2410c">NX5 完成回调</text>
+<text id="text-16" data-graph-role="content" x="1370" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">backends/nx5/mod.rs</text>
+<line data-graph-role="decoration" x1="1370" y1="367" x2="1370" y2="1460" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
+<rect id="driver" data-graph-bounds="1540,230,1780,302" data-node-id="driver" data-graph-role="node" x="1540" y="230" width="240" height="72" rx="9" fill="#fff7ed" stroke="#c2410c" stroke-width="1.6" />
+<text id="text-17" data-graph-role="content" x="1660" y="259" text-anchor="middle" font-size="20" font-weight="600" fill="#c2410c">fyfb 驱动</text>
+<text id="text-18" data-graph-role="content" x="1660" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">/dev/fb0 · 固件 #233</text>
+<line data-graph-role="decoration" x1="1660" y1="367" x2="1660" y2="1460" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
+<line data-graph-role="decoration" x1="1228" y1="215" x2="1228" y2="1475" stroke="#fdba74" stroke-width="1.5" stroke-dasharray="6 7" />
+<rect data-graph-role="decoration" x="60" y="320" width="1720" height="43" rx="9" fill="#f8fafc" stroke="none" stroke-width="1.6" />
+<text id="text-19" data-graph-role="label" data-graph-bounds="80.00,331,906.02,353" x="80" y="349" text-anchor="start" font-size="18" font-weight="400" fill="#475569">示例起点：A（yoffset=0）为前台；B（yoffset=600）可写。时间从上往下，图中高度不代表实际耗时。</text>
+<text id="text-20" data-graph-role="label" data-graph-bounds="25.00,374,50.61,394" x="25" y="390" text-anchor="start" font-size="16" font-weight="400" fill="#475569">t ↓</text>
+<line data-graph-role="decoration" x1="38" y1="410" x2="38" y2="1440" stroke="#94a3b8" stroke-width="1.5" />
+<rect data-graph-role="decoration" x="194" y="402" width="12" height="171" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6" />
+<rect data-graph-role="decoration" x="474" y="410" width="12" height="40" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6" />
+<rect data-graph-role="decoration" x="194" y="780" width="12" height="65" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6" />
+<rect data-graph-role="decoration" x="474" y="790" width="12" height="55" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6" />
+<rect data-graph-role="decoration" x="194" y="1218" width="12" height="215" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6" />
+<rect data-graph-role="decoration" x="1074" y="565" width="12" height="657" rx="2" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.6" />
+<rect data-graph-role="decoration" x="1364" y="625" width="12" height="540" rx="2" fill="#ffedd5" stroke="#c2410c" stroke-width="1.6" />
+<rect data-graph-role="decoration" x="1654" y="680" width="12" height="330" rx="2" fill="#ffedd5" stroke="#c2410c" stroke-width="1.6" />
+<rect data-graph-role="decoration" x="1654" y="1065" width="12" height="45" rx="2" fill="#ffedd5" stroke="#c2410c" stroke-width="1.6" />
+<line id="render-n" data-graph-role="edge" data-edge-id="render-n" data-source="ui" data-target="canvas" x1="200" y1="410" x2="480" y2="410" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)" />
+<text id="text-21" data-graph-role="label" data-owner="render-n" data-graph-bounds="257.45,377,422.55,399" x="340.0" y="395" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">① render(N) → 画布</text>
+<text id="text-22" data-graph-role="label" data-graph-bounds="498.00,423,650.00,444" x="498" y="440" text-anchor="start" font-size="17" font-weight="400" fill="#475569">软件渲染 / 可选 TDE</text>
+<line id="copy-b" data-graph-role="edge" data-edge-id="copy-b" data-source="ui" data-target="pages" x1="200" y1="495" x2="780" y2="495" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)" />
+<text id="text-23" data-graph-role="label" data-owner="copy-b" data-graph-bounds="295.93,462,684.07,484" x="490.0" y="480" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">② present()：画布 → B（合并脏区；首次整页）</text>
+<line id="submit-b" data-graph-role="edge" data-edge-id="submit-b" data-source="ui" data-target="worker" x1="200" y1="565" x2="1080" y2="565" stroke="#7c3aed" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-async)" />
+<text id="text-24" data-graph-role="label" data-owner="submit-b" data-graph-bounds="454.46,532,825.54,554" x="640.0" y="550" text-anchor="middle" font-size="18" font-weight="500" fill="#7c3aed">③ submit(600)：入队即返回；pending = true</text>
+<line id="contract-b" data-graph-role="edge" data-edge-id="contract-b" data-source="worker" data-target="nx5" x1="1080" y1="625" x2="1370" y2="625" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)" />
+<text id="text-25" data-graph-role="label" data-owner="contract-b" data-graph-bounds="1109.95,593,1340.05,614" x="1225.0" y="610" text-anchor="middle" font-size="17" font-weight="500" fill="#2563eb">④ contract.complete(fd, 600)</text>
+<line id="pan-b" data-graph-role="edge" data-edge-id="pan-b" data-source="nx5" data-target="driver" x1="1370" y1="680" x2="1660" y2="680" stroke="#c2410c" stroke-width="2.3" marker-end="url(#arrow-driver)" />
+<text id="text-26" data-graph-role="label" data-owner="pan-b" data-graph-bounds="1426.66,647,1603.34,669" x="1515.0" y="665" text-anchor="middle" font-size="18" font-weight="500" fill="#c2410c">⑤ FBIOPAN_DISPLAY</text>
+<rect data-graph-role="decoration" x="70" y="732" width="1710" height="234" rx="10" fill="#f0fdf4" stroke="#86efac" stroke-width="1.6" />
+<line data-graph-role="decoration" x1="200" y1="733" x2="200" y2="965" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
+<line data-graph-role="decoration" x1="480" y1="733" x2="480" y2="965" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
+<line data-graph-role="decoration" x1="780" y1="733" x2="780" y2="965" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
+<line data-graph-role="decoration" x1="1080" y1="733" x2="1080" y2="965" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
+<line data-graph-role="decoration" x1="1370" y1="733" x2="1370" y2="965" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
+<line data-graph-role="decoration" x1="1660" y1="733" x2="1660" y2="965" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
+<line data-graph-role="decoration" x1="1228" y1="733" x2="1228" y2="965" stroke="#fdba74" stroke-width="1.5" stroke-dasharray="6 7" />
+<rect data-graph-role="decoration" x="194" y="780" width="12" height="65" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6" />
+<rect data-graph-role="decoration" x="474" y="790" width="12" height="55" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6" />
+<rect data-graph-role="decoration" x="1074" y="733" width="12" height="232" rx="2" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.6" />
+<rect data-graph-role="decoration" x="1364" y="733" width="12" height="232" rx="2" fill="#ffedd5" stroke="#c2410c" stroke-width="1.6" />
+<rect data-graph-role="decoration" x="1654" y="733" width="12" height="232" rx="2" fill="#ffedd5" stroke="#c2410c" stroke-width="1.6" />
+<rect data-graph-role="decoration" x="82" y="774" width="73" height="32" rx="9" fill="#dcfce7" stroke="#86efac" stroke-width="1.6" />
+<text id="text-27" data-graph-role="content" x="118" y="796" text-anchor="middle" font-size="18" font-weight="700" fill="#15803d">PAR</text>
+<line id="render-next" data-graph-role="edge" data-edge-id="render-next" data-source="ui" data-target="canvas" x1="200" y1="790" x2="480" y2="790" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)" />
+<text id="text-28" data-graph-role="label" data-owner="render-next" data-graph-bounds="258.48,757,421.52,779" x="340.0" y="775" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">render(N+1) → 画布</text>
+<rect id="ui-work" data-graph-bounds="96,857,594,934" data-graph-role="reserved" x="96" y="857" width="498" height="77" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" />
+<text id="text-29" data-graph-role="content" x="345.0" y="885" text-anchor="middle" font-size="19" font-weight="600" fill="#2563eb">最多预渲染一帧，然后暂停后续绘制</text>
+<text id="text-30" data-graph-role="content" x="345.0" y="914" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">仍处理输入、任务与定时器</text>
+<rect id="frozen-pages" data-graph-bounds="638,766,922,933" data-graph-role="reserved" x="638" y="766" width="284" height="167" rx="9" fill="#ffffff" stroke="#15803d" stroke-width="1.6" />
+<text id="text-31" data-graph-role="content" x="780.0" y="794" text-anchor="middle" font-size="19" font-weight="600" fill="#15803d">pending 期间两页均不可写</text>
+<text id="text-32" data-graph-role="content" x="780.0" y="823" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">A：旧前台，等待释放</text>
+<text id="text-33" data-graph-role="content" x="780.0" y="851" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">B：提交中，禁止修改</text>
+<text id="text-34" data-graph-role="content" x="780.0" y="879" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">此时仅允许写保留画布</text>
+<rect id="blocked-worker" data-graph-bounds="990,801,1725,907" data-graph-role="reserved" x="990" y="801" width="735" height="106" rx="9" fill="#fff7ed" stroke="#c2410c" stroke-width="1.6" />
+<text id="text-35" data-graph-role="content" x="1357.5" y="829" text-anchor="middle" font-size="19" font-weight="600" fill="#c2410c">后台线程阻塞于 complete → NX5 PAN</text>
+<text id="text-36" data-graph-role="content" x="1357.5" y="858" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">等待驱动完成；通用层没有发起第二次页面提交</text>
+<line id="pan-done" data-graph-role="edge" data-edge-id="pan-done" data-source="driver" data-target="nx5" x1="1660" y1="1010" x2="1370" y2="1010" stroke="#15803d" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-return)" />
+<text id="text-37" data-graph-role="label" data-owner="pan-done" data-graph-bounds="1448.80,977,1581.20,999" x="1515.0" y="995" text-anchor="middle" font-size="18" font-weight="500" fill="#15803d">⑥ PAN 成功返回</text>
+<line id="get-offset" data-graph-role="edge" data-edge-id="get-offset" data-source="nx5" data-target="driver" x1="1370" y1="1065" x2="1660" y2="1065" stroke="#c2410c" stroke-width="2.3" marker-end="url(#arrow-driver)" />
+<text id="text-38" data-graph-role="label" data-owner="get-offset" data-graph-bounds="1440.73,1032,1589.27,1054" x="1515.0" y="1050" text-anchor="middle" font-size="18" font-weight="500" fill="#c2410c">GET + 校验 yoffset</text>
+<line id="checked-offset" data-graph-role="edge" data-edge-id="checked-offset" data-source="driver" data-target="nx5" x1="1660" y1="1110" x2="1370" y2="1110" stroke="#15803d" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-return)" />
+<text id="text-39" data-graph-role="label" data-owner="checked-offset" data-graph-bounds="1434.00,1077,1596.00,1099" x="1515.0" y="1095" text-anchor="middle" font-size="18" font-weight="500" fill="#15803d">一致：仅作错误检查</text>
+<line id="contract-done" data-graph-role="edge" data-edge-id="contract-done" data-source="nx5" data-target="worker" x1="1370" y1="1165" x2="1080" y2="1165" stroke="#15803d" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-return)" />
+<text id="text-40" data-graph-role="label" data-owner="contract-done" data-graph-bounds="1139.34,1132,1310.66,1154" x="1225.0" y="1150" text-anchor="middle" font-size="18" font-weight="500" fill="#15803d">⑦ Ok：旧前台可复用</text>
+<line id="wake-ui" data-graph-role="edge" data-edge-id="wake-ui" data-source="worker" data-target="ui" x1="1080" y1="1220" x2="200" y2="1220" stroke="#7c3aed" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-async)" />
+<text id="text-41" data-graph-role="label" data-owner="wake-ui" data-graph-bounds="479.52,1187,800.48,1209" x="640.0" y="1205" text-anchor="middle" font-size="18" font-weight="500" fill="#7c3aed">⑧ completion.send(Ok) + eventfd 唤醒</text>
+<rect id="poll-success" data-graph-bounds="94,1262,594,1320" data-graph-role="reserved" x="94" y="1262" width="500" height="58" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" />
+<text id="text-42" data-graph-role="content" x="344.0" y="1290" text-anchor="middle" font-size="19" font-weight="600" fill="#2563eb">poll_present() 成功 → 更新 front = B</text>
+<rect id="released-page" data-graph-bounds="642,1262,918,1320" data-graph-role="reserved" x="642" y="1262" width="276" height="58" rx="9" fill="#f0fdf4" stroke="#15803d" stroke-width="1.6" />
+<text id="text-43" data-graph-role="content" x="780.0" y="1290" text-anchor="middle" font-size="19" font-weight="600" fill="#15803d">B 为前台；A 可写</text>
+<line id="copy-a" data-graph-role="edge" data-edge-id="copy-a" data-source="ui" data-target="pages" x1="200" y1="1360" x2="780" y2="1360" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)" />
+<text id="text-44" data-graph-role="label" data-owner="copy-a" data-graph-bounds="338.85,1327,641.15,1349" x="490.0" y="1345" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">⑨ present()：N+1 画布 → 已释放的 A</text>
+<line id="submit-a" data-graph-role="edge" data-edge-id="submit-a" data-source="ui" data-target="worker" x1="200" y1="1425" x2="1080" y2="1425" stroke="#7c3aed" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-async)" />
+<text id="text-45" data-graph-role="label" data-owner="submit-a" data-graph-bounds="461.46,1392,818.54,1414" x="640.0" y="1410" text-anchor="middle" font-size="18" font-weight="500" fill="#7c3aed">⑩ submit(0)：提交 N+1；随后可预渲染 N+2</text>
+<rect data-graph-role="decoration" x="60" y="1490" width="1720" height="44" rx="9" fill="#f0fdf4" stroke="none" stroke-width="1.6" />
+<text id="text-46" data-graph-role="label" data-graph-bounds="80.00,1501,767.44,1524" x="80" y="1520" text-anchor="start" font-size="19" font-weight="500" fill="#15803d">循环：A 提交后两页再次冻结；UI 在保留画布渲染 N+2，后台等待 A 的翻页完成。</text>
+<rect id="capacity" data-graph-bounds="60,1565,600,1708" data-graph-role="reserved" x="60" y="1565" width="540" height="143" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" />
+<text id="text-47" data-graph-role="content" x="330.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#2563eb">并行与容量</text>
+<text id="text-48" data-graph-role="content" x="330.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">最多 1 次提交进行中 + 1 帧等待提交</text>
+<text id="text-49" data-graph-role="content" x="330.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">保留画布不是第三张物理 framebuffer</text>
+<text id="text-50" data-graph-role="content" x="330.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">渲染可并行；复制显示页须先确认完成</text>
+<rect id="generic-contract" data-graph-bounds="640,1565,1180,1708" data-graph-role="reserved" x="640" y="1565" width="540" height="143" rx="9" fill="#faf5ff" stroke="#7c3aed" stroke-width="1.6" />
+<text id="text-51" data-graph-role="content" x="910.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#7c3aed">通用层负责</text>
+<text id="text-52" data-graph-role="content" x="910.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">事件 / 帧期限、脏区复制、前后台角色</text>
+<text id="text-53" data-graph-role="content" x="910.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">提交线程、完成队列、eventfd 与错误传播</text>
+<text id="text-54" data-graph-role="content" x="910.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">通过私有 PresentationContract 调用板级实现</text>
+<rect id="board-contract" data-graph-bounds="1220,1565,1780,1708" data-graph-role="reserved" x="1220" y="1565" width="560" height="143" rx="9" fill="#fff7ed" stroke="#c2410c" stroke-width="1.6" />
+<text id="text-55" data-graph-role="content" x="1500.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#c2410c">NX5 适配负责</text>
+<text id="text-56" data-graph-role="content" x="1500.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">固件 / 布局准入、SYS/VO 会话与资源</text>
+<text id="text-57" data-graph-role="content" x="1500.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">阻塞 PAN 的完成语义及 yoffset 校验</text>
+<text id="text-58" data-graph-role="content" x="1500.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">读回或定时器精度均不能单独证明页面已释放</text>
+<line data-graph-role="decoration" x1="70" y1="1748" x2="113" y2="1748" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)" />
+<text id="text-59" data-graph-role="label" data-graph-bounds="126.00,1737,263.33,1758" x="126" y="1754" text-anchor="start" font-size="17" font-weight="400" fill="#475569">同步调用 / UI 复制</text>
+<line data-graph-role="decoration" x1="440" y1="1748" x2="483" y2="1748" stroke="#7c3aed" stroke-width="2.3" stroke-dasharray="7 4" marker-end="url(#arrow-async)" />
+<text id="text-60" data-graph-role="label" data-graph-bounds="496.00,1737,663.28,1758" x="496" y="1754" text-anchor="start" font-size="17" font-weight="400" fill="#475569">跨线程请求 / 完成通知</text>
+<line data-graph-role="decoration" x1="900" y1="1748" x2="943" y2="1748" stroke="#15803d" stroke-width="2.3" stroke-dasharray="7 4" marker-end="url(#arrow-return)" />
+<text id="text-61" data-graph-role="label" data-graph-bounds="956.00,1737,1024.00,1758" x="956" y="1754" text-anchor="start" font-size="17" font-weight="400" fill="#475569">成功返回</text>
+<line data-graph-role="decoration" x1="1215" y1="1748" x2="1258" y2="1748" stroke="#c2410c" stroke-width="2.3" marker-end="url(#arrow-driver)" />
+<text id="text-62" data-graph-role="label" data-graph-bounds="1271.00,1737,1374.28,1758" x="1271" y="1754" text-anchor="start" font-size="17" font-weight="400" fill="#475569">NX5 驱动调用</text>
+<text id="text-63" data-graph-role="label" data-graph-bounds="60.00,1777,858.83,1798" x="60" y="1794" text-anchor="start" font-size="17" font-weight="400" fill="#475569">失败时不复用页面；退出时等待提交完成并 join，再释放映射和板级资源。此图展示当前实现的成功路径。</text>
+</svg></div>
+    <p class="sr-only">Keyboard shortcuts: plus and minus zoom, zero resets, T toggles theme, S exports.</p>
+  </main>
+  <script>
+  (() => {
+    'use strict';
+    const metadata = {"slug": "runtime-sequence"};
+    const stage = document.getElementById('stage');
+    const canvas = document.getElementById('canvas');
+    const svg = canvas.querySelector('svg');
+    const status = document.getElementById('status');
+    const scaleSelect = document.getElementById('scale');
+    const formatSelect = document.getElementById('format');
+    let view = { x:0, y:0, scale:1 };
+    let drag = null;
+    const clamp = value => Math.max(.2, Math.min(8, value));
+    const render = () => {
+      canvas.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.scale})`;
+      status.textContent = `${Math.round(view.scale * 100)}%`;
+    };
+    const zoom = (factor, originX=stage.clientWidth/2, originY=stage.clientHeight/2) => {
+      const next = clamp(view.scale * factor);
+      const ratio = next / view.scale;
+      view.x = originX - (originX - view.x) * ratio;
+      view.y = originY - (originY - view.y) * ratio;
+      view.scale = next; render();
+    };
+    const reset = () => { view = {x:0,y:0,scale:1}; render(); };
+    stage.addEventListener('wheel', event => { event.preventDefault(); const rect=stage.getBoundingClientRect(); zoom(event.deltaY < 0 ? 1.12 : .89, event.clientX-rect.left, event.clientY-rect.top); }, {passive:false});
+    stage.addEventListener('pointerdown', event => { drag={id:event.pointerId,x:event.clientX,y:event.clientY,vx:view.x,vy:view.y}; stage.setPointerCapture(event.pointerId); stage.classList.add('dragging'); });
+    stage.addEventListener('pointermove', event => { if(!drag||drag.id!==event.pointerId)return; view.x=drag.vx+event.clientX-drag.x; view.y=drag.vy+event.clientY-drag.y; render(); });
+    const endDrag = () => { drag=null; stage.classList.remove('dragging'); };
+    stage.addEventListener('pointerup', endDrag); stage.addEventListener('pointercancel', endDrag);
+    const source = () => new XMLSerializer().serializeToString(svg);
+    const saveBlob = (blob, extension) => { const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`${(metadata.slug||'fireworks-tech-graph')}.${extension}`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); };
+    const copySource = async () => {
+      const value=source();
+      try { await navigator.clipboard.writeText(value); status.textContent='Copied'; return; } catch {}
+      const area=document.createElement('textarea'); area.value=value; area.setAttribute('readonly',''); area.style.position='fixed'; area.style.opacity='0'; document.body.appendChild(area); area.select();
+      status.textContent=document.execCommand('copy')?'Copied':'Copy failed'; area.remove();
+    };
+    const exportDiagram = async () => {
+      const format = formatSelect.value.toLowerCase();
+      if(format==='svg') { saveBlob(new Blob([source()],{type:'image/svg+xml;charset=utf-8'}),'svg'); return; }
+      const scale = Math.max(1,Math.min(4,Number(scaleSelect.value)||2));
+      const box = svg.viewBox.baseVal; const width=box.width||svg.clientWidth; const height=box.height||svg.clientHeight;
+      const image = new Image(); const url=URL.createObjectURL(new Blob([source()],{type:'image/svg+xml'}));
+      await new Promise((resolve,reject)=>{ image.onload=resolve; image.onerror=reject; image.src=url; });
+      const raster=document.createElement('canvas'); raster.width=Math.round(width*scale); raster.height=Math.round(height*scale);
+      const ctx=raster.getContext('2d'); if(format==='jpeg'){ctx.fillStyle='#ffffff';ctx.fillRect(0,0,raster.width,raster.height);} ctx.drawImage(image,0,0,raster.width,raster.height); URL.revokeObjectURL(url);
+      const mime=format==='jpeg'?'image/jpeg':format==='webp'?'image/webp':'image/png';
+      const blob=await new Promise(resolve=>raster.toBlob(resolve,mime,.94)); if(blob) saveBlob(blob,format==='jpeg'?'jpg':format);
+    };
+    document.querySelector('.toolbar').addEventListener('click', async event => {
+      const action=event.target.closest('[data-action]')?.dataset.action; if(!action)return;
+      if(action==='zoom-in')zoom(1.2); else if(action==='zoom-out')zoom(.83); else if(action==='reset')reset();
+      else if(action==='theme')document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';
+      else if(action==='download')await exportDiagram();
+      else if(action==='copy') await copySource();
+    });
+    document.addEventListener('keydown', event => {
+      if(event.target.matches('select'))return;
+      if(event.key==='+'||event.key==='=')zoom(1.2); else if(event.key==='-')zoom(.83); else if(event.key==='0'||event.key.toLowerCase()==='r')reset();
+      else if(event.key.toLowerCase()==='t')document.querySelector('[data-action=theme]').click(); else if(event.key.toLowerCase()==='s'){event.preventDefault();exportDiagram();}
+    });
+    render();
+  })();
+  </script>
+</body>
+</html>

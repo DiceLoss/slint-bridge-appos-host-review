@@ -1,0 +1,50 @@
+export component App inherits Window {
+    in property <int> frame;
+    in property <length> bar-x;
+    in property <bool> pattern;
+    in property <bool> white-frame;
+    in property <bool> split-pattern;
+    in property <bool> textures;
+    in property <image> backdrop;
+    in property <image> overlay;
+    in-out property <bool> paused;
+    callback tapped();
+    background: pattern ? (white-frame ? #ffffff : #000000) : #102330;
+    if pattern && split-pattern: Rectangle {
+        y: parent.height / 2; height: parent.height / 2; background: #808080;
+    }
+    if !pattern: Rectangle {
+        x: 36px; y: 32px; width: parent.width - 72px; height: 100px;
+        background: #183b48; border-radius: 12px;
+        Text { x: 24px; y: 15px; text: "SLINT BRIDGE / NX5"; font-size: 30px; color: #eaf7f6; }
+        Text { x: 24px; y: 60px; text: "1024 x 600  |  double framebuffer  |  async presentation"; font-size: 18px; color: #87c7cd; }
+    }
+    if !pattern: Rectangle {
+        x: 36px; y: 160px; width: parent.width - 72px; height: 300px;
+        background: #09171f; clip: true;
+        if textures: Image { source: root.backdrop; width: parent.width; height: parent.height; image-fit: fill; }
+        for i in 16: Rectangle {
+            x: i * parent.width / 16; width: 1px; height: parent.height;
+            background: #24404b;
+        }
+        Rectangle {
+            x: root.bar-x; width: 28px; height: parent.height;
+            background: #49ded0;
+        }
+        Rectangle {
+            x: parent.width - root.bar-x - 28px; y: 130px;
+            width: 28px; height: 40px; background: #f7c56b;
+        }
+        if textures: Image { source: root.overlay; x: root.bar-x; y: 22px; width: 256px; height: 256px; }
+    }
+    if !pattern: status := Text {
+        x: 36px; y: 493px;
+        text: "Frame " + frame + (paused ? "    PAUSED" : "    RUNNING");
+        font-size: 24px; color: #eaf7f6;
+    }
+    if !pattern: Text {
+        x: 36px; y: 541px; text: "Touch anywhere to pause / resume";
+        font-size: 18px; color: #87c7cd;
+    }
+    pause-area := TouchArea { clicked => { root.tapped(); } }
+}

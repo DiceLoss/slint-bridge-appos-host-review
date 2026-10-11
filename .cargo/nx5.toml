@@ -1,0 +1,6 @@
+# Explicit board preset. Generic fbdev builds keep their existing CPU baseline.
+[target.arm-unknown-linux-gnueabi]
+rustflags = ["-C", "target-cpu=cortex-a7"]
+
+[env]
+CFLAGS_arm_unknown_linux_gnueabi = "-march=armv7-a -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=softfp"

@@ -1,0 +1,30 @@
+# NX5 设备工具
+
+这些工具验证 Slint MCP 不覆盖的硬件路径。目录内的 `build.sh`、`build-observer.sh` 和 `check-native.sh` 会定位仓库根；诊断输出继续放在根 `target/nx5-*`，历史证据继续从根 `evidence/nx5-*` 读取。
+
+| 目录 | 用途 | 对应记录 |
+| --- | --- | --- |
+| `display/` | 当前进程内 WBC 采样、混色负对照与日志检查 | [上屏验证](../../../docs/nx5-display.md) |
+| `tde/` | 原生故障注入及 TDE 输出结果重放 | [TDE 验证](../../../docs/nx5-tde.md) |
+| `present/` | 早期板级准入调查与原始观测判读 | [早期准入记录](../../../docs/nx5-present-validation.md) |
+| `flip/` | 阻塞 PAN 周期与实际刷新时序分析 | [翻页分析](../../../docs/nx5-flip.md) |
+| `single-cycle/` | 队列、待锁存与当前页状态诊断 | [单周期调查](../../../docs/nx5-single-cycle.md) |
+| `fps/` | 已保存的整屏优化证据重放 | [帧率记录](../../../docs/nx5-fps.md) |
+| `parallel/` | 已保存的并行渲染/翻页证据重放 | [并行记录](../../../docs/nx5-parallel.md) |
+| `scheduling/` | 定时等待探针及已保存调度证据重放 | [调度记录](../../../docs/nx5-scheduling.md) |
+
+UI 截图、元素查询和交互直接使用 [Slint MCP](../../../docs/slint-mcp.md)。不要把硬件专有工具放入通用测试入口，也不要默认批量执行设备探针；部分工具要求暂停显示、独占设备或特定固件。
+
+从仓库根重放现有证据：
+
+```sh
+python3 test-app/tools/nx5/present/test_analyze.py
+python3 test-app/tools/nx5/tde/check-results.py
+python3 test-app/tools/nx5/single-cycle/analyze.py evidence/nx5-single-cycle/stages.log
+```
+
+下列判据目前应失败，表示没有达成单周期目标，不能改为放宽验收：
+
+```sh
+python3 test-app/tools/nx5/single-cycle/analyze.py evidence/nx5-single-cycle/stages.log --min-fps 55
+```

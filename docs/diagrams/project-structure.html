@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: blob:">
+  <title>Slint Bridge · 项目结构</title>
+  <style>
+    :root { color-scheme: dark; --page:#0f0f1a; --panel:#0f172a; --border:#334155; --text:#e2e8f0; --muted:#94a3b8; --accent:#a855f7; }
+    html[data-theme="light"] { color-scheme:light; --page:#f8fafc; --panel:#fff; --border:#cbd5e1; --text:#0f172a; --muted:#475569; --accent:#7c3aed; }
+    * { box-sizing:border-box; }
+    html,body { width:100%; height:100%; margin:0; overflow:hidden; background:linear-gradient(135deg,var(--page),#1a1a2e); color:var(--text); font-family:'SF Mono','Fira Code',ui-monospace,monospace; }
+    body { display:grid; grid-template-rows:auto 1fr; }
+    .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:10px 14px; background:color-mix(in srgb,var(--panel) 92%,transparent); border-bottom:1px solid var(--border); z-index:2; }
+    .title { margin-right:auto; font-size:13px; font-weight:700; }
+    button,select { min-height:34px; padding:6px 10px; color:var(--text); background:var(--panel); border:1px solid var(--border); border-radius:8px; font:inherit; cursor:pointer; }
+    button:hover,button:focus-visible,select:focus-visible { border-color:var(--accent); outline:2px solid color-mix(in srgb,var(--accent) 35%,transparent); outline-offset:1px; }
+    #stage { position:relative; overflow:hidden; touch-action:none; cursor:grab; }
+    #stage.dragging { cursor:grabbing; }
+    #canvas { width:100%; height:100%; display:grid; place-items:center; transform-origin:0 0; will-change:transform; }
+    #canvas svg { max-width:calc(100vw - 40px); max-height:calc(100vh - 92px); width:auto; height:auto; filter:drop-shadow(0 22px 60px rgba(0,0,0,.28)); user-select:none; }
+    #status { min-width:76px; color:var(--muted); font-size:12px; text-align:center; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto!important; transition:none!important; } }
+  </style>
+</head>
+<body>
+  <header class="toolbar" aria-label="Diagram controls">
+    <span class="title">Slint Bridge · 项目结构</span>
+    <button type="button" data-action="zoom-out" aria-label="Zoom out">−</button>
+    <button type="button" data-action="reset" aria-label="Reset view">Reset</button>
+    <button type="button" data-action="zoom-in" aria-label="Zoom in">+</button>
+    <span id="status" aria-live="polite">100%</span>
+    <button type="button" data-action="theme" aria-label="Toggle theme">Theme</button>
+    <button type="button" data-action="copy" aria-label="Copy SVG source">Copy SVG</button>
+    <select id="scale" aria-label="Raster export scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option><option value="4">4×</option></select>
+    <select id="format" aria-label="Export format"><option>SVG</option><option>PNG</option><option>JPEG</option><option>WebP</option></select>
+    <button type="button" data-action="download">Export</button>
+  </header>
+  <main id="stage" tabindex="0" aria-label="Interactive diagram. Drag to pan; use plus and minus to zoom.">
+    <div id="canvas"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1220" width="1500" height="1220" data-generator="fireworks-tech-graph" data-schema-version="1" data-text-metrics="heuristic-v1" data-style-id="1" data-visual-theme="Flat Icon" data-diagram-type="architecture" data-motion-scene="" data-semantic-profile="generic" data-semantic-valid="true" data-quality-profile="showcase" data-max-bends-per-edge="2" data-max-total-bends="8" data-max-route-stretch="1.35" data-max-bridged-crossings="0" data-min-node-gap="40.0" data-min-container-gutter="20.0" data-min-label-clearance="4.0" data-min-segment-length="16.0" role="img" focusable="false">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed" />
+    </marker>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981" />
+    </marker>
+    <marker id="arrowC" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb" />
+    </marker>
+    <marker id="arrowE" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316" />
+    </marker>
+    <marker id="arrowF" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed" />
+    </marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
+    </marker>
+    <marker id="arrowH" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280" />
+    </marker>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.12" />
+    </filter>
+    <filter id="shadowGlass" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#020617" flood-opacity="0.28" />
+    </filter>
+    <style>
+    text { font-family: 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+    .title { font-size: 30px; font-weight: 700; fill: #111827; }
+    .subtitle { font-size: 14px; font-weight: 500; fill: #6b7280; }
+    .section { font-size: 13px; font-weight: 700; fill: #2563eb; letter-spacing: 1.4px; }
+    .section-sub { font-size: 12px; font-weight: 500; fill: #64748b; }
+    .node-title { font-weight: 700; fill: #111827; }
+    .node-sub { font-weight: 500; fill: #6b7280; }
+    .node-type { font-size: 12px; font-weight: 700; fill: #64748b; letter-spacing: 0.08em; }
+    .arrow-label { font-size: 12px; font-weight: 600; fill: #6b7280; }
+    .legend { font-size: 12px; font-weight: 500; fill: #6b7280; }
+    .footnote { font-size: 12px; font-weight: 500; fill: #64748b; }
+    .metric-label { font-size: 8.5px; font-weight: 700; fill: #64748b; text-transform: uppercase; }
+    .metric-value { font-size: 9.5px; font-weight: 700; fill: #111827; }
+    </style>
+  </defs>
+  <rect data-graph-role="background" width="1500.0" height="1220.0" fill="#ffffff" />
+  <text x="750.0" y="56" text-anchor="middle" class="title">Slint Bridge · 当前项目结构</text>
+  <text x="750.0" y="82" text-anchor="middle" class="subtitle">Rust 适配库 + 独立测试工程 · 通用运行时与板级实现分离</text>
+  <g id="runtime_group" data-graph-role="container" data-container-id="runtime_group" data-semantic-role="boundary" data-graph-bounds="40,230,480,600">
+  <rect data-graph-role="container" x="40.0" y="230.0" width="440.0" height="370.0" rx="16.0" fill="none" stroke="#d1d5db" stroke-width="1.4" stroke-dasharray="6 5" />
+  <text x="58.0" y="254.0" class="section">通用运行时 · SRC/</text>
+    <rect id="runtime_group-header" data-graph-role="reserved" data-reserved-kind="container-header" x="48" y="236" width="142.06" height="30" fill="none" stroke="none" />
+  </g>
+  <g id="display_group" data-graph-role="container" data-container-id="display_group" data-semantic-role="boundary" data-graph-bounds="530,230,970,600">
+  <rect data-graph-role="container" x="530.0" y="230.0" width="440.0" height="370.0" rx="16.0" fill="none" stroke="#d1d5db" stroke-width="1.4" stroke-dasharray="6 5" />
+  <text x="548.0" y="254.0" class="section">通用显示与准入 · SRC/</text>
+    <rect id="display_group-header" data-graph-role="reserved" data-reserved-kind="container-header" x="538" y="236" width="168.06" height="30" fill="none" stroke="none" />
+  </g>
+  <g id="nx5_group" data-graph-role="container" data-container-id="nx5_group" data-semantic-role="boundary" data-graph-bounds="1020,230,1460,600">
+  <rect data-graph-role="container" x="1020.0" y="230.0" width="440.0" height="370.0" rx="16.0" fill="none" stroke="#d1d5db" stroke-width="1.4" stroke-dasharray="6 5" />
+  <text x="1038.0" y="254.0" class="section">NX5 实现 · SRC/BACKENDS/NX5/</text>
+    <rect id="nx5_group-header" data-graph-role="reserved" data-reserved-kind="container-header" x="1028" y="236" width="228.38" height="30" fill="none" stroke="none" />
+  </g>
+  <g id="support" data-graph-role="container" data-container-id="support" data-semantic-role="boundary" data-graph-bounds="40,650,1460,930">
+  <rect data-graph-role="container" x="40.0" y="650.0" width="1420.0" height="280.0" rx="16.0" fill="none" stroke="#d1d5db" stroke-width="1.4" stroke-dasharray="6 5" />
+  <text x="58.0" y="674.0" class="section">工程配套 · 独立测试工程、库内回归与历史证据</text>
+    <rect id="support-header" data-graph-role="reserved" data-reserved-kind="container-header" x="48" y="656" width="306.9" height="30" fill="none" stroke="none" />
+  </g>
+  <g id="flow" data-graph-role="container" data-container-id="flow" data-semantic-role="boundary" data-graph-bounds="40,980,1460,1126">
+  <rect data-graph-role="container" x="40.0" y="980.0" width="1420.0" height="146.0" rx="16.0" fill="none" stroke="#d1d5db" stroke-width="1.4" stroke-dasharray="6 5" />
+  <text x="58.0" y="1004.0" class="section">主要提交链路 · 渲染可与翻页等待并行；收到完成确认后才复用旧页</text>
+    <rect id="flow-header" data-graph-role="reserved" data-reserved-kind="container-header" x="48" y="986" width="423.9" height="30" fill="none" stroke="none" />
+  </g>
+  <path id="flow_rt_flow_fb" data-graph-role="edge" data-edge-id="flow_rt_flow_fb" data-source="flow_rt" data-target="flow_fb" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 280,1061 L 350,1061" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="flow_fb_flow_pr" data-graph-role="edge" data-edge-id="flow_fb_flow_pr" data-source="flow_fb" data-target="flow_pr" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 570,1061 L 640,1061" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="flow_pr_flow_nx" data-graph-role="edge" data-edge-id="flow_pr_flow_nx" data-source="flow_pr" data-target="flow_nx" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 860,1061 L 930,1061" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="flow_nx_flow_dev" data-graph-role="edge" data-edge-id="flow_nx_flow_dev" data-source="flow_nx" data-target="flow_dev" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 1150,1061 L 1220,1061" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <g id="node-public" data-graph-role="node" data-node-id="public" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="500,114,1000,186">
+  <rect x="500.0" y="114.0" width="500.0" height="72.0" rx="10.0" fill="#eff6ff" stroke="#2563eb" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="src/lib.rs · 公共入口" data-text-max-width="476.0" x="750.0" y="150.0" text-anchor="middle" class="node-title" font-size="18">src/lib.rs · 公共入口</text>
+  <text data-text-role="subtitle" data-full-text="Config / init() / Error / Backend" data-text-max-width="476.0" x="750.0" y="172.0" text-anchor="middle" class="node-sub" font-size="12">Config / init() / Error / Backend</text>
+  </g>
+  <g id="node-runtime" data-graph-role="node" data-node-id="runtime" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,280,460,350">
+  <rect x="60.0" y="280.0" width="400.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="runtime.rs" data-text-max-width="376.0" x="260.0" y="315.0" text-anchor="middle" class="node-title" font-size="18">runtime.rs</text>
+  <text data-text-role="subtitle" data-full-text="UI 线程 · Slint 事件循环" data-text-max-width="376.0" x="260.0" y="337.0" text-anchor="middle" class="node-sub" font-size="12">UI 线程 · Slint 事件循环</text>
+  </g>
+  <g id="node-input" data-graph-role="node" data-node-id="input" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,390,460,460">
+  <rect x="60.0" y="390.0" width="400.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="input.rs + geometry.rs" data-text-max-width="376.0" x="260.0" y="425.0" text-anchor="middle" class="node-title" font-size="18">input.rs + geometry.rs</text>
+  <text data-text-role="subtitle" data-full-text="evdev 输入 · 旋转与坐标变换" data-text-max-width="376.0" x="260.0" y="447.0" text-anchor="middle" class="node-sub" font-size="12">evdev 输入 · 旋转与坐标变换</text>
+  </g>
+  <g id="node-wake" data-graph-role="node" data-node-id="wake" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,500,460,570">
+  <rect x="60.0" y="500.0" width="400.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="wake.rs + event_wait.rs" data-text-max-width="376.0" x="260.0" y="535.0" text-anchor="middle" class="node-title" font-size="18">wake.rs + event_wait.rs</text>
+  <text data-text-role="subtitle" data-full-text="跨线程唤醒 · 事件与期限等待" data-text-max-width="376.0" x="260.0" y="557.0" text-anchor="middle" class="node-sub" font-size="12">跨线程唤醒 · 事件与期限等待</text>
+  </g>
+  <g id="node-framebuffer" data-graph-role="node" data-node-id="framebuffer" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="550,280,950,350">
+  <rect x="550.0" y="280.0" width="400.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="framebuffer.rs" data-text-max-width="376.0" x="750.0" y="315.0" text-anchor="middle" class="node-title" font-size="18">framebuffer.rs</text>
+  <text data-text-role="subtitle" data-full-text="保留画布 · 双 framebuffer · 脏区" data-text-max-width="376.0" x="750.0" y="337.0" text-anchor="middle" class="node-sub" font-size="12">保留画布 · 双 framebuffer · 脏区</text>
+  </g>
+  <g id="node-presentation" data-graph-role="node" data-node-id="presentation" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="550,390,950,460">
+  <rect x="550.0" y="390.0" width="400.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="presentation.rs" data-text-max-width="376.0" x="750.0" y="425.0" text-anchor="middle" class="node-title" font-size="18">presentation.rs</text>
+  <text data-text-role="subtitle" data-full-text="后台提交线程 · 完成通知 · 退出等待" data-text-max-width="376.0" x="750.0" y="447.0" text-anchor="middle" class="node-sub" font-size="12">后台提交线程 · 完成通知 · 退出等待</text>
+  </g>
+  <g id="node-admission" data-graph-role="node" data-node-id="admission" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="550,500,950,570">
+  <rect x="550.0" y="500.0" width="400.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="backends/mod.rs" data-text-max-width="376.0" x="750.0" y="535.0" text-anchor="middle" class="node-title" font-size="18">backends/mod.rs</text>
+  <text data-text-role="subtitle" data-full-text="板级准入 · 完成契约 · 定时精度" data-text-max-width="376.0" x="750.0" y="557.0" text-anchor="middle" class="node-sub" font-size="12">板级准入 · 完成契约 · 定时精度</text>
+  </g>
+  <g id="node-nx5" data-graph-role="node" data-node-id="nx5" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1040,280,1440,350">
+  <rect x="1040.0" y="280.0" width="400.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fdba74" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="mod.rs" data-text-max-width="376.0" x="1240.0" y="315.0" text-anchor="middle" class="node-title" font-size="18">mod.rs</text>
+  <text data-text-role="subtitle" data-full-text="固件准入 · SYS/VO · 阻塞 PAN" data-text-max-width="376.0" x="1240.0" y="337.0" text-anchor="middle" class="node-sub" font-size="12">固件准入 · SYS/VO · 阻塞 PAN</text>
+  </g>
+  <g id="node-tde" data-graph-role="node" data-node-id="tde" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1040,390,1440,460">
+  <rect x="1040.0" y="390.0" width="400.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fdba74" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="tde/mod.rs" data-text-max-width="376.0" x="1240.0" y="425.0" text-anchor="middle" class="node-title" font-size="18">tde/mod.rs</text>
+  <text data-text-role="subtitle" data-full-text="可选纹理加速 · 缓存 · 软件回退" data-text-max-width="376.0" x="1240.0" y="447.0" text-anchor="middle" class="node-sub" font-size="12">可选纹理加速 · 缓存 · 软件回退</text>
+  </g>
+  <g id="node-native" data-graph-role="node" data-node-id="native" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1040,500,1440,570">
+  <rect x="1040.0" y="500.0" width="400.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fdba74" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="tde/native.c" data-text-max-width="376.0" x="1240.0" y="535.0" text-anchor="middle" class="node-title" font-size="18">tde/native.c</text>
+  <text data-text-role="subtitle" data-full-text="SDK 调用 · MMZ · TDE 作业 · NEON" data-text-max-width="376.0" x="1240.0" y="557.0" text-anchor="middle" class="node-sub" font-size="12">SDK 调用 · MMZ · TDE 作业 · NEON</text>
+  </g>
+  <g id="node-cargo" data-graph-role="node" data-node-id="cargo" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,704,370,774">
+  <rect x="60.0" y="704.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="Cargo.toml / Cargo.lock" data-text-max-width="286.0" x="215.0" y="739.0" text-anchor="middle" class="node-title" font-size="18">Cargo.toml / Cargo.lock</text>
+  <text data-text-role="subtitle" data-full-text="库 + test-app workspace · 统一版本" data-text-max-width="286.0" x="215.0" y="761.0" text-anchor="middle" class="node-sub" font-size="12">库 + test-app workspace · 统一版本</text>
+  </g>
+  <g id="node-build" data-graph-role="node" data-node-id="build" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="410,704,720,774">
+  <rect x="410.0" y="704.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text=".cargo/ + build.rs" data-text-max-width="286.0" x="565.0" y="739.0" text-anchor="middle" class="node-title" font-size="18">.cargo/ + build.rs</text>
+  <text data-text-role="subtitle" data-full-text="ARM 工具链 · CPU 预设 · C 桥构建" data-text-max-width="286.0" x="565.0" y="761.0" text-anchor="middle" class="node-sub" font-size="12">ARM 工具链 · CPU 预设 · C 桥构建</text>
+  </g>
+  <g id="node-examples" data-graph-role="node" data-node-id="examples" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="760,704,1070,774">
+  <rect x="760.0" y="704.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="test-app/" data-text-max-width="286.0" x="915.0" y="739.0" text-anchor="middle" class="node-title" font-size="18">test-app/</text>
+  <text data-text-role="subtitle" data-full-text="独立 Cargo · .slint 界面 · 接入示例" data-text-max-width="286.0" x="915.0" y="761.0" text-anchor="middle" class="node-sub" font-size="12">独立 Cargo · .slint 界面 · 接入示例</text>
+  </g>
+  <g id="node-tests" data-graph-role="node" data-node-id="tests" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1110,704,1420,774">
+  <rect x="1110.0" y="704.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="库内测试" data-text-max-width="286.0" x="1265.0" y="739.0" text-anchor="middle" class="node-title" font-size="18">库内测试</text>
+  <text data-text-role="subtitle" data-full-text="src/tests/ · NX5/TDE 私有回归" data-text-max-width="286.0" x="1265.0" y="761.0" text-anchor="middle" class="node-sub" font-size="12">src/tests/ · NX5/TDE 私有回归</text>
+  </g>
+  <g id="node-docs" data-graph-role="node" data-node-id="docs" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,818,370,888">
+  <rect x="60.0" y="818.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="docs/ + README.md" data-text-max-width="286.0" x="215.0" y="853.0" text-anchor="middle" class="node-title" font-size="18">docs/ + README.md</text>
+  <text data-text-role="subtitle" data-full-text="接入说明 · 设计与实测报告" data-text-max-width="286.0" x="215.0" y="875.0" text-anchor="middle" class="node-sub" font-size="12">接入说明 · 设计与实测报告</text>
+  </g>
+  <g id="node-tools" data-graph-role="node" data-node-id="tools" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="410,818,720,888">
+  <rect x="410.0" y="818.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="test-app/tools/" data-text-max-width="286.0" x="565.0" y="853.0" text-anchor="middle" class="node-title" font-size="18">test-app/tools/</text>
+  <text data-text-role="subtitle" data-full-text="feature 检查 · 分设备诊断与重放" data-text-max-width="286.0" x="565.0" y="875.0" text-anchor="middle" class="node-sub" font-size="12">feature 检查 · 分设备诊断与重放</text>
+  </g>
+  <g id="node-evidence" data-graph-role="node" data-node-id="evidence" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="760,818,1070,888">
+  <rect x="760.0" y="818.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="evidence/" data-text-max-width="286.0" x="915.0" y="853.0" text-anchor="middle" class="node-title" font-size="18">evidence/</text>
+  <text data-text-role="subtitle" data-full-text="实机日志 · 图像 · 验证清单" data-text-max-width="286.0" x="915.0" y="875.0" text-anchor="middle" class="node-sub" font-size="12">实机日志 · 图像 · 验证清单</text>
+  </g>
+  <g id="node-environment" data-graph-role="node" data-node-id="environment" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1110,818,1420,888">
+  <rect x="1110.0" y="818.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="test-app/devices/" data-text-max-width="286.0" x="1265.0" y="853.0" text-anchor="middle" class="node-title" font-size="18">test-app/devices/</text>
+  <text data-text-role="subtitle" data-full-text="设备记录 · 构建与运行说明" data-text-max-width="286.0" x="1265.0" y="875.0" text-anchor="middle" class="node-sub" font-size="12">设备记录 · 构建与运行说明</text>
+  </g>
+  <g id="node-flow_rt" data-graph-role="node" data-node-id="flow_rt" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,1026,280,1096">
+  <rect x="60.0" y="1026.0" width="220.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="runtime.rs" data-text-max-width="196.0" x="170.0" y="1061.0" text-anchor="middle" class="node-title" font-size="18">runtime.rs</text>
+  <text data-text-role="subtitle" data-full-text="调度绘制与提交" data-text-max-width="196.0" x="170.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">调度绘制与提交</text>
+  </g>
+  <g id="node-flow_fb" data-graph-role="node" data-node-id="flow_fb" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="350,1026,570,1096">
+  <rect x="350.0" y="1026.0" width="220.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="framebuffer.rs" data-text-max-width="196.0" x="460.0" y="1061.0" text-anchor="middle" class="node-title" font-size="18">framebuffer.rs</text>
+  <text data-text-role="subtitle" data-full-text="仅写可用后台页" data-text-max-width="196.0" x="460.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">仅写可用后台页</text>
+  </g>
+  <g id="node-flow_pr" data-graph-role="node" data-node-id="flow_pr" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="640,1026,860,1096">
+  <rect x="640.0" y="1026.0" width="220.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="presentation.rs" data-text-max-width="196.0" x="750.0" y="1061.0" text-anchor="middle" class="node-title" font-size="18">presentation.rs</text>
+  <text data-text-role="subtitle" data-full-text="执行板级阻塞回调" data-text-max-width="196.0" x="750.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">执行板级阻塞回调</text>
+  </g>
+  <g id="node-flow_nx" data-graph-role="node" data-node-id="flow_nx" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="930,1026,1150,1096">
+  <rect x="930.0" y="1026.0" width="220.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fdba74" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="NX5 适配" data-text-max-width="196.0" x="1040.0" y="1061.0" text-anchor="middle" class="node-title" font-size="18">NX5 适配</text>
+  <text data-text-role="subtitle" data-full-text="backends/nx5/mod.rs" data-text-max-width="196.0" x="1040.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">backends/nx5/mod.rs</text>
+  </g>
+  <g id="node-flow_dev" data-graph-role="node" data-node-id="flow_dev" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1220,1026,1440,1096">
+  <rect x="1220.0" y="1026.0" width="220.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fdba74" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="/dev/fb0" data-text-max-width="196.0" x="1330.0" y="1061.0" text-anchor="middle" class="node-title" font-size="18">/dev/fb0</text>
+  <text data-text-role="subtitle" data-full-text="两张显示页" data-text-max-width="196.0" x="1330.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">两张显示页</text>
+  </g>
+  <g id="footer" data-graph-role="reserved" data-graph-bounds="48,1174,461,1190">
+  <text x="48.0" y="1186.0" class="footnote">特性：fbdev 与 nx5 互斥；nx5-tde 包含 nx5。外部依赖：Slint 1.18.1、NX5 SDK。</text>
+  </g>
+</svg></div>
+    <p class="sr-only">Keyboard shortcuts: plus and minus zoom, zero resets, T toggles theme, S exports.</p>
+  </main>
+  <script>
+  (() => {
+    'use strict';
+    const metadata = {"slug": "project-structure"};
+    const stage = document.getElementById('stage');
+    const canvas = document.getElementById('canvas');
+    const svg = canvas.querySelector('svg');
+    const status = document.getElementById('status');
+    const scaleSelect = document.getElementById('scale');
+    const formatSelect = document.getElementById('format');
+    let view = { x:0, y:0, scale:1 };
+    let drag = null;
+    const clamp = value => Math.max(.2, Math.min(8, value));
+    const render = () => {
+      canvas.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.scale})`;
+      status.textContent = `${Math.round(view.scale * 100)}%`;
+    };
+    const zoom = (factor, originX=stage.clientWidth/2, originY=stage.clientHeight/2) => {
+      const next = clamp(view.scale * factor);
+      const ratio = next / view.scale;
+      view.x = originX - (originX - view.x) * ratio;
+      view.y = originY - (originY - view.y) * ratio;
+      view.scale = next; render();
+    };
+    const reset = () => { view = {x:0,y:0,scale:1}; render(); };
+    stage.addEventListener('wheel', event => { event.preventDefault(); const rect=stage.getBoundingClientRect(); zoom(event.deltaY < 0 ? 1.12 : .89, event.clientX-rect.left, event.clientY-rect.top); }, {passive:false});
+    stage.addEventListener('pointerdown', event => { drag={id:event.pointerId,x:event.clientX,y:event.clientY,vx:view.x,vy:view.y}; stage.setPointerCapture(event.pointerId); stage.classList.add('dragging'); });
+    stage.addEventListener('pointermove', event => { if(!drag||drag.id!==event.pointerId)return; view.x=drag.vx+event.clientX-drag.x; view.y=drag.vy+event.clientY-drag.y; render(); });
+    const endDrag = () => { drag=null; stage.classList.remove('dragging'); };
+    stage.addEventListener('pointerup', endDrag); stage.addEventListener('pointercancel', endDrag);
+    const source = () => new XMLSerializer().serializeToString(svg);
+    const saveBlob = (blob, extension) => { const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`${(metadata.slug||'fireworks-tech-graph')}.${extension}`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); };
+    const copySource = async () => {
+      const value=source();
+      try { await navigator.clipboard.writeText(value); status.textContent='Copied'; return; } catch {}
+      const area=document.createElement('textarea'); area.value=value; area.setAttribute('readonly',''); area.style.position='fixed'; area.style.opacity='0'; document.body.appendChild(area); area.select();
+      status.textContent=document.execCommand('copy')?'Copied':'Copy failed'; area.remove();
+    };
+    const exportDiagram = async () => {
+      const format = formatSelect.value.toLowerCase();
+      if(format==='svg') { saveBlob(new Blob([source()],{type:'image/svg+xml;charset=utf-8'}),'svg'); return; }
+      const scale = Math.max(1,Math.min(4,Number(scaleSelect.value)||2));
+      const box = svg.viewBox.baseVal; const width=box.width||svg.clientWidth; const height=box.height||svg.clientHeight;
+      const image = new Image(); const url=URL.createObjectURL(new Blob([source()],{type:'image/svg+xml'}));
+      await new Promise((resolve,reject)=>{ image.onload=resolve; image.onerror=reject; image.src=url; });
+      const raster=document.createElement('canvas'); raster.width=Math.round(width*scale); raster.height=Math.round(height*scale);
+      const ctx=raster.getContext('2d'); if(format==='jpeg'){ctx.fillStyle='#ffffff';ctx.fillRect(0,0,raster.width,raster.height);} ctx.drawImage(image,0,0,raster.width,raster.height); URL.revokeObjectURL(url);
+      const mime=format==='jpeg'?'image/jpeg':format==='webp'?'image/webp':'image/png';
+      const blob=await new Promise(resolve=>raster.toBlob(resolve,mime,.94)); if(blob) saveBlob(blob,format==='jpeg'?'jpg':format);
+    };
+    document.querySelector('.toolbar').addEventListener('click', async event => {
+      const action=event.target.closest('[data-action]')?.dataset.action; if(!action)return;
+      if(action==='zoom-in')zoom(1.2); else if(action==='zoom-out')zoom(.83); else if(action==='reset')reset();
+      else if(action==='theme')document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';
+      else if(action==='download')await exportDiagram();
+      else if(action==='copy') await copySource();
+    });
+    document.addEventListener('keydown', event => {
+      if(event.target.matches('select'))return;
+      if(event.key==='+'||event.key==='=')zoom(1.2); else if(event.key==='-')zoom(.83); else if(event.key==='0'||event.key.toLowerCase()==='r')reset();
+      else if(event.key.toLowerCase()==='t')document.querySelector('[data-action=theme]').click(); else if(event.key.toLowerCase()==='s'){event.preventDefault();exportDiagram();}
+    });
+    render();
+  })();
+  </script>
+</body>
+</html>

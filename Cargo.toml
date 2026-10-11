@@ -1,0 +1,39 @@
+[workspace]
+members = ["test-app"]
+default-members = ["."]
+resolver = "3"
+
+[package]
+name = "slint-bridge"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+publish = false
+description = "Slint platform support for embedded Linux with explicit display admission"
+
+[features]
+default = []
+fbdev = []
+nx5 = ["dep:libloading", "dep:sha2"]
+nx5-tde = ["nx5", "dep:i-slint-renderer-software", "dep:cc"]
+
+[dependencies]
+libc = "0.2.190"
+libloading = { version = "0.8.9", optional = true }
+sha2 = { version = "0.10.9", optional = true }
+# Match Slint's fontique and enable optional runtime loading instead of linking
+# build-host fontconfig into ARM binaries. Missing system fonts can be registered
+# explicitly by the application via SLINT_DEFAULT_FONT or .slint font imports.
+fontique = { version = "=0.11.1", default-features = false, features = ["fontconfig-dlopen"] }
+slint = { version = "=1.18.1", path = "/home/dpower/data/GitHub/slint-1.18.1/api/rs/slint", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
+i-slint-renderer-software = { version = "=1.18.1", path = "/home/dpower/data/GitHub/slint-1.18.1/internal/renderers/software", optional = true, default-features = false, features = ["std", "experimental"] }
+
+[build-dependencies]
+cc = { version = "1.2", optional = true }
+
+[package.metadata.docs.rs]
+features = ["fbdev"]
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

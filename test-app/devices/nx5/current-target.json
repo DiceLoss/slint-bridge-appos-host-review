@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "checked_at_utc": "2026-10-11T03:46:41+00:00",
+  "target": "nx5-usbtty1",
+  "serial": {
+    "device": "/dev/ttyUSB1",
+    "profile_id": "serial:port-devttyUSB1",
+    "observed_session_id": "fdebf2ee-03c4-46f6-aaed-00cd9afa8c75",
+    "user": "root",
+    "provider": "DPower Terminal MCP"
+  },
+  "network": {
+    "address": "192.168.1.151",
+    "prefix_length": 24,
+    "adb_endpoint": "192.168.1.151:5555",
+    "adb_uid": 2000
+  },
+  "identity": {
+    "model": "nx5",
+    "observed_boot_id": "938c34d4-456a-4b1a-b532-678c0f92efd0",
+    "serial_adb_boot_id_match": null,
+    "kernel": "Linux 4.9.138 #233 SMP Thu Mar 14 15:37:26 CST 2024 armv7l",
+    "distribution": "Buildroot 2016.11",
+    "libc": "glibc 2.21",
+    "abi": "ARM EABI5 soft float",
+    "libc_elf_flags": "0x05000202",
+    "cpu": "dual Cortex-A7",
+    "mem_total_kib": 91688,
+    "mmz_total_kib": 32768,
+    "previous_boot_id": "f636e7cf-7beb-46f3-98aa-53c651f96572",
+    "serial_adb_boot_id_match_note": "Prior direct boot-ID equality belongs to the previous boot. Current serial reports the same MAC and 192.168.1.151; ADB file transfers reach the directory created by this serial session."
+  },
+  "display": {
+    "driver": "fyfb",
+    "nominal_width": 1024,
+    "nominal_height": 600,
+    "bits_per_pixel": 32,
+    "stride_bytes": 4096,
+    "initial_virtual_size": [
+      1024,
+      2400
+    ],
+    "last_virtual_size": [
+      1024,
+      1200
+    ],
+    "pan": [
+      0,
+      0
+    ],
+    "vo_device_enabled": true,
+    "initialization_error_observed": "gui layer region(0,0,1024,600) cannot exceed frame region(0,0)",
+    "state_change_note": "Virtual size changed during inspection that included fbset -i; no explicit mode-setting command was sent. Opening fbdev may initialize driver state; cause not established.",
+    "vou_version": "v0.5.8 (0)",
+    "vou_build_time": "Jun 1 2021 14:04:09",
+    "tear_free_admission": "user_accepted_blocking_double_buffer_implementation; 300 WBC samples clean after clamp removal; not full physical-frame certification",
+    "presentation": "FBIOPAN_DISPLAY, unchanged blocking #233 callback on generic fb-present worker",
+    "measured_blocking_flip_ceiling_fps": 29.003,
+    "actual_refresh_hz": 58.00056242969629,
+    "observed_vou_irq_hz": 57.998576408289004,
+    "pixel_clock_hz": 49500000,
+    "requested_pixel_clock_hz": 51206400,
+    "horizontal_total": 1344,
+    "vertical_total": 635,
+    "refresh_periods_per_blocking_flip": 2,
+    "blocking_flip_analysis": "docs/nx5-flip.md",
+    "frame_interval_us": 16667,
+    "nx5_frame_interval_clamp": false,
+    "single_cycle_investigation": {
+      "report": "docs/nx5-single-cycle.md",
+      "achieved": false,
+      "flips_verified": 128,
+      "steady_flip_fps": 29.000312701568195,
+      "mean_queue_to_stage_ms": 17.640143357142858,
+      "mean_stage_to_active_ms": 17.168604785714287,
+      "driver_changed": false,
+      "current_ui_restored": true
+    }
+  },
+  "input": {
+    "device": "/dev/input/event0",
+    "name": "gsl1686"
+  },
+  "vendor_files": [
+    {
+      "path": "/system/app/clib/libVideoDec-1.6.6.so",
+      "sha256": "cb50026662c2c59955c775a96f567333e62a8dbc2f60fb21a01c0b5d11385092"
+    },
+    {
+      "path": "/system/ko/fyfb.ko",
+      "sha256": "0e31745ff56eef1a4dbc009ce3caf85e0093ec47e189d9430eb83849a4697ba6"
+    },
+    {
+      "path": "/system/ko/vou.ko",
+      "sha256": "0dacc9ce6e893d86fc261c52c29bb11955b28130643b7f8a0c678619768449fb"
+    }
+  ],
+  "running_ui": {
+    "path": "/run/slint-bridge-mcp/display-mcp",
+    "pid": 1338,
+    "features": [
+      "nx5-tde",
+      "slint/mcp"
+    ],
+    "build_preset": ".cargo/nx5.toml",
+    "arguments": [
+      "--textures"
+    ],
+    "sha256": "a24f461a35aea6f9351f70f75a4f63971067f17912dedb5d32596763fe7a0254",
+    "frame_interval_us": 16667,
+    "trace_enabled": false,
+    "last_observed_fps": 29.0,
+    "fps_evidence": "evidence/nx5-mcp/validation-run.log",
+    "fps_note": "Finite texture validation after clamp removal; live tracing is disabled. Final binary also passed the 29 FPS WBC pattern run.",
+    "mcp": {
+      "device_endpoint": "http://127.0.0.1:9315/mcp",
+      "host_endpoint": "http://127.0.0.1:19315/mcp",
+      "transport": "streamable-http",
+      "forward": "adb -s 192.168.1.151:5555 forward tcp:19315 tcp:9315",
+      "tools_available": 18,
+      "tools_exercised": 16,
+      "verification": "evidence/nx5-mcp/mcp-verification.json"
+    },
+    "log": "/run/slint-bridge-mcp/live.log"
+  },
+  "status": "unclamped_parallel_tde_display_running_with_slint_mcp",
+  "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
+  "notes": [
+    "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
+    "One reboot recovered a diagnostic VO shared-handle deadlock; DHCP and ADB were restored. See docs/nx5-display.md.",
+    "Do not load this SDK from a second process while UI is running; its constructor resets SYS/VO."
+  ],
+  "previous_serial_device": "/dev/ttyUSB2",
+  "serial_recheck_evidence": "evidence/environments/2026-10-10-usbtty1/serial-recheck.txt",
+  "serial_rechecked_at_utc": "2026-10-10 08:14:52 UTC",
+  "scheduling": {
+    "timer_quantum_us": 10000,
+    "policy": "block before the final timer quantum, then poll events and the monotonic deadline",
+    "generic_build_steady_fps": 29.0,
+    "generic_cpu_percent_one_core_before": 44.687915006636224,
+    "generic_cpu_percent_one_core_after": 50.56403450564132,
+    "report": "docs/nx5-scheduling.md"
+  }
+}
