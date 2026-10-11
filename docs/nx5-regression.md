@@ -2,6 +2,8 @@
 
 被测实现为提交 `2cd98fae4959073f7070c3e3540a50b384e8bb03`。三项实机测试、WBC 错误退出、双页输出采样及纹理运行通过；**完整显示进程退出时仍存在 TDE 缓冲由内核强制回收的问题**，本轮保留为待修复项。
 
+**后续状态：**上述问题已在 [TDE 退出清理修复](nx5-tde-exit.md) 中定位并通过新一轮实机验证。本文继续保留 `2cd98fa` 的原始失败结果。
+
 原始记录在本地 `evidence/nx5-regression/2026-10-11-2cd98fa/`，不随 Git 分发。下文证据链接需要该档案；[结构化结果](../evidence/nx5-regression/2026-10-11-2cd98fa/results.json) 的整体状态为 `completed_with_tde_exit_cleanup_issue`。
 
 ## 设备与部署

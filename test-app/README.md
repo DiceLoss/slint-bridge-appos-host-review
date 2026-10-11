@@ -106,7 +106,7 @@ cargo build --locked --offline --release -p slint-bridge-test-app \
 
 NX5 TDE、观察器插件、部署与 MCP 运行命令见 [devices/nx5/README.md](devices/nx5/README.md)。所有构建仍使用仓库指定的同一份 Slint 1.18.1 源码。
 
-提交 `2cd98fa` 的 [最新实机回归](../docs/nx5-regression.md) 已验证三项硬件测试、WBC 输入错误退出及双页采样；同时发现完整进程退出时 TDE 缓冲仍由内核强制回收，不能据此宣称所有退出资源均主动释放。
+[最新实机回归](../docs/nx5-tde-exit.md) 已修复平台/窗口引用环及错误路径的窗口隐藏，正常与 EIO 退出各验证两轮，三块 TDE 缓冲均不再依赖内核强制回收；三项硬件测试、WBC 等待和纹理运行也通过。主机退出生命周期回归及设备日志检查命令见该报告。
 
 ## 增加设备或用例
 

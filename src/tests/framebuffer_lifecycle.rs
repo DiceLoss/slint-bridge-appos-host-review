@@ -49,6 +49,188 @@ impl Drop for Session {
 }
 
 #[test]
+fn installed_platform_releases_resources_after_normal_exit() {
+    installed_platform_exit(false);
+}
+
+#[test]
+fn installed_platform_releases_resources_after_eio_exit() {
+    installed_platform_exit(true);
+}
+
+fn installed_platform_exit(eio: bool) {
+    let name = if eio {
+        "framebuffer::lifecycle_tests::installed_platform_releases_resources_after_eio_exit"
+    } else {
+        "framebuffer::lifecycle_tests::installed_platform_releases_resources_after_normal_exit"
+    };
+    // Each installed Slint platform needs its own process-global proxy.
+    if std::env::var("SLINT_BRIDGE_TEST_CHILD").as_deref() != Ok(name) {
+        let run = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", name, "--nocapture"])
+            .env("SLINT_BRIDGE_TEST_CHILD", name)
+            .output()
+            .unwrap();
+        assert!(
+            run.status.success(),
+            "{}{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        return;
+    }
+    let events: Events = Arc::default();
+    let observed = events.clone();
+    let inode = thread::spawn(move || {
+        slint::slint! {
+            export component ExitScene inherits Window {
+                preferred-width: 8px; preferred-height: 6px;
+                background: red;
+            }
+        }
+        let fd = unsafe {
+            libc::syscall(
+                libc::SYS_memfd_create,
+                c"platform-exit-test".as_ptr(),
+                libc::MFD_CLOEXEC,
+            )
+        } as i32;
+        assert!(fd >= 0);
+        let file = unsafe { File::from_raw_fd(fd) };
+        let (fixed, variable) = crate::tests::info(8, 6, 32);
+        file.set_len(u64::from(fixed.smem_len)).unwrap();
+        let inode = file.metadata().unwrap().ino();
+        let (dropped, _done) = mpsc::sync_channel(1);
+        let session = Session {
+            events: events.clone(),
+            inode,
+            fd,
+            dropped,
+        };
+        let (presented, frame_ready) = mpsc::sync_channel(1);
+        let contract = PresentationContract {
+            validate_layout: |_, _| Ok(()),
+            complete: Box::new(move |_, _| {
+                record(&session.events, "submission", inode, fd);
+                let _ = presented.try_send(());
+                Ok(())
+            }),
+        };
+        #[allow(unused_mut)]
+        let mut framebuffer =
+            Framebuffer::from_file(file, Layout::new(&fixed, &variable).unwrap(), contract)
+                .unwrap();
+        #[cfg(feature = "nx5-tde")]
+        {
+            let resources = events.clone();
+            framebuffer.retained =
+                crate::backends::nx5::tde::tests::buffer_with_drop_observer(8, 6, move || {
+                    record(&resources, "tde", inode, fd)
+                });
+        }
+        let mut inputs = Vec::new();
+        let mut slave = None;
+        if eio {
+            // Closing a PTY slave makes the actual master read syscall return EIO.
+            let master =
+                unsafe { libc::posix_openpt(libc::O_RDWR | libc::O_NONBLOCK | libc::O_CLOEXEC) };
+            assert!(master >= 0);
+            assert_eq!(unsafe { libc::grantpt(master) }, 0);
+            assert_eq!(unsafe { libc::unlockpt(master) }, 0);
+            let mut path = [0; 128];
+            assert_eq!(
+                unsafe { libc::ptsname_r(master, path.as_mut_ptr(), path.len()) },
+                0
+            );
+            let slave_fd = unsafe {
+                libc::open(
+                    path.as_ptr(),
+                    libc::O_RDWR | libc::O_NOCTTY | libc::O_CLOEXEC,
+                )
+            };
+            assert!(slave_fd >= 0);
+            slave = Some(unsafe { File::from_raw_fd(slave_fd) });
+            inputs.push(crate::input::Evdev {
+                file: unsafe { File::from_raw_fd(master) },
+                decoder: crate::input::Decoder::new(
+                    slint::PhysicalSize::new(8, 6),
+                    crate::Rotation::None,
+                    None,
+                    &[],
+                )
+                .unwrap(),
+            });
+        }
+        let platform = crate::runtime::BridgePlatform::with_inputs(
+            crate::Config::default(),
+            framebuffer,
+            inputs,
+            Vec::new(),
+        )
+        .unwrap();
+        slint::platform::set_platform(Box::new(platform)).unwrap();
+        let app = ExitScene::new().unwrap();
+        let control = thread::spawn(move || {
+            let rendered = frame_ready.recv_timeout(Duration::from_secs(3)).is_ok();
+            slint::invoke_from_event_loop(move || {
+                if rendered && eio {
+                    drop(slave);
+                } else {
+                    slint::quit_event_loop().unwrap();
+                }
+            })
+            .unwrap();
+            assert!(rendered, "no frame submitted before exit trigger");
+        });
+        let result = app.run();
+        control.join().unwrap();
+        if eio {
+            let error = result.unwrap_err().to_string();
+            assert!(
+                error.contains("read evdev input") && error.contains("os error 5"),
+                "{error}"
+            );
+        } else {
+            result.unwrap();
+        }
+        // Leave the installed platform in Slint, exactly as an application does.
+        inode
+    })
+    .join()
+    .unwrap();
+    let events = observed.lock().unwrap();
+    assert!(
+        events.iter().any(|event| event.name == "submission"),
+        "no frame rendered"
+    );
+    let releases: Vec<_> = events
+        .iter()
+        .filter(|event| event.name != "submission")
+        .map(|event| event.name)
+        .collect();
+    #[cfg(feature = "nx5-tde")]
+    assert_eq!(
+        releases,
+        ["tde", "sdk"],
+        "installed platform retained resources: {events:?}"
+    );
+    #[cfg(not(feature = "nx5-tde"))]
+    assert_eq!(
+        releases,
+        ["sdk"],
+        "installed platform retained resources: {events:?}"
+    );
+    assert!(
+        events.iter().all(|event| event.mapped && event.file_open),
+        "{events:?}"
+    );
+    assert!(
+        !mapping_exists(inode),
+        "framebuffer mapping retained after UI thread exit"
+    );
+}
+
+#[test]
 fn framebuffer_drop_drains_submission_before_releasing_resources() {
     for outcome in ["ok", "error", "panic"] {
         let events: Events = Arc::default();

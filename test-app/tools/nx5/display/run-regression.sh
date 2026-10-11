@@ -48,10 +48,22 @@ run_app() {
 }
 
 sha256sum "$binary" > "$base.binary.sha256"
+snapshot "$base.initial"
+dmesg > "$base.kernel-before"
 cat /proc/uptime > "$base.start"
 run_app "$@" > "$base.log" 2>&1 &
 pid=$!
 printf '%s\n' "$pid" > "$base.pid"
+
+# Prove that all three TDE allocations existed, rather than accepting an exit
+# from a process that never initialized acceleration.
+attempts=0
+while [ "$attempts" -lt 100 ] && kill -0 "$pid" 2>/dev/null; do
+    grep -q '^slint-bridge: TDE enabled;' "$base.log" && break
+    sleep 0.1
+    attempts=$((attempts + 1))
+done
+snapshot "$base.live"
 
 if [ "$mode" = fault ]; then
     attempts=0
@@ -84,6 +96,7 @@ result=$?
 printf '%s\n' "$result" > "$base.rc"
 cat /proc/uptime > "$base.end"
 snapshot "$base"
+dmesg > "$base.kernel"
 # This marks snapshots complete, including when the expected fault exits 1.
 : > "$base.done"
 exit "$result"

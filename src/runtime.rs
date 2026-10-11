@@ -1,5 +1,5 @@
 use crate::{
-    Config, Error,
+    Config, Error, Rotation,
     framebuffer::Framebuffer,
     input::Evdev,
     wake::{Proxy, WakeQueue},
@@ -31,11 +31,11 @@ pub(crate) struct BridgeWindow {
 }
 
 impl BridgeWindow {
-    fn new(size: PhysicalSize, config: &Config, wake: Arc<WakeQueue>) -> Rc<Self> {
+    fn new(size: PhysicalSize, rotation: Rotation, wake: Arc<WakeQueue>) -> Rc<Self> {
         Rc::new_cyclic(|weak: &Weak<Self>| {
             let renderer =
                 SoftwareRenderer::new_with_repaint_buffer_type(RepaintBufferType::ReusedBuffer);
-            renderer.set_rendering_rotation(config.rotation.renderer());
+            renderer.set_rendering_rotation(rotation.renderer());
             Self {
                 window: Window::new(weak.clone()),
                 renderer,
@@ -110,7 +110,10 @@ impl WindowAdapter for BridgeWindow {
 }
 
 pub(crate) struct BridgePlatform {
-    pub(crate) window: Rc<BridgeWindow>,
+    // Window owns a Slint context, which owns this platform: keep this edge weak.
+    window: RefCell<Weak<BridgeWindow>>,
+    size: PhysicalSize,
+    rotation: Rotation,
     framebuffer: RefCell<Framebuffer>,
     inputs: RefCell<Vec<Evdev>>,
     initial_events: RefCell<Vec<WindowEvent>>,
@@ -147,13 +150,11 @@ impl BridgePlatform {
         initial_events: Vec<WindowEvent>,
     ) -> Result<Self, Error> {
         let wake = framebuffer.wake();
-        let window = BridgeWindow::new(
-            config.rotation.logical_size(framebuffer.layout.size),
-            &config,
-            wake.clone(),
-        );
+        let size = config.rotation.logical_size(framebuffer.layout.size);
         Ok(Self {
-            window,
+            window: RefCell::new(Weak::new()),
+            size,
+            rotation: config.rotation,
             framebuffer: RefCell::new(framebuffer),
             inputs: RefCell::new(inputs),
             initial_events: RefCell::new(initial_events),
@@ -166,7 +167,10 @@ impl BridgePlatform {
     }
 
     fn run(&self) -> Result<(), Error> {
-        let result = self.run_frames();
+        let window = self.window.borrow().upgrade().ok_or(Error::InvalidConfig(
+            "event loop requires a live root window",
+        ))?;
+        let result = self.run_frames(&window);
         // A quit or input/render error must still drain the submitted page.
         let completion = self.framebuffer.borrow_mut().wait_for_present();
         match (result, completion) {
@@ -182,7 +186,7 @@ impl BridgePlatform {
         }
     }
 
-    fn run_frames(&self) -> Result<(), Error> {
+    fn run_frames(&self, window: &BridgeWindow) -> Result<(), Error> {
         let mut next_frame = Instant::now();
         let mut events = std::mem::take(&mut *self.initial_events.borrow_mut());
         loop {
@@ -206,7 +210,7 @@ impl BridgePlatform {
                 input.read_ready(&mut events)?;
             }
             for event in events.drain(..) {
-                self.window.window.dispatch_event(event);
+                window.window.dispatch_event(event);
             }
             // Input and queued callbacks can schedule zero-delay window-property
             // updates. Apply their layout constraints before allocating/drawing.
@@ -214,28 +218,26 @@ impl BridgePlatform {
             if self.wake.quit_requested() {
                 return Ok(());
             }
-            if self.window.incompatible_layout.get() {
+            if window.incompatible_layout.get() {
                 return Err(Error::InvalidConfig(
                     "window layout constraints do not fit the fixed panel size",
                 ));
             }
             let now = Instant::now();
-            if self.window.visible.get()
-                && (self.window.dirty.get() || self.window.window.has_active_animations())
+            if window.visible.get()
+                && (window.dirty.get() || window.window.has_active_animations())
                 && self.framebuffer.borrow().can_render()
                 && now >= next_frame
             {
-                self.window.dirty.set(false);
+                window.dirty.set(false);
                 next_frame = now + self.frame_interval;
-                self.framebuffer
-                    .borrow_mut()
-                    .render(&self.window.renderer)?;
+                self.framebuffer.borrow_mut().render(&window.renderer)?;
             }
-            if self.window.visible.get() && self.framebuffer.borrow().ready_to_present() {
+            if window.visible.get() && self.framebuffer.borrow().ready_to_present() {
                 self.framebuffer.borrow_mut().present()?;
             }
-            let animating = self.window.visible.get() && self.window.window.has_active_animations();
-            let redraw_pending = self.window.visible.get() && self.window.dirty.get();
+            let animating = window.visible.get() && window.window.has_active_animations();
+            let redraw_pending = window.visible.get() && window.dirty.get();
             let mut timeout = platform::duration_until_next_timer_update();
             if (animating || redraw_pending) && self.framebuffer.borrow().can_render() {
                 // One retained frame can be prepared while the worker owns
@@ -286,11 +288,13 @@ impl Platform for BridgePlatform {
                 "only one fullscreen root window is supported".to_string(),
             ));
         }
-        self.window
+        let window = BridgeWindow::new(self.size, self.rotation, self.wake.clone());
+        *self.window.borrow_mut() = Rc::downgrade(&window);
+        window
             .window
             .dispatch_event(WindowEvent::ScaleFactorChanged { scale_factor: 1.0 });
-        self.window.resize();
-        Ok(self.window.clone())
+        window.resize();
+        Ok(window)
     }
 
     fn run_event_loop(&self) -> Result<(), PlatformError> {
@@ -308,7 +312,16 @@ impl Platform for BridgePlatform {
         }
         let _guard = Guard(self);
         self.wake.begin();
-        self.run().map_err(|e| PlatformError::from(e.to_string()))
+        let result = self.run().map_err(|e| PlatformError::from(e.to_string()));
+        // ComponentHandle::run skips hide on error. A visible Slint window owns
+        // its component, so release that reference even when input/present fails.
+        if result.is_err()
+            && let Some(window) = self.window.borrow().upgrade()
+            && let Err(error) = window.window.hide()
+        {
+            eprintln!("slint-bridge: hide after event-loop failure: {error}");
+        }
+        result
     }
 
     fn new_event_loop_proxy(&self) -> Option<Box<dyn platform::EventLoopProxy>> {

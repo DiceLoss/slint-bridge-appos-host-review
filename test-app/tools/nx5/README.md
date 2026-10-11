@@ -6,7 +6,7 @@
 
 | 目录 | 用途 | 对应记录 |
 | --- | --- | --- |
-| `display/` | 进程内 WBC 采样、混色负对照、输入 EIO 退出回归与日志检查 | [最新实机回归](../../../docs/nx5-regression.md) |
+| `display/` | 进程内 WBC 采样、混色负对照、输入 EIO/TDE 退出回归与日志检查 | [最新实机回归](../../../docs/nx5-tde-exit.md) |
 | `tde/` | 原生故障注入及 TDE 输出结果重放 | [TDE 验证](../../../docs/nx5-tde.md) |
 | `present/` | 早期板级准入调查与原始观测判读 | [早期准入记录](../../../docs/nx5-present-validation.md) |
 | `flip/` | 阻塞 PAN 周期与实际刷新时序分析 | [翻页分析](../../../docs/nx5-flip.md) |
@@ -17,7 +17,7 @@
 
 UI 截图、元素查询和交互直接使用 [Slint MCP](../../../docs/slint-mcp.md)。不要把硬件专有工具放入通用测试入口，也不要默认批量执行设备探针；部分工具要求暂停显示、独占设备或特定固件。
 
-`display/run-regression.sh` 在设备上执行有限时长用例并保存日志、退出码和资源快照；`display/inject-read-error.c` 只用于诊断进程内的一次 evdev EIO。构建、部署、预期失败和证据判据见最新实机回归报告。原始寄存器读数不能替代实际 WBC 帧、驱动计数及分配状态。
+`display/run-regression.sh` 在设备上执行有限时长用例并保存日志、退出码和资源快照；`display/inject-read-error.c` 只用于诊断进程内的一次 evdev EIO。`display/check-exit.py` 核对活动 TDE 分配、退出后的 MMZ、连续内核记录及 EIO/WBC 清理顺序。构建、部署、预期失败和证据判据见最新实机回归报告。原始寄存器读数不能替代实际 WBC 帧、驱动计数及分配状态。
 
 从仓库根重放现有证据：
 

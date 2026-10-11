@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-11T07:21:17+00:00",
+  "checked_at_utc": "2026-10-11T08:12:55+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -28,7 +28,7 @@
     "mem_total_kib": 91688,
     "mmz_total_kib": 32768,
     "previous_boot_id": "f636e7cf-7beb-46f3-98aa-53c651f96572",
-    "serial_adb_boot_id_match_note": "Boot ID directly matched between USB1 root session and ADB during this regression; see evidence/nx5-regression/2026-10-11-2cd98fa/final-adb-identity.txt."
+    "serial_adb_boot_id_match_note": "Boot ID directly matched between USB1 root session and ADB during the TDE exit regression; see evidence/nx5-tde-exit/2026-10-11/final-adb-identity.txt."
   },
   "display": {
     "driver": "fyfb",
@@ -46,16 +46,16 @@
     ],
     "pan": [
       0,
-      600
+      0
     ],
     "vo_device_enabled": true,
     "initialization_error_observed": "gui layer region(0,0,1024,600) cannot exceed frame region(0,0)",
     "state_change_note": "Virtual size changed during inspection that included fbset -i; no explicit mode-setting command was sent. Opening fbdev may initialize driver state; cause not established.",
     "vou_version": "v0.5.8 (0)",
     "vou_build_time": "Jun 1 2021 14:04:09",
-    "tear_free_admission": "accepted firmware-specific blocking double buffer; latest 300 WBC samples contain no mixed frames, not full physical-frame certification",
+    "tear_free_admission": "accepted firmware-specific blocking double buffer; two normal WBC runs each have 300 clean samples, not full physical-frame certification",
     "presentation": "FBIOPAN_DISPLAY, unchanged blocking #233 callback on generic fb-present worker",
-    "measured_blocking_flip_ceiling_fps": 29.002,
+    "measured_blocking_flip_ceiling_fps": 29.003,
     "actual_refresh_hz": 58.00056242969629,
     "observed_vou_irq_hz": 57.998576408289004,
     "pixel_clock_hz": 49500000,
@@ -98,7 +98,7 @@
   ],
   "running_ui": {
     "path": "/run/slint-bridge-mcp/display-mcp",
-    "pid": 2040,
+    "pid": 2558,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -108,12 +108,12 @@
       "--textures",
       "--touch=/dev/input/event0"
     ],
-    "sha256": "3d4efe2ec1911e118b7873f5f0a0ecce539e75863b9dab68c09c508e3a8dac8a",
+    "sha256": "e5ebaa6d9ca40e2e712a6b8b0b391c4826ffc1b14e4fb1cd4b53083807190666",
     "frame_interval_us": 16667,
     "trace_enabled": false,
     "last_observed_fps": 29.0,
-    "fps_evidence": "evidence/nx5-regression/2026-10-11-2cd98fa/textures.log",
-    "fps_note": "Same binary: 60-second texture run, startup 28.44 FPS and ten subsequent 29.00 FPS windows. Final live process tracing is disabled.",
+    "fps_evidence": "evidence/nx5-tde-exit/2026-10-11/device/textures.log",
+    "fps_note": "Same binary: 60-second texture run, startup 28.43 FPS and ten subsequent 29.00 FPS windows. Final live process tracing is disabled.",
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
@@ -121,7 +121,7 @@
       "forward": "adb -s 192.168.1.151:5555 forward tcp:19315 tcp:9315",
       "tools_available": 18,
       "tools_exercised": 6,
-      "verification": "evidence/nx5-regression/2026-10-11-2cd98fa/final-ui-verification.json",
+      "verification": "evidence/nx5-tde-exit/2026-10-11/final-ui.json",
       "exercised_tools": [
         "list_windows",
         "get_window_properties",
@@ -131,17 +131,29 @@
         "take_screenshot"
       ]
     },
-    "log": "/run/slint-bridge-mcp/live.log",
-    "source_commit": "2cd98fae4959073f7070c3e3540a50b384e8bb03",
-    "fault_injection_enabled": false
+    "log": "/run/slint-bridge-tde-exit/live.log",
+    "source_commit": null,
+    "fault_injection_enabled": false,
+    "source_base_commit": "a941a7be38bb4f6f4e7edfe9fe68dedc4077072e",
+    "source_state": "validated working tree with TDE exit lifecycle fix; see source_manifest for exact source hashes",
+    "source_manifest": "evidence/nx5-tde-exit/2026-10-11/deployment-manifest.json",
+    "resources": {
+      "rss_kib": 11076,
+      "vm_peak_kib": 33812,
+      "threads": 3,
+      "mmz_used_kib": 12100,
+      "mmz_blocks": 5,
+      "wbc_running": false
+    },
+    "runtime_source_sha256": "6c9efe89356ba17cabfe82db445f92afc7c0ea5c4d926f4746392b547e7558b5"
   },
-  "status": "latest_ui_running_with_slint_mcp_and_known_tde_exit_cleanup_issue",
+  "status": "latest_ui_running_with_slint_mcp_and_verified_tde_exit_cleanup",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
     "One reboot recovered a diagnostic VO shared-handle deadlock; DHCP and ADB were restored. See docs/nx5-display.md.",
     "Only one SDK display owner at a time; loading another SDK process resets SYS/VO.",
-    "The latest regression deploys the 2cd98fa application. Normal and EIO exits expose a separate unresolved TDE forced-reclamation issue; see hardware_regression."
+    "The latest regression fixes platform/window reference cycles. Two normal exits and two EIO exits released all three TDE buffers without kernel MMB LEAK reclamation; see hardware_regression."
   ],
   "previous_serial_device": "/dev/ttyUSB2",
   "serial_recheck_evidence": "evidence/environments/2026-10-10-usbtty1/serial-recheck.txt",
@@ -156,34 +168,58 @@
   },
   "observation_scope": "Device identity, current process, framebuffer and resources were rechecked. Clock, scheduling CPU and single-cycle investigation fields retain their linked historical measurements; this run remeasured blocking flip cadence.",
   "hardware_regression": {
-    "report": "docs/nx5-regression.md",
-    "evidence": "evidence/nx5-regression/2026-10-11-2cd98fa/results.json",
-    "tested_commit": "2cd98fae4959073f7070c3e3540a50b384e8bb03",
+    "report": "docs/nx5-tde-exit.md",
+    "evidence": "evidence/nx5-tde-exit/2026-10-11/results.json",
     "hardware_tests_passed": 3,
     "wbc_normal": {
       "frames": 300,
       "black": 150,
       "white": 150,
-      "mixed": 0
+      "mixed": 0,
+      "runs": 2
     },
     "wbc_mixed_control": {
       "frames": 30,
       "mixed": 30,
-      "observer_result": 1
+      "observer_result": 1,
+      "scope": "Historical 2cd98fa result from docs/nx5-regression.md; not rerun during this exit cleanup fix."
     },
     "wbc_error_exit": {
-      "valid_evidence": "evidence/nx5-regression/2026-10-11-2cd98fa/fault-retry",
       "injection": "one evdev read EIO through diagnostic LD_PRELOAD",
       "app_exit_code": 1,
-      "frames": 600,
-      "frames_after_error": 566,
-      "trigger_to_exit_seconds": 19.75,
+      "frames_per_run": 600,
+      "mixed_per_run": 0,
+      "runs": [
+        {
+          "evidence": "evidence/nx5-tde-exit/2026-10-11/device/fault",
+          "pid": 2202,
+          "frames_after_error": 565,
+          "trigger_to_exit_seconds": 19.65
+        },
+        {
+          "evidence": "evidence/nx5-tde-exit/2026-10-11/device/repeat/fault",
+          "pid": 2453,
+          "frames_after_error": 567,
+          "trigger_to_exit_seconds": 19.74
+        }
+      ],
       "wbc_cleanup_passed": true
     },
-    "overall": "completed_with_tde_exit_cleanup_issue",
-    "known_issue": "Whole display process exit still produces three 2400 KiB bridge_tde MMB LEAK/force-unmap messages. Kernel reclamation returns MMZ to baseline; userspace TDE cleanup is not confirmed.",
+    "overall": "passed",
     "wbc_register_note": "0x34101090 read zero during active WBC. Activity was established from received frames, /proc/umap/vo and the live vou-wbc allocation; register zero is not a cleanup criterion.",
     "driver_changed": false,
-    "rebooted": false
+    "rebooted": false,
+    "source_manifest": "evidence/nx5-tde-exit/2026-10-11/deployment-manifest.json",
+    "resolved_issue": "Three 2400 KiB TDE MMZ buffers leaked through platform/window ownership cycles. Weak window ownership and hide on event-loop error restore destructors; no per-process MMB LEAK in any of the five full application exits.",
+    "tde_exit_cleanup": {
+      "normal_runs": 2,
+      "eio_runs": 2,
+      "texture_runs": 1,
+      "active_blocks_per_run": 3,
+      "forced_reclaims": 0,
+      "final_mmz_kib": 4900,
+      "final_mmz_blocks": 2,
+      "unknown_dma_quarantine_unchanged": true
+    }
   }
 }
