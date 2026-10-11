@@ -29,3 +29,8 @@ path = "src/main.rs"
 [[bin]]
 name = "basic"
 path = "src/bin/basic.rs"
+
+[[bin]]
+name = "startup-regression"
+path = "src/bin/startup-regression.rs"
+required-features = ["nx5-tde"]

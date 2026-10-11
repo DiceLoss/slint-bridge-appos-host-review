@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-11T08:12:55+00:00",
+  "checked_at_utc": "2026-10-11T09:42:16+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -28,7 +28,7 @@
     "mem_total_kib": 91688,
     "mmz_total_kib": 32768,
     "previous_boot_id": "f636e7cf-7beb-46f3-98aa-53c651f96572",
-    "serial_adb_boot_id_match_note": "Boot ID directly matched between USB1 root session and ADB during the TDE exit regression; see evidence/nx5-tde-exit/2026-10-11/final-adb-identity.txt."
+    "serial_adb_boot_id_match_note": "Boot ID directly matched between USB1 root session and ADB during the 949ceb9 startup regression; see evidence/nx5-startup/2026-10-11-949ceb9/final-adb-identity.txt."
   },
   "display": {
     "driver": "fyfb",
@@ -46,14 +46,14 @@
     ],
     "pan": [
       0,
-      0
+      600
     ],
     "vo_device_enabled": true,
     "initialization_error_observed": "gui layer region(0,0,1024,600) cannot exceed frame region(0,0)",
     "state_change_note": "Virtual size changed during inspection that included fbset -i; no explicit mode-setting command was sent. Opening fbdev may initialize driver state; cause not established.",
     "vou_version": "v0.5.8 (0)",
     "vou_build_time": "Jun 1 2021 14:04:09",
-    "tear_free_admission": "accepted firmware-specific blocking double buffer; two normal WBC runs each have 300 clean samples, not full physical-frame certification",
+    "tear_free_admission": "accepted firmware-specific blocking double buffer; latest 300 WBC samples contain no mixed frames, not full physical-frame certification",
     "presentation": "FBIOPAN_DISPLAY, unchanged blocking #233 callback on generic fb-present worker",
     "measured_blocking_flip_ceiling_fps": 29.003,
     "actual_refresh_hz": 58.00056242969629,
@@ -76,7 +76,8 @@
       "driver_changed": false,
       "current_ui_restored": true
     },
-    "pan_note": "Instantaneous read while the UI is running, not a scanout retirement proof."
+    "pan_note": "Instantaneous read while the UI is running, not a scanout retirement proof.",
+    "blocking_flip_measurement_scope": "29.003 FPS is the historical 177c18a hardware-test result in docs/nx5-tde-exit.md; not remeasured in the 949ceb9 startup regression."
   },
   "input": {
     "device": "/dev/input/event0",
@@ -98,7 +99,7 @@
   ],
   "running_ui": {
     "path": "/run/slint-bridge-mcp/display-mcp",
-    "pid": 2558,
+    "pid": 2925,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -108,12 +109,12 @@
       "--textures",
       "--touch=/dev/input/event0"
     ],
-    "sha256": "e5ebaa6d9ca40e2e712a6b8b0b391c4826ffc1b14e4fb1cd4b53083807190666",
+    "sha256": "f2fa90209df824c1b94bbddbf125a70190089f6ebc4aac24934c87dd6185dee5",
     "frame_interval_us": 16667,
     "trace_enabled": false,
     "last_observed_fps": 29.0,
-    "fps_evidence": "evidence/nx5-tde-exit/2026-10-11/device/textures.log",
-    "fps_note": "Same binary: 60-second texture run, startup 28.43 FPS and ten subsequent 29.00 FPS windows. Final live process tracing is disabled.",
+    "fps_evidence": "evidence/nx5-startup/2026-10-11-949ceb9/device/textures.log",
+    "fps_note": "Same deployed binary: 60-second texture run, startup 28.44 FPS and ten subsequent 29.00 FPS windows. Final live process tracing is disabled.",
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
@@ -121,7 +122,7 @@
       "forward": "adb -s 192.168.1.151:5555 forward tcp:19315 tcp:9315",
       "tools_available": 18,
       "tools_exercised": 6,
-      "verification": "evidence/nx5-tde-exit/2026-10-11/final-ui.json",
+      "verification": "evidence/nx5-startup/2026-10-11-949ceb9/final-ui.json",
       "exercised_tools": [
         "list_windows",
         "get_window_properties",
@@ -131,29 +132,28 @@
         "take_screenshot"
       ]
     },
-    "log": "/run/slint-bridge-tde-exit/live.log",
-    "source_commit": null,
+    "log": "/run/slint-bridge-startup-949ceb9/live.log",
+    "source_commit": "949ceb98b320bb61e9006e984fecfc284ec904db",
     "fault_injection_enabled": false,
-    "source_base_commit": "a941a7be38bb4f6f4e7edfe9fe68dedc4077072e",
-    "source_state": "validated working tree with TDE exit lifecycle fix; see source_manifest for exact source hashes",
-    "source_manifest": "evidence/nx5-tde-exit/2026-10-11/deployment-manifest.json",
+    "source_state": "Library implementation and deployed display from commit 949ceb9; added diagnostic application does not change the library.",
+    "source_manifest": "evidence/nx5-startup/2026-10-11-949ceb9/deployment-manifest.json",
     "resources": {
-      "rss_kib": 11076,
+      "rss_kib": 11140,
       "vm_peak_kib": 33812,
       "threads": 3,
       "mmz_used_kib": 12100,
       "mmz_blocks": 5,
       "wbc_running": false
     },
-    "runtime_source_sha256": "6c9efe89356ba17cabfe82db445f92afc7c0ea5c4d926f4746392b547e7558b5"
+    "runtime_source_sha256": "fb5323ce4d891ac3f7b8b7d17bd6289f1318e944ac42cd86de9341d658e897f3"
   },
-  "status": "latest_ui_running_with_slint_mcp_and_verified_tde_exit_cleanup",
+  "status": "949ceb9_ui_running_with_slint_mcp_and_verified_startup_cleanup",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
     "One reboot recovered a diagnostic VO shared-handle deadlock; DHCP and ADB were restored. See docs/nx5-display.md.",
     "Only one SDK display owner at a time; loading another SDK process resets SYS/VO.",
-    "The latest regression fixes platform/window reference cycles. Two normal exits and two EIO exits released all three TDE buffers without kernel MMB LEAK reclamation; see hardware_regression."
+    "The 949ceb9 startup regression passed five modes twice, including first-show error cleanup, same-component retry and deferred creation. Ten complete front frames matched, and all ten process exits released the three TDE buffers without kernel MMB LEAK reclamation."
   ],
   "previous_serial_device": "/dev/ttyUSB2",
   "serial_recheck_evidence": "evidence/environments/2026-10-10-usbtty1/serial-recheck.txt",
@@ -166,60 +166,62 @@
     "generic_cpu_percent_one_core_after": 50.56403450564132,
     "report": "docs/nx5-scheduling.md"
   },
-  "observation_scope": "Device identity, current process, framebuffer and resources were rechecked. Clock, scheduling CPU and single-cycle investigation fields retain their linked historical measurements; this run remeasured blocking flip cadence.",
+  "observation_scope": "Device identity, deployed process, framebuffer, startup behavior and resources were rechecked. Clock, scheduling CPU, blocking flip cadence and single-cycle investigation fields retain their linked historical measurements; this run did not repeat the three ignored TDE/flip tests.",
   "hardware_regression": {
-    "report": "docs/nx5-tde-exit.md",
-    "evidence": "evidence/nx5-tde-exit/2026-10-11/results.json",
-    "hardware_tests_passed": 3,
+    "report": "docs/nx5-startup.md",
+    "evidence": "evidence/nx5-startup/2026-10-11-949ceb9/results.json",
+    "tested_commit": "949ceb98b320bb61e9006e984fecfc284ec904db",
+    "source_manifest": "evidence/nx5-startup/2026-10-11-949ceb9/deployment-manifest.json",
+    "startup_cases_passed": 10,
+    "startup_modes": [
+      "show-error",
+      "retry",
+      "queued",
+      "timer",
+      "queued-retry"
+    ],
+    "rounds": 2,
+    "verified_front_frames": 10,
+    "verified_front_pixels": 6144000,
+    "bad_pixels": 0,
+    "active_tde_blocks_per_case": 3,
+    "forced_tde_reclaims": 0,
+    "final_mmz_kib": 4900,
+    "final_mmz_blocks": 2,
     "wbc_normal": {
       "frames": 300,
       "black": 150,
       "white": 150,
       "mixed": 0,
-      "runs": 2
+      "result": 0
     },
-    "wbc_mixed_control": {
-      "frames": 30,
-      "mixed": 30,
-      "observer_result": 1,
-      "scope": "Historical 2cd98fa result from docs/nx5-regression.md; not rerun during this exit cleanup fix."
-    },
-    "wbc_error_exit": {
-      "injection": "one evdev read EIO through diagnostic LD_PRELOAD",
-      "app_exit_code": 1,
-      "frames_per_run": 600,
-      "mixed_per_run": 0,
-      "runs": [
-        {
-          "evidence": "evidence/nx5-tde-exit/2026-10-11/device/fault",
-          "pid": 2202,
-          "frames_after_error": 565,
-          "trigger_to_exit_seconds": 19.65
-        },
-        {
-          "evidence": "evidence/nx5-tde-exit/2026-10-11/device/repeat/fault",
-          "pid": 2453,
-          "frames_after_error": 567,
-          "trigger_to_exit_seconds": 19.74
-        }
-      ],
-      "wbc_cleanup_passed": true
-    },
+    "texture_seconds": 60,
+    "texture_fps_windows": [
+      28.44,
+      29.0,
+      29.0,
+      29.0,
+      29.0,
+      29.0,
+      29.0,
+      29.0,
+      29.0,
+      29.0,
+      29.0
+    ],
     "overall": "passed",
-    "wbc_register_note": "0x34101090 read zero during active WBC. Activity was established from received frames, /proc/umap/vo and the live vou-wbc allocation; register zero is not a cleanup criterion.",
+    "previous_validation": {
+      "commit": "177c18a92d77e1d102481b79e53498cd64da0310",
+      "report": "docs/nx5-tde-exit.md",
+      "ignored_hardware_tests_passed": 3,
+      "scope": "Historical TDE/flip tests and EIO exit runs; not repeated in this startup regression."
+    },
     "driver_changed": false,
     "rebooted": false,
-    "source_manifest": "evidence/nx5-tde-exit/2026-10-11/deployment-manifest.json",
-    "resolved_issue": "Three 2400 KiB TDE MMZ buffers leaked through platform/window ownership cycles. Weak window ownership and hide on event-loop error restore destructors; no per-process MMB LEAK in any of the five full application exits.",
-    "tde_exit_cleanup": {
-      "normal_runs": 2,
-      "eio_runs": 2,
-      "texture_runs": 1,
-      "active_blocks_per_run": 3,
-      "forced_reclaims": 0,
-      "final_mmz_kib": 4900,
-      "final_mmz_blocks": 2,
-      "unknown_dma_quarantine_unchanged": true
+    "mixed_control_reference": {
+      "commit": "2cd98fae4959073f7070c3e3540a50b384e8bb03",
+      "report": "docs/nx5-regression.md",
+      "scope": "Historical 30/30 mixed-frame negative control; not repeated in this startup regression."
     }
   }
 }

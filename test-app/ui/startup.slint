@@ -1,0 +1,8 @@
+export component StartupWindow inherits Window {
+    preferred-width: 1024px;
+    preferred-height: 600px;
+    in-out property<length> required-width: 0px;
+    in-out property<color> paint: green;
+    min-width: root.required-width;
+    background: root.paint;
+}

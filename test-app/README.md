@@ -12,11 +12,13 @@ test-app/
 │   ├── lib.rs                 # 生成的界面类型、设备路径配置
 │   ├── main.rs                # display：运动、纹理、暂停/恢复
 │   ├── bin/basic.rs           # basic：最小接入示例
+│   ├── bin/startup-regression.rs # NX5 启动/重试/退出实机验证
 │   └── nx5_observer.rs        # NX5 专用进程内 WBC 观察器
 ├── ui/
 │   ├── app.slint              # 导出测试界面
 │   ├── basic.slint            # 不依赖设备尺寸的基础窗口
-│   └── display.slint          # 当前 1024×600 运动/纹理场景
+│   ├── display.slint          # 当前 1024×600 运动/纹理场景
+│   └── startup.slint          # 可拒绝布局与纯色像素验证
 ├── fixtures/textures.rs       # 确定性的纹理素材；底层 TDE 比较也复用它
 ├── tests/public_api.rs        # 仅使用适配库公开接口的回归
 ├── devices/nx5/               # 当前设备记录与构建/运行说明
@@ -69,12 +71,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | MCP 交互 | `display` 加 MCP 构建和运行环境 | 元素树、截图、点击/拖动、输入事件录制 |
 | NX5 合成输出 | `display --pattern --observe=300 --seconds=20` | WBC 黑白样本；需先部署 NX5 观察器插件 |
 | NX5 混色负对照 | 上一项加 `--split`，采样改为 `--observe=30` | 应报告混色，不能当作通过 |
+| NX5 窗口启动 | `--bin startup-regression`，仅 `nx5-tde` | 首次显示失败清理、同一组件重试、延迟创建和真实前台页像素 |
 
 `basic` 只使用 `--framebuffer` 和 `--touch` 路径配置。`display` 另外支持 `--textures`、`--pattern`、`--split`、`--observe=N` 和 `--seconds=N`；这些选项使用表中所示的 `--name=value` 或独立开关格式。旋转、按键映射和帧间隔通过 Rust `Config` 配置，当前没有对应命令行参数。
 
 `--split` 与 `--pattern` 配合使用；`--observe=N` 仅在 NX5 构建中启用，在启动约 2 秒后创建观察线程。`--seconds=N` 请求事件循环退出；进程还会等待在途提交和已启动的观察线程结束。正常退出显式等待 WBC，事件循环返回错误时由观察器资源所有者自动等待，保证采集线程结束后才返回应用错误。若观察线程也 panic，清理时记录该错误并保留原 UI 错误；正常退出时观察线程 panic 仍会作为错误返回。
 
 观察器的采样结果写入日志，当前应用不会将非零采样结果转换成非零退出码，验收需使用 [check-run.py](tools/nx5/display/check-run.py) 检查日志。
+
+`startup-regression` 是独占 NX5 的专用验证程序，不加入日常显示流程。参数为 `show-error|retry|queued|timer|queued-retry` 加输出目录；`show-error` 保留预期布局错误并返回 1，其余用例应返回 0。它通过公开平台接口运行真实组件，读取实际 framebuffer 像素并保存 TDE 状态；完整退出由外层脚本检查。构建、采集与结果见 [启动实机回归](../docs/nx5-startup.md)。
 
 基础窗口适合新设备接入检查；运动/纹理场景使用 1024×600 的 NX5 测量布局。默认不打开触摸设备，检查暂停/恢复时需指定 `--touch`，或使用 MCP 注入交互。
 
@@ -108,7 +113,7 @@ cargo build --locked --offline --release -p slint-bridge-test-app \
 
 NX5 TDE、观察器插件、部署与 MCP 运行命令见 [devices/nx5/README.md](devices/nx5/README.md)。所有构建仍使用仓库指定的同一份 Slint 1.18.1 源码。
 
-[最新实机回归](../docs/nx5-tde-exit.md) 已修复平台/窗口引用环及错误路径的窗口隐藏，正常与 EIO 退出各验证两轮，三块 TDE 缓冲均不再依赖内核强制回收；三项硬件测试、WBC 等待和纹理运行也通过。主机退出生命周期回归及设备日志检查命令见该报告。
+[最新启动实机回归](../docs/nx5-startup.md) 验证了 `949ceb9` 的五个启动用例各两轮、10 帧全幅实际像素和完整进程清理，另有 WBC 与纹理运行。原三项硬件测试及 EIO 的历史结果见 [前一轮报告](../docs/nx5-tde-exit.md)。
 
 ## 增加设备或用例
 
