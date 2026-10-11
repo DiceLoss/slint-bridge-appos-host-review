@@ -2,6 +2,8 @@
 
 这些工具验证 Slint MCP 不覆盖的硬件路径。目录内的 `build.sh`、`build-observer.sh` 和 `check-native.sh` 会定位仓库根；诊断输出继续放在根 `target/nx5-*`，历史证据继续从根 `evidence/nx5-*` 读取。
 
+`target/` 和 `evidence/` 均不纳入 Git。下方证据重放命令需要已有的本地档案；它们不采集新数据，也不证明当前二进制已通过实机测试。当前进程内 WBC 插件的构建、固定部署路径和判读命令见 [NX5 设备说明](../../devices/nx5/README.md)。`present/` 中的独立 SDK 探针属于 #22 旧环境，不能直接套用于正在运行 UI 的 #233 设备。
+
 | 目录 | 用途 | 对应记录 |
 | --- | --- | --- |
 | `display/` | 当前进程内 WBC 采样、混色负对照与日志检查 | [上屏验证](../../../docs/nx5-display.md) |

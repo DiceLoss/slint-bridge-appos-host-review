@@ -158,7 +158,7 @@
   <g id="node-evidence" data-graph-role="node" data-node-id="evidence" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="760,818,1070,888">
   <rect x="760.0" y="818.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
   <text data-text-role="title" data-full-text="evidence/" data-text-max-width="286.0" x="915.0" y="853.0" text-anchor="middle" class="node-title" font-size="18">evidence/</text>
-  <text data-text-role="subtitle" data-full-text="实机日志 · 图像 · 验证清单" data-text-max-width="286.0" x="915.0" y="875.0" text-anchor="middle" class="node-sub" font-size="12">实机日志 · 图像 · 验证清单</text>
+  <text data-text-role="subtitle" data-full-text="本地日志与图像 · 不纳入 Git" data-text-max-width="286.0" x="915.0" y="875.0" text-anchor="middle" class="node-sub" font-size="12">本地日志与图像 · 不纳入 Git</text>
   </g>
   <g id="node-environment" data-graph-role="node" data-node-id="environment" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1110,818,1420,888">
   <rect x="1110.0" y="818.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>

@@ -25,7 +25,7 @@ test-app/
     └── nx5/                  # WBC、TDE、翻页等硬件诊断及历史证据重放
 ```
 
-以下命令从仓库根目录执行。也可以使用 `--manifest-path test-app/Cargo.toml` 单独选择本工程。
+以下命令从仓库根目录执行。根目录不加 package 选择时默认只检查适配库；使用 `-p slint-bridge-test-app`、`--manifest-path test-app/Cargo.toml` 或进入本目录可单独选择测试工程，使用 `--workspace` 检查两者。
 
 ## 从最小例子看接入方法
 
@@ -51,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | 通用 framebuffer 软件组合 | `--features fbdev` |
 | NX5 软件渲染 | `--features nx5` |
 | NX5 TDE 和软件回退 | `--features nx5-tde` |
-| framebuffer 路径 | `--framebuffer=/dev/fb0`，默认 `/dev/fb0` |
+| framebuffer 路径 | `--framebuffer=/dev/fb0`，默认 `/dev/fb0`；NX5 准入只接受此路径 |
 | 触摸设备 | `--touch=/dev/input/event0`，默认不开启输入设备 |
 | Slint MCP | 构建加 `slint/mcp`，并按 [MCP 指南](../docs/slint-mcp.md) 设置环境变量 |
 
@@ -68,7 +68,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | NX5 合成输出 | `display --pattern --observe=300 --seconds=20` | WBC 黑白样本；需先部署 NX5 观察器插件 |
 | NX5 混色负对照 | 上一项加 `--split`，采样改为 `--observe=30` | 应报告混色，不能当作通过 |
 
-`display` 另外支持 `--seconds=N` 自动退出，便于设备测试。基础窗口适合新设备接入检查；当前运动/纹理场景保持原来的 1024×600 测量布局，避免目录整理改变已有像素比较口径。
+`basic` 只使用 `--framebuffer` 和 `--touch` 路径配置。`display` 另外支持 `--textures`、`--pattern`、`--split`、`--observe=N` 和 `--seconds=N`；这些选项使用表中所示的 `--name=value` 或独立开关格式。旋转、按键映射和帧间隔通过 Rust `Config` 配置，当前没有对应命令行参数。
+
+`--split` 与 `--pattern` 配合使用；`--observe=N` 仅在 NX5 构建中启用，在启动约 2 秒后创建观察线程。`--seconds=N` 请求事件循环退出；进程还会等待在途提交和已启动的观察线程结束。观察器结果写入日志，当前应用不会将非零观察结果转换成非零退出码，验收需使用 [check-run.py](tools/nx5/display/check-run.py) 检查日志。
+
+基础窗口适合新设备接入检查；运动/纹理场景使用 1024×600 的 NX5 测量布局。默认不打开触摸设备，检查暂停/恢复时需指定 `--touch`，或使用 MCP 注入交互。
 
 MCP 使用 Slint 自带功能，不另建截图或输入服务器。稳定元素 ID 为 `App::pause-area` 和 `App::status`。先发现窗口与句柄，再执行以下流程：
 
@@ -104,4 +108,4 @@ NX5 TDE、观察器插件、部署与 MCP 运行命令见 [devices/nx5/README.md
 
 库内 `src/tests/` 及 `src/backends/nx5/tde/tests.rs` 保留需要私有实现的单元/故障注入测试。TDE 像素比较只共享本工程的声明式场景和纹理素材，不再把应用的 `main.rs` 编译进库测试。
 
-MCP 不能替代 evdev 解码、物理页所有权、TDE/DMA 失败及实际扫描输出验证；这些底层测试和 NX5 工具继续保留。历史报告入口在 [docs/README.md](../docs/README.md)，原始证据在 [evidence/](../evidence/README.md)。
+MCP 不能替代 evdev 解码、物理页所有权、TDE/DMA 失败及实际扫描输出验证；这些底层测试和 NX5 工具继续保留。历史报告入口在 [docs/README.md](../docs/README.md)，原始证据作为本地 `evidence/` 档案保留，不纳入 Git；证据重放需要另行取得对应日志。

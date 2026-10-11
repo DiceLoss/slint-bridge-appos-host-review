@@ -1,5 +1,7 @@
 # NX5 整屏帧率优化
 
+> Cortex-A7/NEON 和精确脏区优化阶段的历史测量。后续还加入后台提交、等待精度优化并移除专用限帧；当前流程见 [平台说明](software-platform.md)。原始证据为不随 Git 分发的本地档案。
+
 同一 1024×600 纹理混合场景从约 19.5 FPS 提升至稳定约 **29.0 FPS**，提升约 49%。当前阻塞翻页路径在完全不绘制、不复制像素时，也只有 **29.003 FPS**，因此此版本达到该路径的实测节拍，尚未严格达到 30 FPS。
 
 90 秒持续测试记录了 17 个完整的 150 帧统计窗口：启动窗口 28.43 FPS，其后 16 个窗口均为 29.00 FPS，TDE 错误为 0。随后常驻演示的采样范围为 28.9–29.0 FPS。见 [持续测试](../evidence/nx5-fps/stability.log)、[最终运行](../evidence/nx5-fps/final-live.log) 和 [结构化结果](../evidence/nx5-fps/results.json)。
@@ -21,7 +23,7 @@
 2. **精确脏区合并**：保留当前与前一次提交的各个变化区域，逐行合并相交区间。避免把相隔较远的控件包进同一个大矩形，平均写入量由约 30 万像素降到约 15.9 万。
 3. **NEON 像素转换**：RGBA→BGRA 每次处理 16 个像素，并强制输出 alpha 为 255。保留非 NEON 构建的原有写页实现，尾部像素由标量转换处理。
 
-准备时间超过约 16.5 ms 的帧，原先会落到约 51.7 ms 的完成间隔。优化后准备时间缩短，测得的帧间隔保持在约 34.48 ms。翻页本身没有改成异步提交，仍等待当前驱动确认后才复用旧页。
+准备时间超过约 16.5 ms 的帧，原先会落到约 51.7 ms 的完成间隔。优化后准备时间缩短，测得的帧间隔保持在约 34.48 ms。本轮仍在 UI 线程阻塞翻页；后续 [并行化](nx5-parallel.md) 将阻塞调用移至通用提交线程。两个版本都等待驱动确认后才复用旧页。
 
 阶段对照可重放：
 
@@ -60,7 +62,7 @@ cargo --config .cargo/nx5.toml build --locked --offline --release \
 
 板级预设为 [.cargo/nx5.toml](../.cargo/nx5.toml)。应用在自己的 workspace 构建时，也需显式加载该预设或采用相同的 CPU 编译参数，才能获得本报告中的性能；只设置 Cargo feature 不会自动启用依赖库的 CPU 优化。
 
-设备上仍使用原有 API 和示例参数。持续性能测试为 `display-optimized --textures --seconds=90`，使用 `SLINT_BRIDGE_TRACE=1` 记录实际完成帧数和 TDE 计数。
+设备上使用相同 API 和示例参数。本轮将构建输出部署并命名为 `display-optimized`，持续性能测试为 `display-optimized --textures --seconds=90`，使用 `SLINT_BRIDGE_TRACE=1` 记录实际完成帧数和 TDE 计数。日常部署命令见 [NX5 设备说明](../test-app/devices/nx5/README.md)。
 
 最终证据重放：
 

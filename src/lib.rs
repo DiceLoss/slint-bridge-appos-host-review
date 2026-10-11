@@ -44,13 +44,15 @@ pub const fn selected_backend() -> Backend {
 /// Configuration shared by all board implementations.
 #[derive(Debug, Clone)]
 pub struct Config {
+    /// Defaults to `/dev/fb0`; the admitted NX5 profile requires this exact path.
     pub framebuffer: PathBuf,
-    /// At most one touchscreen and one mapped-key device in this first version.
+    /// Empty by default; at most one touchscreen and one mapped-key device.
     pub inputs: Vec<InputDevice>,
     /// Clockwise output rotation, fixed for the lifetime of this platform.
     pub rotation: Rotation,
     /// Minimum time between frame starts; idle windows do not render periodically.
     /// One retained frame may render ahead of display completion.
+    /// Defaults to 16_667 microseconds; must be nonzero and fit the monotonic clock.
     pub frame_interval: Duration,
 }
 
@@ -126,7 +128,10 @@ impl std::error::Error for Error {
 /// Then create the component and call its usual `run()` method.
 ///
 /// NX5 checks the firmware profile before enabling VO and opening the display.
-/// Unknown profiles and generic fbdev return [`Error::DisplayNotAdmitted`].
+/// Profile mismatches and generic fbdev return [`Error::DisplayNotAdmitted`];
+/// identity/firmware read failures return [`Error::Io`]. Frame timing and input
+/// counts are validated before board initialization. Errors during the later
+/// component event loop are returned through Slint's `PlatformError`.
 pub fn init(config: Config) -> Result<(), Error> {
     if config.frame_interval.is_zero() {
         return Err(Error::InvalidConfig("frame_interval must be nonzero"));

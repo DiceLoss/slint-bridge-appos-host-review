@@ -1,6 +1,6 @@
 # NX5 TDE 接入与实机验证
 
-> 以下性能表是 TDE 初次接入阶段的记录。后续通过 Cortex-A7/NEON 与精确脏区写页，将同一混合界面提升至稳定约 29 FPS，当前推荐构建及数据见 [整屏帧率优化](nx5-fps.md)。
+> 性能表和测试计数是 TDE 初次接入阶段的记录。后续整屏优化达到约 29 FPS，NX5 专用限帧也已移除；现行运行行为见 [平台说明](software-platform.md)。下方绘制范围和构建命令与当前实现一致，原始证据为不随 Git 分发的本地档案。
 
 `nx5-tde` 已接入当前 NX5 #233 固件，并通过真实硬件绘制、软件参考图像、缓存更新、双页输出和软件回退验证。该 feature 包含 `nx5`；应用仍使用相同的 `init(Config)` 和 Slint 组件 API。
 
@@ -14,9 +14,9 @@
 | 普通 RGBA 透明纹理 | 35.252 ms | 13.192 ms | 2.67× |
 | 预乘 RGBA 透明纹理 | 22.865 ms | 13.087 ms | 1.75× |
 
-纹理、文字和移动图形混合的 1024×600 上屏示例，软件版约 19.2–19.4 FPS，TDE 版约 19.2–19.5 FPS。当前场景的整屏帧率接近，翻页等待仍占较多时间；上述倍率表示纹理场景的渲染收益。平台继续限制至多 30 FPS。
+纹理、文字和移动图形混合的 1024×600 上屏示例，软件版约 19.2–19.4 FPS，TDE 版约 19.2–19.5 FPS。本阶段的整屏帧率接近，翻页等待占较多时间；上述倍率表示纹理场景的渲染收益。测量时平台仍有限制至多 30 FPS 的钳制，后续已移除，不能据此描述当前实现。
 
-原始数据见 [硬件对比](../evidence/nx5-tde/compare-final.log)、[软件上屏](../evidence/nx5-tde/screen-software.log)、[TDE 上屏](../evidence/nx5-tde/screen-tde.log) 和 [结构化结果](../evidence/nx5-tde/results.json)。当前演示的最新状态见 [环境记录](../test-app/devices/nx5/current-target.json)。
+原始数据见 [硬件对比](../evidence/nx5-tde/compare-final.log)、[软件上屏](../evidence/nx5-tde/screen-software.log)、[TDE 上屏](../evidence/nx5-tde/screen-tde.log) 和 [结构化结果](../evidence/nx5-tde/results.json)。最近一次设备观测见带时间戳的 [环境记录](../test-app/devices/nx5/current-target.json)。
 
 最终运行版本的 [日志](../evidence/nx5-tde/final-live.log) 中，1650 帧累计完成 1650 次复制、1482 次混合、3130 次缓存命中，TDE 错误为 0。下图为实机 WBC 亮度输出，设备画面本身为彩色。
 
@@ -24,7 +24,7 @@
 
 ## 绘制范围与精度
 
-加速入口是本地 Slint 1.18.1 的 `TargetPixelBuffer::draw_texture()`，支持 RGBA 和预乘 RGBA 的等尺寸纹理。当前策略仅提交不少于 32768 个有效像素、最多 16 个互不重叠裁剪矩形的操作。源宽需为 4 的倍数，源高需为偶数。复制使用 `FY_TDE2_QuickCopy`；透明混合使用 `FY_TDE2_Bitblit`，混合的坐标和尺寸需为偶数，目标像素需不透明。
+加速入口是本地 Slint 1.18.1 的 `TargetPixelBuffer::draw_texture()`，支持 RGBA 和预乘 RGBA 的等尺寸纹理。当前策略仅提交不少于 32768 个有效像素、最多 16 个互不重叠裁剪矩形的操作。源宽需为 4 的倍数，源高需为偶数，且源尺寸不能超过目标画布。复制使用 `FY_TDE2_QuickCopy`；透明混合使用 `FY_TDE2_Bitblit`，混合的坐标和尺寸需为偶数，目标像素需不透明。
 
 缩放、旋转、整体透明度、着色、平铺、其他源格式、小图和不满足硬件限制的裁剪返回软件 renderer 处理。矩形、字体、路径等仍使用 Slint 软件实现。不会为了满足硬件对齐而扩大绘制区域。
 
@@ -44,7 +44,7 @@ CPU 中的保留 RGBA 图像是最终图像。硬件拥有独立的 cached MMZ �
 
 当前显示使用 `FBIOPAN_DISPLAY` 仅更新页偏移，并等待 #233 fyfb 驱动回调内的完成信号。该回调的阻塞 `down` 与通知 `up` 可在 [当前模块反汇编](../evidence/nx5-tde/fyfb-disassembly.txt) 中核对。此实现限定于已核对的固件配置；页号读回用于错误检测。
 
-## 验证覆盖
+## 初次接入阶段的验证覆盖
 
 - `fbdev` 和 `nx5` 各 13 个主机测试；`nx5-tde` 16 个主机测试，另外两个实机专用测试在主机默认忽略。
 - 实机纹理测试确认 TDE 实际启用，比较所有输出像素，并测量三种操作。80 帧增量运动与独立软件全量重绘比较，最大通道差为 1。
@@ -73,17 +73,21 @@ SLINT_BRIDGE_TRACE=1 LD_LIBRARY_PATH=/system/app/clib \
 /run/slint-bridge-tde/display-tde --textures --touch=/dev/input/event0
 ```
 
-`SLINT_BRIDGE_TRACE` 显示实际复制、混合、软件操作、缓存命中和错误计数。禁用 TDE 时构建 `--features nx5` 即可，业务组件和配置保持一致。UI 截图已改用 [Slint MCP](slint-mcp.md)；`--observe` 保留进程内 WBC 合成输出采样，不关闭共享 VO 句柄。
+上述设备命令约定已将构建输出 `target/arm-unknown-linux-gnueabi/release/display` 部署并命名为 `display-tde`。`SLINT_BRIDGE_TRACE` 只要被设置就启用统计：每 150 次完成提交报告 FPS，每 150 次绘制报告 TDE 纹理复制、混合、软件纹理回调、缓存命中和错误计数；`software` 不是全部软件绘制操作的数量。禁用 TDE 时构建 `--features nx5` 即可。日常统一部署路径见 [NX5 设备说明](../test-app/devices/nx5/README.md)，UI 截图使用 [Slint MCP](slint-mcp.md)。
 
 实机回归是忽略测试，需先退出显示所有者，并逐项单独运行：
 
 ```sh
 NX5_SDK_INCLUDE=/home/dpower/data/GitLab/LGUI3/c_library/third_party/include/NX5/codec \
-cargo test --locked --offline --release --features nx5-tde \
+cargo test --locked --offline --release -p slint-bridge --features nx5-tde \
   --target arm-unknown-linux-gnueabi --lib --no-run
 # 部署上述命令打印的测试可执行文件为 tde-tests 后，在设备运行：
-./tde-tests tde::tests::nx5_hardware_compare --ignored --nocapture
-./tde-tests tde::tests::nx5_demo_pages_match_full_frames --ignored --nocapture
+export SLINT_DEFAULT_FONT=/run/slint-bridge-display/DejaVuSans.ttf
+export LD_LIBRARY_PATH=/system/app/clib
+./tde-tests backends::nx5::tde::tests::nx5_hardware_compare --exact --ignored --nocapture
+./tde-tests backends::nx5::tde::tests::nx5_demo_pages_match_full_frames --exact --ignored --nocapture
+# 第三个实机测试只交替现有页，不写像素：
+./tde-tests backends::nx5::tests::blocking_flip_cadence --exact --ignored --nocapture
 ```
 
 离线重放证据：`python3 test-app/tools/nx5/tde/check-results.py`。

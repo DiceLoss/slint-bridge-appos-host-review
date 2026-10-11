@@ -228,7 +228,7 @@
       "width": 310,
       "height": 70,
       "label": "evidence/",
-      "sublabel": "实机日志 · 图像 · 验证清单",
+      "sublabel": "本地日志与图像 · 不纳入 Git",
       "fill": "#f8fafc",
       "stroke": "#cbd5e1",
       "flat": true
