@@ -40,7 +40,7 @@ fn event_loop_runs_callbacks_and_timers_during_flip_and_reports_idle_failure() {
     let _serial = SLINT_TEST.lock().unwrap();
     let (entered, started) = mpsc::sync_channel(1);
     let (release, gate) = mpsc::sync_channel(1);
-    let target = surface_with_completion(8, 6, 32, move |_| {
+    let target = surface_with_completion(8, 6, 32, 0, move |_| {
         entered.send(()).unwrap();
         gate.recv_timeout(Duration::from_secs(3)).unwrap();
         Err(std::io::Error::other("injected idle presentation failure"))
@@ -96,6 +96,85 @@ fn event_loop_runs_callbacks_and_timers_during_flip_and_reports_idle_failure() {
             .to_string()
             .contains("injected idle presentation failure")
     );
+}
+
+#[test]
+fn event_loop_preserves_ui_and_pending_presentation_errors() {
+    const NAME: &str = "tests::runtime::event_loop_preserves_ui_and_pending_presentation_errors";
+    if std::env::var("SLINT_BRIDGE_TEST_CHILD").as_deref() != Ok(NAME) {
+        for outcome in ["ok", "error"] {
+            let run = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", NAME, "--nocapture"])
+                .env("SLINT_BRIDGE_TEST_CHILD", NAME)
+                .env("SLINT_BRIDGE_TEST_COMPLETION", outcome)
+                .output()
+                .unwrap();
+            assert!(
+                run.status.success(),
+                "completion={outcome}: {}{}",
+                String::from_utf8_lossy(&run.stdout),
+                String::from_utf8_lossy(&run.stderr)
+            );
+        }
+        return;
+    }
+    let fail = std::env::var("SLINT_BRIDGE_TEST_COMPLETION").as_deref() == Ok("error");
+    let (entered, started) = mpsc::sync_channel(1);
+    let (release, gate) = mpsc::sync_channel(1);
+    let target = surface_with_completion(8, 6, 32, 0, move |_| {
+        entered.send(()).unwrap();
+        gate.recv_timeout(Duration::from_secs(3)).unwrap();
+        if fail {
+            Err(std::io::Error::other("injected final presentation failure"))
+        } else {
+            Ok(())
+        }
+    });
+    let commits = target.commits.clone();
+    let platform = crate::runtime::BridgePlatform::with_inputs(
+        Config::default(),
+        target.fb,
+        Vec::new(),
+        Vec::new(),
+    )
+    .unwrap();
+    let wake = platform.wake.clone();
+    slint::platform::set_platform(Box::new(platform)).unwrap();
+    let ui = LoopScene::new().unwrap();
+    let weak = ui.as_weak();
+    let control = thread::spawn(move || {
+        started.recv_timeout(Duration::from_secs(3)).unwrap();
+        Proxy(wake)
+            .invoke_from_event_loop(Box::new(move || {
+                // The loop has already polled completion before this callback.
+                // Its layout error must still drain the blocked submission.
+                weak.upgrade().unwrap().set_required_width(200.0);
+                release.send(()).unwrap();
+            }))
+            .unwrap();
+    });
+    let error = ui.run().unwrap_err().to_string();
+    control.join().unwrap();
+    assert!(error.contains("window layout constraints"), "{error}");
+    if fail {
+        assert!(
+            error.contains("injected final presentation failure"),
+            "{error}"
+        );
+        assert!(error.contains("page ownership is unknown"), "{error}");
+        assert!(commits.lock().unwrap().is_empty());
+        // Clearing the UI error cannot make the failed display writable again.
+        ui.set_required_width(0.0);
+        let again = ui.run().unwrap_err().to_string();
+        assert_eq!(
+            again.matches("injected final presentation failure").count(),
+            1
+        );
+        assert!(commits.lock().unwrap().is_empty());
+    } else {
+        assert!(!error.contains("presentation failed"), "{error}");
+        assert_eq!(commits.lock().unwrap().len(), 1);
+    }
 }
 
 #[test]

@@ -30,7 +30,7 @@ use std::{
 // test separate from direct-render tests that create thread-local platforms.
 static SLINT_TEST: Mutex<()> = Mutex::new(());
 
-fn info(width: u32, height: u32, bits: u32) -> (FixedInfo, VariableInfo) {
+pub(crate) fn info(width: u32, height: u32, bits: u32) -> (FixedInfo, VariableInfo) {
     let stride = width * (bits / 8) + 8; // Exercise padded rows, not just packed images.
     let field = |offset, length| Bitfield {
         offset,
@@ -72,13 +72,14 @@ struct Surface {
 }
 
 fn surface(width: u32, height: u32, bits: u32) -> Surface {
-    surface_with_completion(width, height, bits, |_| Ok(()))
+    surface_with_completion(width, height, bits, 0, |_| Ok(()))
 }
 
 fn surface_with_completion(
     width: u32,
     height: u32,
     bits: u32,
+    initial_front: usize,
     mut complete: impl FnMut(u32) -> std::io::Result<()> + Send + 'static,
 ) -> Surface {
     // The direct syscall keeps this helper compatible with the old ARM libc too.
@@ -91,7 +92,8 @@ fn surface_with_completion(
     } as i32;
     assert!(fd >= 0);
     let mut file = unsafe { File::from_raw_fd(fd) };
-    let (f, v) = info(width, height, bits);
+    let (f, mut v) = info(width, height, bits);
+    v.yoffset = initial_front as u32 * height;
     let layout = Layout::new(&f, &v).unwrap();
     file.set_len(f.smem_len as u64).unwrap();
     file.write_all(&vec![0xa5; f.smem_len as usize]).unwrap();
@@ -100,7 +102,7 @@ fn surface_with_completion(
     let saved = commits.clone();
     let fail = Arc::new(AtomicBool::new(false));
     let failure = fail.clone();
-    let mut front = 0;
+    let mut front = layout.initial_page;
     let mut previous = vec![0xa5; layout.page_bytes];
     let contract = PresentationContract {
         validate_layout: |_, _| Ok(()),

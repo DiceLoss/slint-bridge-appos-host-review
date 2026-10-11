@@ -62,6 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             app.set_white_frame((next / 2) % 2 == 0);
         }
     });
+    // On error, dropping the timer and shared Observer also joins WBC cleanup.
     app.run()?;
     timer.stop();
     #[cfg(feature = "nx5")]

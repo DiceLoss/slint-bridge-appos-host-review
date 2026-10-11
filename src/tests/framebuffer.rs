@@ -33,7 +33,7 @@ fn render_ahead_preserves_both_pages_until_completion_and_repairs_history() {
     let _serial = SLINT_TEST.lock().unwrap();
     let (entered, started) = mpsc::sync_channel(1);
     let (release, gate) = mpsc::sync_channel(1);
-    let mut target = surface_with_completion(8, 6, 32, move |offset| {
+    let mut target = surface_with_completion(8, 6, 32, 0, move |offset| {
         entered.send(offset).unwrap();
         gate.recv_timeout(Duration::from_secs(3))
             .map_err(std::io::Error::other)
@@ -92,7 +92,7 @@ fn failed_pending_submission_wakes_poll_and_quarantines_the_prepared_frame() {
     let _serial = SLINT_TEST.lock().unwrap();
     let (entered, started) = mpsc::sync_channel(1);
     let (release, gate) = mpsc::sync_channel(1);
-    let mut target = surface_with_completion(8, 6, 32, move |_| {
+    let mut target = surface_with_completion(8, 6, 32, 0, move |_| {
         entered.send(()).unwrap();
         gate.recv_timeout(Duration::from_secs(3)).unwrap();
         Err(std::io::Error::other("injected completion failure"))
@@ -132,6 +132,57 @@ fn failed_pending_submission_wakes_poll_and_quarantines_the_prepared_frame() {
     target.file.read_exact_at(&mut after, 0).unwrap();
     assert_eq!(before, after);
     assert!(target.commits.lock().unwrap().is_empty());
+}
+
+#[test]
+fn initial_front_page_one_preserves_pixels_and_damage_history() {
+    let _serial = SLINT_TEST.lock().unwrap();
+    let offsets = Arc::new(Mutex::new(Vec::new()));
+    let submitted = offsets.clone();
+    let mut target = surface_with_completion(8, 6, 32, 1, move |offset| {
+        submitted.lock().unwrap().push(offset);
+        Ok(())
+    });
+    let window = MinimalSoftwareWindow::new(RepaintBufferType::ReusedBuffer);
+    slint::platform::set_platform(Box::new(RenderPlatform(window.clone()))).unwrap();
+    let ui = Pixels::new().unwrap();
+    ui.show().unwrap();
+    window.set_size(PhysicalSize::new(8, 6));
+    draw(&window, &mut target.fb).unwrap();
+    let mut original_front = vec![0; target.fb.layout.page_bytes];
+    target
+        .file
+        .read_exact_at(&mut original_front, target.fb.layout.page_bytes as u64)
+        .unwrap();
+    assert!(original_front.iter().all(|&byte| byte == 0xa5));
+    ui.set_left_color(slint::Color::from_rgb_u8(0, 255, 0));
+    draw(&window, &mut target.fb).unwrap();
+    ui.set_right_color(slint::Color::from_rgb_u8(255, 255, 255));
+    draw(&window, &mut target.fb).unwrap();
+    ui.set_left_color(slint::Color::from_rgb_u8(255, 0, 255));
+    draw(&window, &mut target.fb).unwrap();
+    assert_eq!(*offsets.lock().unwrap(), [0, 6, 0, 6]);
+    let commits = target.commits.lock().unwrap();
+    assert_eq!(commits.len(), 4);
+    for (image, (left, right)) in commits.iter().zip([
+        (0xffff0000u32, 0xff0000ffu32),
+        (0xff00ff00, 0xff0000ff),
+        (0xff00ff00, 0xffffffff),
+        (0xffff00ff, 0xffffffff),
+    ]) {
+        for y in 0..6 {
+            for x in 0..8 {
+                let at = y * target.fb.layout.stride + x * 4;
+                let expected = if x < 4 { left } else { right };
+                assert_eq!(&image[at..at + 4], &expected.to_ne_bytes());
+            }
+            assert!(
+                image[y * target.fb.layout.stride + 32..(y + 1) * target.fb.layout.stride]
+                    .iter()
+                    .all(|&byte| byte == 0xa5)
+            );
+        }
+    }
 }
 
 slint::slint! {

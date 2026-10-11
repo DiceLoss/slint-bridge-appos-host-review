@@ -70,7 +70,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 `basic` 只使用 `--framebuffer` 和 `--touch` 路径配置。`display` 另外支持 `--textures`、`--pattern`、`--split`、`--observe=N` 和 `--seconds=N`；这些选项使用表中所示的 `--name=value` 或独立开关格式。旋转、按键映射和帧间隔通过 Rust `Config` 配置，当前没有对应命令行参数。
 
-`--split` 与 `--pattern` 配合使用；`--observe=N` 仅在 NX5 构建中启用，在启动约 2 秒后创建观察线程。`--seconds=N` 请求事件循环退出；进程还会等待在途提交和已启动的观察线程结束。观察器结果写入日志，当前应用不会将非零观察结果转换成非零退出码，验收需使用 [check-run.py](tools/nx5/display/check-run.py) 检查日志。
+`--split` 与 `--pattern` 配合使用；`--observe=N` 仅在 NX5 构建中启用，在启动约 2 秒后创建观察线程。`--seconds=N` 请求事件循环退出；进程还会等待在途提交和已启动的观察线程结束。正常退出显式等待 WBC，事件循环返回错误时由观察器资源所有者自动等待，保证采集线程结束后才返回应用错误。若观察线程也 panic，清理时记录该错误并保留原 UI 错误；正常退出时观察线程 panic 仍会作为错误返回。
+
+观察器的采样结果写入日志，当前应用不会将非零采样结果转换成非零退出码，验收需使用 [check-run.py](tools/nx5/display/check-run.py) 检查日志。
 
 基础窗口适合新设备接入检查；运动/纹理场景使用 1024×600 的 NX5 测量布局。默认不打开触摸设备，检查暂停/恢复时需指定 `--touch`，或使用 MCP 注入交互。
 
@@ -92,6 +94,10 @@ cargo test --locked --offline -p slint-bridge-test-app --features fbdev
 # 库内回归和独立工程一起运行。
 cargo test --locked --offline --workspace --features nx5-tde
 python3 test-app/tools/check-feature-matrix.py
+
+# 单独检查 WBC 错误退出与线程清理，使用主机替身，不加载 SDK。
+cargo test --locked --offline -p slint-bridge-test-app --features nx5 \
+  --bin display nx5_observer::tests
 
 # 独立工程的 ARM 软件构建。
 cargo build --locked --offline --release -p slint-bridge-test-app \

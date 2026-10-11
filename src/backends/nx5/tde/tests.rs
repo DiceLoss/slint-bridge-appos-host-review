@@ -8,6 +8,31 @@ use slint::{
 };
 use std::{rc::Rc, time::Instant};
 
+pub(crate) fn buffer_with_drop_observer(
+    width: u32,
+    height: u32,
+    on_drop: impl FnOnce() + 'static,
+) -> Buffer {
+    struct Probe<F: FnOnce()>(Option<F>);
+    impl<F: FnOnce()> Accelerator for Probe<F> {
+        fn draw(
+            &mut self,
+            _: &mut [PremultipliedRgbaColor],
+            _: &Texture<'_>,
+        ) -> Result<Outcome, Failure> {
+            Ok(Outcome::Unsupported)
+        }
+    }
+    impl<F: FnOnce()> Drop for Probe<F> {
+        fn drop(&mut self) {
+            self.0.take().unwrap()();
+        }
+    }
+    let mut buffer = Buffer::software(width, height).unwrap();
+    buffer.engine = Some(Box::new(Probe(Some(on_drop))));
+    buffer
+}
+
 slint::slint! {
     export component Scene inherits Window {
         preferred-width: 512px; preferred-height: 384px;

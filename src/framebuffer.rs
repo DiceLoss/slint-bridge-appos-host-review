@@ -579,3 +579,7 @@ impl Drop for Framebuffer {
         self.presentation.shutdown();
     }
 }
+
+#[cfg(test)]
+#[path = "tests/framebuffer_lifecycle.rs"]
+mod lifecycle_tests;

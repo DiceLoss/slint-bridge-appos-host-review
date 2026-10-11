@@ -169,7 +169,17 @@ impl BridgePlatform {
         let result = self.run_frames();
         // A quit or input/render error must still drain the submitted page.
         let completion = self.framebuffer.borrow_mut().wait_for_present();
-        result.and(completion)
+        match (result, completion) {
+            (Err(error), Err(Error::PresentationFailed(reason)))
+                if !matches!(&error, Error::PresentationFailed(_)) =>
+            {
+                Err(Error::PresentationFailed(format!(
+                    "{reason}; event loop also failed: {error}"
+                )))
+            }
+            (_, Err(error)) | (Err(error), Ok(())) => Err(error),
+            (Ok(()), Ok(())) => Ok(()),
+        }
     }
 
     fn run_frames(&self) -> Result<(), Error> {
