@@ -1,8 +1,8 @@
 # NX5 测试目标
 
-本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中引用的仓库路径相对于仓库根目录；最近记录时间为 2026-10-12 12:31:24（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
+本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中引用的仓库路径相对于仓库根目录；最近记录时间为 2026-10-12 13:50:15（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
 
-当前已部署 `bccf6b9`，常驻 PID 3972，路径 `/tmp/slint-bridge-review-fixes/display`。同进程初始化重试、VO/描述符清理、WBC 正负对照及纹理退出通过，详见 [审查修复实机报告](../../../docs/nx5-review-fixes.md)。MCP 截图阶段曾 OOM；移除临时诊断副本后恢复界面，最终通过属性与暂停/恢复检查，未重试截图。自定义路径、实体触摸、双页像素和三项独立 ignored 测试等保留各自此前报告口径。
+当前已部署 `bccf6b9`，常驻 PID 3972，路径 `/tmp/slint-bridge-review-fixes/display`。同进程初始化重试、VO/描述符清理、WBC 正负对照及纹理退出通过，详见 [审查修复实机报告](../../../docs/nx5-review-fixes.md)。MCP 截图阶段曾 OOM；随后已归档清理历史临时产物，在同一进程中 [十次截图复验通过](../../../docs/nx5-screenshot-memory.md)，最低可用内存 47.2 MiB。自定义路径、实体触摸、双页像素和三项独立 ignored 测试等保留各自此前报告口径。
 
 当前板为 DPower Terminal `/dev/ttyUSB1`、ADB `192.168.1.151:5555`、内核 #233。运行行为见 [平台说明](../../../docs/software-platform.md#准入边界)，部署快照及恢复前提见 [当前环境](../../../docs/current-environment.md)。
 
@@ -29,6 +29,8 @@ SLINT_DEFAULT_FONT=/run/slint-bridge-display/DejaVuSans.ttf \
 LD_LIBRARY_PATH=/system/app/clib \
 /run/slint-bridge-test/display --textures --touch=/dev/input/event0 --seconds=20
 ```
+
+部署诊断程序前及验证结束后，按 [截图内存检查](../../../docs/slint-mcp.md#截图前的内存检查) 归档清理已完成测试的设备副本。`/run` 与 `/tmp` 共用物理内存预算，避免保留多轮二进制；保留当前依赖、活动日志、独占锁及一份必要恢复程序。
 
 主机连接 Slint MCP：
 

@@ -1,14 +1,18 @@
 # NX5 最近环境记录
 
-最近一次设备记录时间为 **2026-10-12 12:31:24（北京时间）**，对应 [current-target.json](../test-app/devices/nx5/current-target.json)。本文是观测快照，PID、端口和所有权在操作前仍须重新核对。
+最近一次设备记录时间为 **2026-10-12 13:50:15（北京时间）**，对应 [current-target.json](../test-app/devices/nx5/current-target.json)。本文是观测快照，PID、端口和所有权在操作前仍须重新核对。
 
-当前运行 `bccf6b9`，路径 `/tmp/slint-bridge-review-fixes/display`，PID **3972**。同进程初始化重试、VO/描述符缓存清理、WBC 正负对照及 60 秒纹理退出验证见 [审查修复报告](nx5-review-fixes.md)。framebuffer、触摸及 SDK/WBC 继续使用 `/tmp/slint-bridge-c03c3bb/` 下的设备链接和库目录，实际为 1024×600、stride 4096、双页。此前 `c03c3bb` 的完整像素与用户真实触摸验证见 [路径报告](nx5-configured-paths.md)，没有在本轮重复。
+当前运行 `bccf6b9`，路径 `/tmp/slint-bridge-review-fixes/display`，PID **3972**。最新 [截图内存复验](nx5-screenshot-memory.md) 已完成历史 tmpfs 产物归档清理，十次原生 MCP 截图通过；清理与验证期间保持同一显示进程，没有更换二进制或重启设备。
 
-WBC 正对照 300 帧无混色，负对照 30/30 帧检出混色；纹理首批 28.44 FPS、后续 29.00 FPS，TDE 错误 0。三个有限用例退出后均回到 4900 KiB / 2 块 MMZ，无对应新进程的内核强制回收。
+本轮删除 901 个已不用的普通文件，文件内容合计 41.66 MiB，以及两个旧故障注入库链接；所有文件先复制到主机并核对 SHA256。`/run` 已用从 43448 KiB 降至 804 KiB，`/tmp` 当前已用 12372 KiB。最终可用内存 53756 KiB，截图期间最低 48332 KiB（47.2 MiB），RSS 峰值 16168 KiB，截图后 RSS 11360 KiB；三个线程及 MMZ 12100 KiB / 5 块保持不变，内核日志无新 OOM 或强制回收。
 
-恢复阶段的首次 MCP 截图触发 OOM，内核终止 PID 3949；异常和此前停止旧 PID 3698 的 SIGTERM 回收均单独记录。已移除本轮约 5.7 MB 临时诊断副本，恢复 PID 3972，使用原生 MCP 属性及暂停/恢复确认 RUNNING；未重试截图。最终 RSS 11108 KiB、3 个线程、可用内存约 8640 KiB，运行中 MMZ 12100 KiB / 5 块。
+当前程序、字体、SDK/WBC 库、设备链接、活动日志和独占锁仍在原路径，保留一份 `c03c3bb` 恢复程序及其 `start-live.sh`。过期诊断文件以及本轮采样数据均已归档到主机，设备上不再保留这些副本。归档位置及摘要清单见 [截图报告](nx5-screenshot-memory.md#证据)；后续部署须注意 `/run`、`/tmp` 共用物理内存预算。
 
-MCP 设备 localhost 9315、主机转发 19315。持续 trace、WBC 和故障注入关闭；二进制 SHA256 为 `8aba5bfd344fc60f32f90ace2467206abc326956e20efdc5bcd1878d5b2fd107`，见 [部署清单](../evidence/review-fixes/2026-10-12/deployment-manifest.json) 与 [最终快照目录](../evidence/review-fixes/2026-10-12/device-restored/)。旧 `c03c3bb` 程序及启动脚本仍在原目录，可供恢复；使用前须重新确认当前显示所有者。`/tmp`、`/run` 文件重启后需重新部署。
+最终界面 RUNNING，MCP 设备 localhost 9315、主机转发 19315。截图与暂停/恢复检查通过；[最后一次截图](../evidence/nx5-screenshot-memory/2026-10-12/mcp/screenshot-10.png) 和 [最终设备快照](../evidence/nx5-screenshot-memory/2026-10-12/final-device.txt) 为本地档案。持续 trace、WBC 和故障注入关闭。二进制 SHA256 仍为 `8aba5bfd344fc60f32f90ace2467206abc326956e20efdc5bcd1878d5b2fd107`；`/tmp`、`/run` 文件重启后需重新部署。
+
+此前同进程初始化重试、VO/描述符缓存清理、WBC 正负对照及 60 秒纹理退出见 [审查修复报告](nx5-review-fixes.md)。该阶段 PID 3949 的截图 OOM、旧 PID 3698 的 SIGTERM 回收和当时未重试截图的范围均保留原始记录。此次清理后的成功截图单独记录，不改写前次结果。
+
+framebuffer、触摸及 SDK/WBC 继续使用 `/tmp/slint-bridge-c03c3bb/` 下的设备链接和库目录，实际为 1024×600、stride 4096、双页。此前完整像素与用户真实触摸验证见 [路径报告](nx5-configured-paths.md)，没有在本轮重复。
 
 [三项 TDE/翻页回归](nx5-hardware.md) 记录此前 `a9fd3c8` 的独立 ignored 测试；[启动回归](nx5-startup.md) 记录 `949ceb9` 的完整启动矩阵；[EIO 回归](nx5-tde-exit.md) 保留 `177c18a` 的结果。这些未在本轮全部重跑，不等同于当前二进制的新验证。
 

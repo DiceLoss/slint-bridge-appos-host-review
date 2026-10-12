@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-12T04:31:24+00:00",
+  "checked_at_utc": "2026-10-12T05:50:15+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -28,7 +28,7 @@
     "mem_total_kib": 91688,
     "mmz_total_kib": 32768,
     "previous_boot_id": "f636e7cf-7beb-46f3-98aa-53c651f96572",
-    "serial_adb_boot_id_match_note": "Rechecked via USB1 root and ADB for bccf6b9; evidence/review-fixes/2026-10-12/device-restored/final.boot-id and final-adb-boot.txt."
+    "serial_adb_boot_id_match_note": "Rechecked via USB1 root and ADB during screenshot memory cleanup; evidence/nx5-screenshot-memory/2026-10-12/preflight/boot-id and adb-boot-id.txt."
   },
   "display": {
     "driver": "fyfb",
@@ -133,35 +133,38 @@
       "transport": "streamable-http",
       "forward": "adb -s 192.168.1.151:5555 forward tcp:19315 tcp:9315",
       "tools_available": 18,
-      "tools_exercised": 5,
-      "verification": "evidence/review-fixes/2026-10-12/results.json",
+      "tools_exercised": 6,
+      "verification": "evidence/nx5-screenshot-memory/2026-10-12/results.json",
       "exercised_tools": [
         "list_windows",
         "get_window_properties",
         "find_elements_by_id",
         "get_element_properties",
-        "click_element"
+        "click_element",
+        "take_screenshot"
       ],
-      "screenshot_status": "OOM killed PID 3949 during screenshot; no screenshot retry. Final PID 3972 was verified with low-memory property queries and pause/resume."
+      "screenshot_status": "Ten sequential 1024x600 PNG screenshots passed in PID 3972 after cleanup. Paused screenshots identical; final state RUNNING. No new OOM or MMZ forced reclamation.",
+      "final_screenshot": "evidence/nx5-screenshot-memory/2026-10-12/mcp/screenshot-10.png"
     },
     "log": "/tmp/slint-bridge-review-fixes/fixed-results/live-restored.log",
     "source_commit": "bccf6b98b54438ab58b4a19ee55d1ed1cdbff5b8",
     "fault_injection_enabled": false,
-    "source_state": "bccf6b9 running after same-process retry and finite WBC/texture regressions. MCP screenshot caused OOM in previous PID 3949; temporary diagnostic binary removed, PID 3972 recovered and verified through properties and pause/resume.",
+    "source_state": "bccf6b9 remains running as PID 3972 without restart. Historical tmpfs artifacts archived and cleaned; ten native MCP screenshots passed with no new OOM and minimum available memory 48332 KiB.",
     "source_manifest": "evidence/review-fixes/2026-10-12/deployment-manifest.json",
     "resources": {
-      "rss_kib": 11108,
-      "vm_peak_kib": 29856,
+      "rss_kib": 11360,
+      "vm_peak_kib": 33828,
       "threads": 3,
       "mmz_used_kib": 12100,
       "mmz_blocks": 5,
       "wbc_running": false,
-      "mem_available_kib": 8640
+      "mem_available_kib": 53756,
+      "vm_hwm_kib": 16168
     },
     "runtime_source_sha256": "4a37dda144d41ef5b7a1fe12420952fbae22dfebc51fb95171b43334fef31abb",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib"
   },
-  "status": "review_fixes_init_retry_wbc_texture_passed_ui_restored_after_screenshot_oom",
+  "status": "temporary_artifacts_archived_cleaned_ten_screenshots_passed_same_ui_running",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -169,7 +172,8 @@
     "Only one SDK display owner at a time; loading another SDK process resets SYS/VO.",
     "On 2026-10-12 all three ignored TDE/flip tests were independently run and passed. Each finished at the 4900 KiB MMZ baseline with VO/WBC disabled and no new kernel MMZ forced reclamation; the original display/MCP was restored.",
     "Latest c03c3bb deployment uses /tmp/slint-bridge-c03c3bb. Its three finite runs returned to baseline without forced MMZ reclamation; the old PID 3351 SIGTERM reclamation is recorded separately. Original binary is retained for recovery.",
-    "bccf6b9 deployed to /tmp/slint-bridge-review-fixes. Original PID 3698 SIGTERM recovery and PID 3949 MCP screenshot OOM were recorded separately from successful finite-run cleanup. Temporary init-retry binary removed from tmpfs; original c03c3bb recovery binary retained."
+    "bccf6b9 deployed to /tmp/slint-bridge-review-fixes. Original PID 3698 SIGTERM recovery and PID 3949 MCP screenshot OOM were recorded separately from successful finite-run cleanup. Temporary init-retry binary removed from tmpfs; original c03c3bb recovery binary retained.",
+    "2026-10-12 screenshot OOM follow-up: archived and SHA256-verified all candidate regular files, removed 901 unused files and two obsolete links. Retained current and one c03c3bb recovery display, SDK/WBC, font, device links, active logs and owner lock. /run now 804 KiB; /tmp 12372 KiB. Current task diagnostic files removed after archive."
   ],
   "previous_serial_device": "/dev/ttyUSB2",
   "serial_recheck_evidence": "evidence/environments/2026-10-10-usbtty1/serial-recheck.txt",
@@ -182,7 +186,7 @@
     "generic_cpu_percent_one_core_after": 50.56403450564132,
     "report": "docs/nx5-scheduling.md"
   },
-  "observation_scope": "bccf6b9 same-process framebuffer/input init retry, descriptor cache stability, VO/TDE cleanup, finite WBC positive/negative and texture runs; final native MCP property/pause/resume checks. Screenshot OOM and recovery recorded separately. Prior real-touch, standalone ignored tests, startup and EIO measurements were not repeated.",
+  "observation_scope": "Same bccf6b9 PID 3972: verified archives and cleanup of inactive tmpfs artifacts; ten native MCP screenshots with memory sampling, pause/resume, unchanged kernel log and MMZ. No runtime/SDK/driver changes or reboot. Prior hardware, WBC, touch and EIO fields retain their earlier linked measurement scopes.",
   "hardware_regression": {
     "report": "docs/nx5-hardware.md",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -293,5 +297,25 @@
     "same_process_retry_passed": true,
     "finite_runs_passed": true,
     "screenshot_oom_recovered": true
+  },
+  "screenshot_memory_validation": {
+    "report": "docs/nx5-screenshot-memory.md",
+    "evidence": "evidence/nx5-screenshot-memory/2026-10-12/results.json",
+    "source_commit": "bccf6b98b54438ab58b4a19ee55d1ed1cdbff5b8",
+    "passed": true,
+    "screenshots": 10,
+    "minimum_available_kib": 48332,
+    "process_restarted": false,
+    "driver_changed": false,
+    "rebooted": false,
+    "cleanup": {
+      "archived_regular_files": 912,
+      "deleted_regular_files": 901,
+      "deleted_file_bytes": 43681176,
+      "deleted_obsolete_symlinks": 2,
+      "removed_current_diagnostic_files": true,
+      "run_tmpfs_used_kib": 804,
+      "tmp_tmpfs_used_kib": 12372
+    }
   }
 }

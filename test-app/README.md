@@ -121,7 +121,7 @@ NX5 TDE、观察器插件、部署与 MCP 运行命令见 [devices/nx5/README.md
 
 [此前启动实机回归](../docs/nx5-startup.md) 验证了 `949ceb9` 的五个启动用例各两轮、10 帧全幅实际像素和完整进程清理，另有 WBC 与纹理运行。三项 ignored TDE/翻页测试已在 [2026-10-12 补测](../docs/nx5-hardware.md) 中全部通过；EIO 的历史结果仍见 [前一轮报告](../docs/nx5-tde-exit.md)。
 
-`c03c3bb` 的自定义设备路径、两页实际像素、用户真实点触与 WBC 动态库采样见 [此前路径实机验证](../docs/nx5-configured-paths.md)。当前 `bccf6b9` 的同进程初始化重试、描述符缓存、WBC 与纹理退出回归见 [审查修复报告](../docs/nx5-review-fixes.md)；常驻界面已恢复，最终 MCP 检查使用属性查询，截图 OOM 单独记录。
+`c03c3bb` 的自定义设备路径、两页实际像素、用户真实点触与 WBC 动态库采样见 [此前路径实机验证](../docs/nx5-configured-paths.md)。当前 `bccf6b9` 的同进程初始化重试、描述符缓存、WBC 与纹理退出回归见 [审查修复报告](../docs/nx5-review-fixes.md)；常驻界面已恢复；随后 [清理历史临时产物并完成十次截图复验](../docs/nx5-screenshot-memory.md)，截图 OOM 原始记录保留。
 
 ## 增加设备或用例
 
