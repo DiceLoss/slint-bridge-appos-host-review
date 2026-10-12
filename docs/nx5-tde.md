@@ -44,7 +44,7 @@ CPU 中的保留 RGBA 图像是最终图像。硬件拥有独立的 cached MMZ �
 
 已知尚未提交或已经完成的错误，不会提交部分硬件结果；当前操作由软件重新绘制，后续禁用 TDE。提交后的等待失败、取消失败等不确定状态返回 `AccelerationFailed`，整帧不显示，保留 MMZ、TDE 句柄与库引用。实现不调用全局 Reset，也不会在 `EndJob` 之后尝试 Cancel。
 
-当前显示使用 `FBIOPAN_DISPLAY` 仅更新页偏移，并等待 #233 fyfb 驱动回调内的完成信号。该回调的阻塞 `down` 与通知 `up` 可在 [当前模块反汇编](../evidence/nx5-tde/fyfb-disassembly.txt) 中核对。此实现限定于已核对的固件配置；页号读回用于错误检测。
+当前显示使用 `FBIOPAN_DISPLAY` 仅更新页偏移，并等待 #233 fyfb 驱动回调内的完成信号。该回调的阻塞 `down` 与通知 `up` 可在 [该阶段模块反汇编](../evidence/nx5-tde/fyfb-disassembly.txt) 中核对。这是所核对固件的完成契约证据；运行时代码不检查固件版本或文件摘要，按 ARM32、显示所有权、SDK 接口及布局进行准入。其他固件仍需验证相同完成语义，页号读回仅用于错误检测。现行准入边界见 [平台说明](software-platform.md#准入边界)。
 
 ## 初次接入阶段的验证覆盖
 

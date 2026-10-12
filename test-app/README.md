@@ -18,7 +18,7 @@ test-app/
 ├── ui/
 │   ├── app.slint              # 导出测试界面
 │   ├── basic.slint            # 不依赖设备尺寸的基础窗口
-│   ├── display.slint          # 当前 1024×600 运动/纹理场景
+│   ├── display.slint          # 随窗口尺寸布局的运动/纹理场景
 │   └── startup.slint          # 可拒绝布局与纯色像素验证
 ├── fixtures/textures.rs       # 确定性的纹理素材；底层 TDE 比较也复用它
 ├── tests/public_api.rs        # 仅使用适配库公开接口的回归
@@ -80,6 +80,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 WBC 按无版本库名 `libobserver.so` 通过系统搜索路径加载，部署目录可由 `LD_LIBRARY_PATH` 指定；新插件接收应用配置的 framebuffer 路径，并通过 ioctl 获取采样尺寸，旧插件需重新构建。
 
 `--split` 与 `--pattern` 配合使用；`--observe=N` 仅在 NX5 构建中启用，在启动约 2 秒后创建观察线程。`--seconds=N` 请求事件循环退出；进程还会等待在途提交和已启动的观察线程结束。正常退出显式等待 WBC，事件循环返回错误时由观察器资源所有者自动等待，保证采集线程结束后才返回应用错误。若观察线程也 panic，清理时记录该错误并保留原 UI 错误；正常退出时观察线程 panic 仍会作为错误返回。
+
+上述清理发生在事件循环正常退出或返回错误的路径。应用没有将 SIGINT/SIGTERM 转换为 `slint::quit_event_loop()` 的信号处理器，不能把信号终止当作同样的 Rust 析构验证；有限时长验证使用 `--seconds=N`。常驻程序切换时的暂停、提交空闲检查和回退流程见 [部署实测](../docs/nx5-touch-response.md#回退)。
 
 观察器的采样结果写入日志，当前应用不会将非零采样结果转换成非零退出码，验收需使用 [check-run.py](tools/nx5/display/check-run.py) 检查日志。
 

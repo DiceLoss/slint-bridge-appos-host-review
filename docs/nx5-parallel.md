@@ -1,6 +1,6 @@
 # 渲染与双页提交并行化
 
-> 首次并行化阶段的测量记录。模块路径已同步当前目录；测量时的限帧与测试数量保留历史口径。现行行为见 [平台说明](software-platform.md)，原始证据为不随 Git 分发的本地档案。
+> 首次并行化阶段的测量记录。下方模块路径与职责按当前实现维护；测量时的限帧与测试数量保留历史口径。现行行为见 [平台说明](software-platform.md)，原始证据为不随 Git 分发的本地档案。
 
 参考 `slint-nx5` 的 `flip_worker.rs` 与页历史处理方式，将阻塞翻页移到后台线程。UI 线程可以在上一帧等待完成时，将下一帧绘制到原有的保留画布中。仍然只有两张 framebuffer；最多一笔在途提交、一帧待提交画布。
 
@@ -14,7 +14,7 @@
 | [src/presentation.rs](../src/presentation.rs) | 一笔在途任务的线程与完成通知、错误保持、退出等待；不包含 NX5 ioctl、寄存器或 SDK 调用 |
 | [src/runtime.rs](../src/runtime.rs) | 在 UI 线程运行 Slint、输入与定时器；分开安排绘制与提交，等待时继续处理事件 |
 | [src/backends/mod.rs](../src/backends/mod.rs) | 私有的板级提交契约及布局检查接口，分派已支持的板级实现 |
-| [src/backends/nx5/mod.rs](../src/backends/nx5/mod.rs) | 核对固件、独占 SYS/VO 生命周期、NX5 布局限制、阻塞 PAN 与结果读回 |
+| [src/backends/nx5/mod.rs](../src/backends/nx5/mod.rs) | ARM32 与显示所有权检查、SDK/VO 会话、布局校验、阻塞 PAN 与结果读回；不核对固件版本或文件摘要 |
 
 原来通用 framebuffer 中直接调用 NX5 布局检查的位置，已改为调用板级契约提供的检查函数。通用工作线程只接收页偏移，调用板级阻塞提交回调；只有收到成功完成后，通用层才更新前台页和脏区历史。
 
