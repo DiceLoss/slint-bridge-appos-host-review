@@ -17,6 +17,7 @@
 
 | 记录 | 内容 |
 | --- | --- |
+| [触摸队列修复部署与实测](nx5-touch-response.md) | `2de9168` 常驻切换，10 组实体触摸、35 条 Accepted 事件、分派时延及 `bccf6b9` 回退保留 |
 | [自定义路径与动态布局实机验证](nx5-configured-paths.md) | `c03c3bb` 自定义设备路径、真实点触、双页像素、WBC 动态加载及正/负对照 |
 | [截图内存清理与复验](nx5-screenshot-memory.md) | 归档清理 41.66 MiB 历史产物；同一 `bccf6b9` 进程十次截图通过，最低可用内存 47.2 MiB |
 | [审查修复与会话重试](nx5-review-fixes.md) | `bccf6b9`：同进程初始化重试、VO/描述符清理、WBC 正负对照及纹理退出；记录 MCP 截图 OOM 与恢复限制 |

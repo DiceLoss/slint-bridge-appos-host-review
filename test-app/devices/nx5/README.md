@@ -1,8 +1,10 @@
 # NX5 测试目标
 
-本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中引用的仓库路径相对于仓库根目录；最近记录时间为 2026-10-12 13:50:15（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
+本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中引用的仓库路径相对于仓库根目录；最近记录时间为 2026-10-12 16:01:26（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
 
-当前已部署 `bccf6b9`，常驻 PID 3972，路径 `/tmp/slint-bridge-review-fixes/display`。同进程初始化重试、VO/描述符清理、WBC 正负对照及纹理退出通过，详见 [审查修复实机报告](../../../docs/nx5-review-fixes.md)。MCP 截图阶段曾 OOM；随后已归档清理历史临时产物，在同一进程中 [十次截图复验通过](../../../docs/nx5-screenshot-memory.md)，最低可用内存 47.2 MiB。自定义路径、实体触摸、双页像素和三项独立 ignored 测试等保留各自此前报告口径。
+当前已部署 `2de9168`，常驻 PID 30267，路径 `/tmp/slint-bridge-touch-2de9168/display`。10 组实体触摸对应 35 条 Slint 事件，全部 Accepted、无丢失；用户确认暂停／恢复及时，最终界面 RUNNING。切换前的 `bccf6b9` 程序及 `/tmp/slint-bridge-review-fixes/start-live.sh` 保留用于回退，详见 [触摸部署与回退说明](../../../docs/nx5-touch-response.md)。
+
+此前同进程初始化重试、VO/描述符清理、WBC 正负对照及纹理退出见 [审查修复实机报告](../../../docs/nx5-review-fixes.md)；当时截图 OOM 及清理后 [十次截图复验](../../../docs/nx5-screenshot-memory.md) 保留原始记录。双页像素和三项独立 ignored 测试等也保留各自此前报告口径，不作为本次触摸部署的新结果。
 
 当前板为 DPower Terminal `/dev/ttyUSB1`、ADB `192.168.1.151:5555`、内核 #233。运行行为见 [平台说明](../../../docs/software-platform.md#准入边界)，部署快照及恢复前提见 [当前环境](../../../docs/current-environment.md)。
 

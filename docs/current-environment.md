@@ -1,28 +1,28 @@
 # NX5 最近环境记录
 
-最近一次设备记录时间为 **2026-10-12 13:50:15（北京时间）**，对应 [current-target.json](../test-app/devices/nx5/current-target.json)。本文是观测快照，PID、端口和所有权在操作前仍须重新核对。
+最近一次设备记录时间为 **2026-10-12 16:01:26（北京时间）**，对应 [current-target.json](../test-app/devices/nx5/current-target.json)。本文是观测快照，PID、端口和所有权在操作前仍须重新核对。
 
-当前运行 `bccf6b9`，路径 `/tmp/slint-bridge-review-fixes/display`，PID **3972**。最新 [截图内存复验](nx5-screenshot-memory.md) 已完成历史 tmpfs 产物归档清理，十次原生 MCP 截图通过；清理与验证期间保持同一显示进程，没有更换二进制或重启设备。
+当前常驻 `2de9168`，路径 `/tmp/slint-bridge-touch-2de9168/display`，PID **30267**。该版本为 wake 任务批次增加回调间的 2 ms 时间预算，避免整批任务长时间推迟输入处理。完整部署、实体触摸结果与回退步骤见 [触摸实测报告](nx5-touch-response.md)。
 
-本轮删除 901 个已不用的普通文件，文件内容合计 41.66 MiB，以及两个旧故障注入库链接；所有文件先复制到主机并核对 SHA256。`/run` 已用从 43448 KiB 降至 804 KiB，`/tmp` 当前已用 12372 KiB。最终可用内存 53756 KiB，截图期间最低 48332 KiB（47.2 MiB），RSS 峰值 16168 KiB，截图后 RSS 11360 KiB；三个线程及 MMZ 12100 KiB / 5 块保持不变，内核日志无新 OOM 或强制回收。
+本轮用户实际触摸了 10 次（含确认的额外连点），Slint 收到 35 条事件，全部 Accepted、无丢失。20 个按下／抬起边沿与 evdev 报告逐条匹配，最长分派时间差约 15.3 ms，MCP 时间戳粒度为 1 ms；该值不包含触摸传感器和液晶扫描延迟。用户确认暂停和恢复及时，状态记录显示 5 次暂停／恢复。
 
-当前程序、字体、SDK/WBC 库、设备链接、活动日志和独占锁仍在原路径，保留一份 `c03c3bb` 恢复程序及其 `start-live.sh`。过期诊断文件以及本轮采样数据均已归档到主机，设备上不再保留这些副本。归档位置及摘要清单见 [截图报告](nx5-screenshot-memory.md#证据)；后续部署须注意 `/run`、`/tmp` 共用物理内存预算。
+最终界面 RUNNING，MCP 设备 localhost 9315、主机转发 19315。实体录制后又出现用户输入导致的暂停，已在结束录制后通过 MCP 恢复；最终帧号从 22966 增至 22982，[最终截图](../evidence/nx5-touch-deploy/2026-10-12-2de9168/final-running.png) 显示 Frame 22994 RUNNING。持续 trace、WBC、只读 evdev 观察器及事件录制均关闭。
 
-最终界面 RUNNING，MCP 设备 localhost 9315、主机转发 19315。截图与暂停/恢复检查通过；[最后一次截图](../evidence/nx5-screenshot-memory/2026-10-12/mcp/screenshot-10.png) 和 [最终设备快照](../evidence/nx5-screenshot-memory/2026-10-12/final-device.txt) 为本地档案。持续 trace、WBC 和故障注入关闭。二进制 SHA256 仍为 `8aba5bfd344fc60f32f90ace2467206abc326956e20efdc5bcd1878d5b2fd107`；`/tmp`、`/run` 文件重启后需重新部署。
+新版 SHA256 为 `425a1660192aa8886dea14d8d3d834a6a6a95a6035fe259fbdb4efab3d19af30`。切换前的 `bccf6b9` 程序继续保存在 `/tmp/slint-bridge-review-fixes/display`，原 `start-live.sh`、共用依赖及主机校验备份也保留；[保留策略](../test-app/devices/nx5/deploy-retain.json) 已指定它为回退版。回退前必须重新核对并停止新版显示所有者，不能同时加载两份 SDK 显示程序。`/tmp`、`/run` 文件在重启后需重新部署，本轮未更改开机服务。
 
-此前同进程初始化重试、VO/描述符缓存清理、WBC 正负对照及 60 秒纹理退出见 [审查修复报告](nx5-review-fixes.md)。该阶段 PID 3949 的截图 OOM、旧 PID 3698 的 SIGTERM 回收和当时未重试截图的范围均保留原始记录。此次清理后的成功截图单独记录，不改写前次结果。
+新旧程序切换期间，先通过 MCP 暂停旧 PID 3972 并确认提交线程空闲，再发送 SIGTERM；内核回收旧进程的三个 MMZ 块、关闭 VO，恢复至 4900 KiB / 2 块基线后才启动新版。这是旧进程的信号退出记录，不计为新版正常析构结果。
 
-framebuffer、触摸及 SDK/WBC 继续使用 `/tmp/slint-bridge-c03c3bb/` 下的设备链接和库目录，实际为 1024×600、stride 4096、双页。此前完整像素与用户真实触摸验证见 [路径报告](nx5-configured-paths.md)，没有在本轮重复。
+本轮另将 11 个不用的普通文件归档校验后清理，包括观察器、采样文件和更早的 `c03c3bb` 程序副本；该目录中的共用 SDK、设备链接仍保留。最终可用内存 53548 KiB、RSS 10992 KiB、VmHWM 15800 KiB、3 个线程、MMZ 12100 KiB / 5 块；未发现对应新版进程的新 OOM 或强制回收。原始证据位于本地 `evidence/nx5-touch-deploy/2026-10-12-2de9168/`，不随 Git 分发，需另行获取。
 
-[三项 TDE/翻页回归](nx5-hardware.md) 记录此前 `a9fd3c8` 的独立 ignored 测试；[启动回归](nx5-startup.md) 记录 `949ceb9` 的完整启动矩阵；[EIO 回归](nx5-tde-exit.md) 保留 `177c18a` 的结果。这些未在本轮全部重跑，不等同于当前二进制的新验证。
+设备仍为 DPower Terminal `/dev/ttyUSB1`、ADB `192.168.1.151:5555`、Linux 4.9.138 #233，启动 ID `938c34d4-456a-4b1a-b532-678c0f92efd0`。没有重启或修改固件、SDK、驱动和网络。framebuffer、触摸设备继续使用 `/tmp/slint-bridge-c03c3bb/` 下的链接；窗口为 1024×600。
 
-[单周期翻页调查](nx5-single-cycle.md) 完成 128 次无像素写入的状态观测：新页准备与锁存仍分别占一次刷新，纯翻页 29.00031 FPS。调查没有改变驱动或正式显示实现，结束时恢复原进程和 MCP；未形成可部署的安全单周期路径。
+## 历史验证范围
 
-记录中的目标为 DPower Terminal `/dev/ttyUSB1`、网络 `192.168.1.151:5555`。已完成双页上屏与 TDE 接入，纹理混合演示的有限时长测试约为 29 FPS。诊断故障恢复时重启过一次，记录的 boot ID 为 `938c34d4-456a-4b1a-b532-678c0f92efd0`。初始化记录见 [上屏验证](nx5-display.md)，绘制范围见 [TDE 报告](nx5-tde.md)，整屏性能见 [帧率优化](nx5-fps.md)。
+此前 `bccf6b9` 的同进程初始化重试、VO/描述符缓存清理、WBC 正负对照及纹理退出见 [审查修复报告](nx5-review-fixes.md)。旧 PID 3949 的截图 OOM、PID 3698 的 SIGTERM 回收，以及随后同一 PID 3972 的 [归档清理与十次截图复验](nx5-screenshot-memory.md) 均保留各自原始记录；不能据此声称本轮重复了这些测试。
 
-当前源码采用通用后台提交线程，允许 Slint 绘制与 NX5 阻塞翻页并行；该阶段构建的 90 秒测试稳态 29.00 FPS、TDE 错误 0。模块分工、并行重叠及双页验证见 [并行化报告](nx5-parallel.md)。
+自定义路径、双页实际像素和此前真实触摸见 [路径报告](nx5-configured-paths.md)；[三项 TDE/翻页回归](nx5-hardware.md) 对应 `a9fd3c8`，[启动回归](nx5-startup.md) 对应 `949ceb9`，[EIO 回归](nx5-tde-exit.md) 对应 `177c18a`。本次没有重跑 WBC、独立 ignored 测试、EIO，也没有测量新版持续呈现 FPS。
 
-后续修复了 10 ms 内核定时精度导致的调度迟到：未启用板级 CPU 优化的构建也在该轮 90 秒测试中稳定为 29.00 FPS。等待策略及 CPU 成本见 [调度优化](nx5-scheduling.md)。
+[并行化报告](nx5-parallel.md) 与 [调度测量](nx5-scheduling.md) 记录了此前约 29 FPS 的有限采样；这不是由本轮 UI 帧计数重新得出的结果。[单周期翻页调查](nx5-single-cycle.md) 没有形成安全的单周期实现；新版继续使用现有双页完成契约。
 
 ## 初次环境确认记录
 
