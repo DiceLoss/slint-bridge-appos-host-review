@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-12T03:04:01+00:00",
+  "checked_at_utc": "2026-10-12T04:31:24+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -28,7 +28,7 @@
     "mem_total_kib": 91688,
     "mmz_total_kib": 32768,
     "previous_boot_id": "f636e7cf-7beb-46f3-98aa-53c651f96572",
-    "serial_adb_boot_id_match_note": "Rechecked via USB1 root session and ADB during the c03c3bb deployment on 2026-10-12; evidence/nx5-configured-paths/2026-10-12-c03c3bb/final-adb-identity.txt."
+    "serial_adb_boot_id_match_note": "Rechecked via USB1 root and ADB for bccf6b9; evidence/review-fixes/2026-10-12/device-restored/final.boot-id and final-adb-boot.txt."
   },
   "display": {
     "driver": "fyfb",
@@ -46,14 +46,14 @@
     ],
     "pan": [
       0,
-      0
+      600
     ],
     "vo_device_enabled": true,
     "initialization_error_observed": "gui layer region(0,0,1024,600) cannot exceed frame region(0,0)",
     "state_change_note": "Virtual size changed during inspection that included fbset -i; no explicit mode-setting command was sent. Opening fbdev may initialize driver state; cause not established.",
     "vou_version": "v0.5.8 (0)",
     "vou_build_time": "Jun 1 2021 14:04:09",
-    "tear_free_admission": "Board blocking double-buffer implementation; c03c3bb has no fixed firmware fingerprint gates. Latest 300 WBC samples have zero mixed frames, not full LCD-frame certification.",
+    "tear_free_admission": "Board blocking double-buffer implementation; no fixed firmware fingerprint gates. bccf6b9 sampled 300 WBC frames with zero mixed frames, not full LCD-frame certification.",
     "presentation": "FBIOPAN_DISPLAY, unchanged blocking #233 callback on generic fb-present worker",
     "measured_blocking_flip_ceiling_fps": 29.003,
     "actual_refresh_hz": 58.00056242969629,
@@ -109,8 +109,8 @@
     }
   ],
   "running_ui": {
-    "path": "/tmp/slint-bridge-c03c3bb/display",
-    "pid": 3698,
+    "path": "/tmp/slint-bridge-review-fixes/display",
+    "pid": 3972,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -121,54 +121,55 @@
       "--framebuffer=/tmp/slint-bridge-c03c3bb/dev/panel",
       "--touch=/tmp/slint-bridge-c03c3bb/dev/touch"
     ],
-    "sha256": "416c00518e7de9ffdb0ac75c771c748e1fcb1e5342da29606e697e41b2408689",
+    "sha256": "8aba5bfd344fc60f32f90ace2467206abc326956e20efdc5bcd1878d5b2fd107",
     "frame_interval_us": 16667,
     "trace_enabled": false,
     "last_observed_fps": 29.0,
-    "fps_evidence": "evidence/nx5-configured-paths/2026-10-12-c03c3bb/device/results/pattern.log",
-    "fps_note": "Same c03c3bb binary: bounded pattern run measured 28.81, 29.00, 29.00 FPS. Final textured UI has tracing disabled; UI timer counts are not presentation FPS.",
+    "fps_evidence": "evidence/review-fixes/2026-10-12/device-restored/textures.log",
+    "fps_note": "Same bccf6b9 binary: 60-second texture run measured 28.44 FPS first batch then 29.00 FPS. Final live UI has tracing disabled; UI timer counts are not presentation FPS.",
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
       "transport": "streamable-http",
       "forward": "adb -s 192.168.1.151:5555 forward tcp:19315 tcp:9315",
       "tools_available": 18,
-      "tools_exercised": 7,
-      "verification": "evidence/nx5-configured-paths/2026-10-12-c03c3bb/results.json",
+      "tools_exercised": 5,
+      "verification": "evidence/review-fixes/2026-10-12/results.json",
       "exercised_tools": [
         "list_windows",
         "get_window_properties",
         "find_elements_by_id",
         "get_element_properties",
-        "take_screenshot",
-        "start_event_recording",
-        "stop_event_recording"
-      ]
+        "click_element"
+      ],
+      "screenshot_status": "OOM killed PID 3949 during screenshot; no screenshot retry. Final PID 3972 was verified with low-memory property queries and pause/resume."
     },
-    "log": "/tmp/slint-bridge-c03c3bb/results/live.log",
-    "source_commit": "c03c3bb9559a23be65ee2363af0d329ab161eccc",
+    "log": "/tmp/slint-bridge-review-fixes/fixed-results/live-restored.log",
+    "source_commit": "bccf6b98b54438ab58b4a19ee55d1ed1cdbff5b8",
     "fault_injection_enabled": false,
-    "source_state": "Deployed c03c3bb with configured device links and relocated SDK/WBC libraries; final live process RUNNING.",
-    "source_manifest": "evidence/nx5-configured-paths/2026-10-12-c03c3bb/deployment-manifest.json",
+    "source_state": "bccf6b9 running after same-process retry and finite WBC/texture regressions. MCP screenshot caused OOM in previous PID 3949; temporary diagnostic binary removed, PID 3972 recovered and verified through properties and pause/resume.",
+    "source_manifest": "evidence/review-fixes/2026-10-12/deployment-manifest.json",
     "resources": {
-      "rss_kib": 11092,
-      "vm_peak_kib": 33828,
+      "rss_kib": 11108,
+      "vm_peak_kib": 29856,
       "threads": 3,
       "mmz_used_kib": 12100,
       "mmz_blocks": 5,
-      "wbc_running": false
+      "wbc_running": false,
+      "mem_available_kib": 8640
     },
-    "runtime_source_sha256": "fb5323ce4d891ac3f7b8b7d17bd6289f1318e944ac42cd86de9341d658e897f3",
+    "runtime_source_sha256": "4a37dda144d41ef5b7a1fe12420952fbae22dfebc51fb95171b43334fef31abb",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib"
   },
-  "status": "configured_paths_real_touch_double_pages_wbc_passed_new_ui_running",
+  "status": "review_fixes_init_retry_wbc_texture_passed_ui_restored_after_screenshot_oom",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
     "One reboot recovered a diagnostic VO shared-handle deadlock; DHCP and ADB were restored. See docs/nx5-display.md.",
     "Only one SDK display owner at a time; loading another SDK process resets SYS/VO.",
     "On 2026-10-12 all three ignored TDE/flip tests were independently run and passed. Each finished at the 4900 KiB MMZ baseline with VO/WBC disabled and no new kernel MMZ forced reclamation; the original display/MCP was restored.",
-    "Latest c03c3bb deployment uses /tmp/slint-bridge-c03c3bb. Its three finite runs returned to baseline without forced MMZ reclamation; the old PID 3351 SIGTERM reclamation is recorded separately. Original binary is retained for recovery."
+    "Latest c03c3bb deployment uses /tmp/slint-bridge-c03c3bb. Its three finite runs returned to baseline without forced MMZ reclamation; the old PID 3351 SIGTERM reclamation is recorded separately. Original binary is retained for recovery.",
+    "bccf6b9 deployed to /tmp/slint-bridge-review-fixes. Original PID 3698 SIGTERM recovery and PID 3949 MCP screenshot OOM were recorded separately from successful finite-run cleanup. Temporary init-retry binary removed from tmpfs; original c03c3bb recovery binary retained."
   ],
   "previous_serial_device": "/dev/ttyUSB2",
   "serial_recheck_evidence": "evidence/environments/2026-10-10-usbtty1/serial-recheck.txt",
@@ -181,7 +182,7 @@
     "generic_cpu_percent_one_core_after": 50.56403450564132,
     "report": "docs/nx5-scheduling.md"
   },
-  "observation_scope": "Current c03c3bb process, custom device paths, actual layout, two full physical framebuffer pages, manual touch, WBC positive/negative controls and cleanup were checked in this run. The separate hardware_regression and scheduling/clock fields retain their linked prior-build measurements.",
+  "observation_scope": "bccf6b9 same-process framebuffer/input init retry, descriptor cache stability, VO/TDE cleanup, finite WBC positive/negative and texture runs; final native MCP property/pause/resume checks. Screenshot OOM and recovery recorded separately. Prior real-touch, standalone ignored tests, startup and EIO measurements were not repeated.",
   "hardware_regression": {
     "report": "docs/nx5-hardware.md",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -282,5 +283,15 @@
     "driver_changed": false,
     "rebooted": false,
     "passed": true
+  },
+  "review_fixes_validation": {
+    "report": "docs/nx5-review-fixes.md",
+    "evidence": "evidence/review-fixes/2026-10-12/results.json",
+    "tested_commit": "bccf6b98b54438ab58b4a19ee55d1ed1cdbff5b8",
+    "driver_changed": false,
+    "rebooted": false,
+    "same_process_retry_passed": true,
+    "finite_runs_passed": true,
+    "screenshot_oom_recovered": true
   }
 }

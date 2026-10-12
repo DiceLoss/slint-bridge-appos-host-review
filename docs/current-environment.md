@@ -1,12 +1,14 @@
 # NX5 最近环境记录
 
-最近一次设备记录时间为 **2026-10-12 11:04:01（北京时间）**，对应 [current-target.json](../test-app/devices/nx5/current-target.json)。本文是观测快照，PID、端口和所有权在操作前仍须重新核对。
+最近一次设备记录时间为 **2026-10-12 12:31:24（北京时间）**，对应 [current-target.json](../test-app/devices/nx5/current-target.json)。本文是观测快照，PID、端口和所有权在操作前仍须重新核对。
 
-`c03c3bb` 已通过 [自定义路径与动态布局实机验证](nx5-configured-paths.md)，目前运行 `/tmp/slint-bridge-c03c3bb/display`，PID **3698**。framebuffer 与触摸使用测试目录下的 `dev/panel`、`dev/touch` 链接，SDK/WBC 使用独立 `lib/` 目录。设备实际为 1024×600、stride 4096、两页；启动重试验证了两页完整像素，用户两次真实点触完成暂停/恢复。Slint 接收 12 条事件，全部接受且无丢失。
+当前运行 `bccf6b9`，路径 `/tmp/slint-bridge-review-fixes/display`，PID **3972**。同进程初始化重试、VO/描述符缓存清理、WBC 正负对照及 60 秒纹理退出验证见 [审查修复报告](nx5-review-fixes.md)。framebuffer、触摸及 SDK/WBC 继续使用 `/tmp/slint-bridge-c03c3bb/` 下的设备链接和库目录，实际为 1024×600、stride 4096、双页。此前 `c03c3bb` 的完整像素与用户真实触摸验证见 [路径报告](nx5-configured-paths.md)，没有在本轮重复。
 
-WBC 正向采样 300 帧无混色，负对照 30 帧全部检出混色；提交统计为 28.81–29.00 FPS。三个新程序有限用例退出后均回到 4900 KiB / 2 块 MMZ，无对应新进程的内核强制回收。切换旧 PID 3351 时的 SIGTERM 回收单独记在报告中。
+WBC 正对照 300 帧无混色，负对照 30/30 帧检出混色；纹理首批 28.44 FPS、后续 29.00 FPS，TDE 错误 0。三个有限用例退出后均回到 4900 KiB / 2 块 MMZ，无对应新进程的内核强制回收。
 
-最终界面 RUNNING，MCP 设备 localhost 9315、主机转发 19315。持续性能日志、WBC 与故障注入关闭；RSS 11092 KiB、3 个线程，运行中 MMZ 12100 KiB / 5 块。新程序 SHA256 为 `416c00518e7de9ffdb0ac75c771c748e1fcb1e5342da29606e697e41b2408689`，见 [部署清单](../evidence/nx5-configured-paths/2026-10-12-c03c3bb/deployment-manifest.json) 和 [最终设备快照](../evidence/nx5-configured-paths/2026-10-12-c03c3bb/device/results/final-device.txt)。旧程序及恢复入口保留；`/tmp`、`/run` 文件重启后需重新部署。
+恢复阶段的首次 MCP 截图触发 OOM，内核终止 PID 3949；异常和此前停止旧 PID 3698 的 SIGTERM 回收均单独记录。已移除本轮约 5.7 MB 临时诊断副本，恢复 PID 3972，使用原生 MCP 属性及暂停/恢复确认 RUNNING；未重试截图。最终 RSS 11108 KiB、3 个线程、可用内存约 8640 KiB，运行中 MMZ 12100 KiB / 5 块。
+
+MCP 设备 localhost 9315、主机转发 19315。持续 trace、WBC 和故障注入关闭；二进制 SHA256 为 `8aba5bfd344fc60f32f90ace2467206abc326956e20efdc5bcd1878d5b2fd107`，见 [部署清单](../evidence/review-fixes/2026-10-12/deployment-manifest.json) 与 [最终快照目录](../evidence/review-fixes/2026-10-12/device-restored/)。旧 `c03c3bb` 程序及启动脚本仍在原目录，可供恢复；使用前须重新确认当前显示所有者。`/tmp`、`/run` 文件重启后需重新部署。
 
 [三项 TDE/翻页回归](nx5-hardware.md) 记录此前 `a9fd3c8` 的独立 ignored 测试；[启动回归](nx5-startup.md) 记录 `949ceb9` 的完整启动矩阵；[EIO 回归](nx5-tde-exit.md) 保留 `177c18a` 的结果。这些未在本轮全部重跑，不等同于当前二进制的新验证。
 
