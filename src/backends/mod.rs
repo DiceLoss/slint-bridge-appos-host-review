@@ -5,7 +5,27 @@ use crate::{
     Backend, Error,
     framebuffer::{FixedInfo, Layout, VariableInfo},
 };
-use std::{io, os::fd::BorrowedFd, time::Duration};
+use std::{
+    io,
+    os::fd::{AsRawFd, BorrowedFd},
+    time::Duration,
+};
+
+pub(crate) fn lock_exclusive(fd: BorrowedFd<'_>, operation: &'static str) -> Result<(), Error> {
+    // SAFETY: the borrowed descriptor remains valid throughout flock.
+    if unsafe { libc::flock(fd.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0 {
+        return Ok(());
+    }
+    let error = io::Error::last_os_error();
+    if error.kind() == io::ErrorKind::WouldBlock {
+        Err(Error::DisplayNotAdmitted {
+            backend: crate::selected_backend(),
+            reason: "display is already locked by another owner",
+        })
+    } else {
+        Err(Error::io(operation, error))
+    }
+}
 
 type CompletePresentation = dyn FnMut(BorrowedFd<'_>, u32, &Layout) -> io::Result<()> + Send;
 

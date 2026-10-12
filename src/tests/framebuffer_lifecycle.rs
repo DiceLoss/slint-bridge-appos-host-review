@@ -363,3 +363,58 @@ fn framebuffer_drop_drains_submission_before_releasing_resources() {
         );
     }
 }
+
+#[cfg(feature = "nx5-tde")]
+#[test]
+fn unknown_dma_keeps_the_board_session_alive() {
+    const NAME: &str = "framebuffer::lifecycle_tests::unknown_dma_keeps_the_board_session_alive";
+    if std::env::var("SLINT_BRIDGE_TEST_CHILD").as_deref() != Ok(NAME) {
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", NAME, "--nocapture"])
+            .env("SLINT_BRIDGE_TEST_CHILD", NAME)
+            .output()
+            .unwrap();
+        assert!(
+            child.status.success(),
+            "{}{}",
+            String::from_utf8_lossy(&child.stdout),
+            String::from_utf8_lossy(&child.stderr)
+        );
+        return;
+    }
+    let events: Events = Arc::default();
+    let observed = events.clone();
+    let fd = unsafe {
+        libc::syscall(
+            libc::SYS_memfd_create,
+            c"quarantined-session".as_ptr(),
+            libc::MFD_CLOEXEC,
+        )
+    } as i32;
+    assert!(fd >= 0);
+    let file = unsafe { File::from_raw_fd(fd) };
+    let (fixed, variable) = crate::tests::info(512, 384, 32);
+    file.set_len(u64::from(fixed.smem_len)).unwrap();
+    let (dropped, _done) = mpsc::sync_channel(1);
+    let session = Session {
+        events,
+        inode: file.metadata().unwrap().ino(),
+        fd,
+        dropped,
+    };
+    let contract = PresentationContract {
+        validate_layout: Layout::new,
+        complete: Box::new(move |_, _, _| {
+            let _alive = &session;
+            Ok(())
+        }),
+    };
+    let mut framebuffer =
+        Framebuffer::from_file(file, Layout::new(&fixed, &variable).unwrap(), contract).unwrap();
+    framebuffer.retained = crate::backends::nx5::tde::tests::buffer_after_unknown_dma();
+    drop(framebuffer);
+    assert!(
+        observed.lock().unwrap().is_empty(),
+        "uncertain TDE work must not trigger SDK/SYS shutdown"
+    );
+}

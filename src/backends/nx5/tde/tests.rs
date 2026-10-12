@@ -216,6 +216,18 @@ impl Accelerator for Reject {
         })
     }
 }
+pub(crate) fn buffer_after_unknown_dma() -> Buffer {
+    let (window, scene) = setup();
+    scene.set_picture(image(512, 384, false, false));
+    let mut buffer = Buffer::software(512, 384).unwrap();
+    buffer.engine = Some(Box::new(Reject { unknown: true }));
+    assert!(matches!(
+        draw(&window, &mut buffer),
+        Err(Error::AccelerationFailed(_))
+    ));
+    buffer
+}
+
 #[test]
 fn safe_failure_redraws_in_software_unknown_completion_rejects_frame() {
     let (window, scene) = setup();

@@ -3,7 +3,7 @@ use slint::{PhysicalSize, Rgb8Pixel, platform::software_renderer::SoftwareRender
 use std::{
     fs::{File, OpenOptions},
     io,
-    os::fd::AsRawFd,
+    os::fd::{AsFd, AsRawFd},
     path::Path,
     ptr::NonNull,
     sync::{
@@ -398,6 +398,7 @@ pub(crate) struct Framebuffer {
     previous_damage: Vec<Rect>,
     pending_damage: Option<Vec<Rect>>,
     prepared_damage: Option<Vec<Rect>>,
+    unsubmitted_damage: Vec<Rect>,
 }
 
 impl Framebuffer {
@@ -409,9 +410,7 @@ impl Framebuffer {
             .map_err(|e| Error::io("open framebuffer", e))?;
         // Advisory exclusion for cooperating users; board admission additionally
         // requires exclusive ownership of the actual display hardware.
-        if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } < 0 {
-            return Err(Error::io("lock framebuffer", io::Error::last_os_error()));
-        }
+        crate::backends::lock_exclusive(file.as_fd(), "lock framebuffer")?;
         let mut fixed = FixedInfo::default();
         let mut variable = VariableInfo::default();
         // SAFETY: Linux UAPI buffers have the exact native ABI layouts above.
@@ -463,6 +462,7 @@ impl Framebuffer {
             previous_damage: Vec::new(),
             pending_damage: None,
             prepared_damage: None,
+            unsubmitted_damage: Vec::new(),
         })
     }
 
@@ -476,20 +476,18 @@ impl Framebuffer {
         let damage = renderer.render(&mut self.retained, self.layout.size.width as usize);
         #[cfg(feature = "nx5-tde")]
         let damage = self.retained.render(renderer)?;
-        let current: Vec<_> = damage
-            .iter()
-            .filter_map(|(origin, size)| {
-                let rect = Rect {
-                    x0: (origin.x as i64).clamp(0, self.layout.size.width as i64) as usize,
-                    y0: (origin.y as i64).clamp(0, self.layout.size.height as i64) as usize,
-                    x1: (origin.x as i64 + size.width as i64)
-                        .clamp(0, self.layout.size.width as i64) as usize,
-                    y1: (origin.y as i64 + size.height as i64)
-                        .clamp(0, self.layout.size.height as i64) as usize,
-                };
-                (rect.x0 < rect.x1 && rect.y0 < rect.y1).then_some(rect)
-            })
-            .collect();
+        let mut current = std::mem::take(&mut self.unsubmitted_damage);
+        current.extend(damage.iter().filter_map(|(origin, size)| {
+            let rect = Rect {
+                x0: (origin.x as i64).clamp(0, self.layout.size.width as i64) as usize,
+                y0: (origin.y as i64).clamp(0, self.layout.size.height as i64) as usize,
+                x1: (origin.x as i64 + size.width as i64).clamp(0, self.layout.size.width as i64)
+                    as usize,
+                y1: (origin.y as i64 + size.height as i64).clamp(0, self.layout.size.height as i64)
+                    as usize,
+            };
+            (rect.x0 < rect.x1 && rect.y0 < rect.y1).then_some(rect)
+        }));
         let changed = !current.is_empty();
         self.prepared_damage = Some(current);
         Ok(changed)
@@ -497,6 +495,17 @@ impl Framebuffer {
 
     pub(crate) fn can_render(&self) -> bool {
         self.prepared_damage.is_none()
+    }
+
+    pub(crate) fn discard_prepared(&mut self) -> bool {
+        if let Some(damage) = self.prepared_damage.take() {
+            // The retained image and Slint's ReusedBuffer already include these
+            // changes. Carry them into the next rendered/committed damage set.
+            self.unsubmitted_damage.extend(damage);
+            true
+        } else {
+            false
+        }
     }
 
     pub(crate) fn ready_to_present(&self) -> bool {
@@ -586,6 +595,10 @@ impl Drop for Framebuffer {
         // Join before dropping the mapping or TDE resources. The presentation
         // owner then keeps the SDK alive until the retained renderer is dropped.
         self.presentation.shutdown();
+        #[cfg(feature = "nx5-tde")]
+        if self.retained.has_unknown_dma() {
+            self.presentation.quarantine_session();
+        }
     }
 }
 

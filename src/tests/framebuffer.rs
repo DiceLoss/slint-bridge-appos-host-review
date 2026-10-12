@@ -389,3 +389,86 @@ fn framebuffer_uses_the_configured_device_path() {
         })
     ));
 }
+
+#[test]
+fn framebuffer_lock_conflict_is_display_not_admitted() {
+    use std::os::fd::AsRawFd;
+    let path = std::env::temp_dir().join(format!("slint-bridge-busy-fb-{}", std::process::id()));
+    let owner = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+        .unwrap();
+    assert_eq!(
+        unsafe { libc::flock(owner.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) },
+        0
+    );
+    let result = Framebuffer::open(
+        &path,
+        PresentationContract {
+            validate_layout: Layout::new,
+            complete: Box::new(|_, _, _| unreachable!()),
+        },
+    );
+    std::fs::remove_file(path).unwrap();
+    assert!(
+        matches!(result, Err(Error::DisplayNotAdmitted { backend, .. }) if backend == selected_backend())
+    );
+}
+
+#[test]
+fn discarded_preparation_carries_damage_to_both_pages() {
+    let _serial = SLINT_TEST.lock().unwrap();
+    slint::slint! {
+        export component Tiles inherits Window {
+            preferred-width: 64px; preferred-height: 32px;
+            in-out property<color> a: red;
+            in-out property<color> b: red;
+            in-out property<color> c: red;
+            background: black;
+            Rectangle { x: 2px; y: 2px; width: 8px; height: 8px; background: root.a; }
+            Rectangle { x: 24px; y: 2px; width: 8px; height: 8px; background: root.b; }
+            Rectangle { x: 46px; y: 2px; width: 8px; height: 8px; background: root.c; }
+        }
+    }
+    let mut target = surface(64, 32, 32);
+    let window = MinimalSoftwareWindow::new(RepaintBufferType::ReusedBuffer);
+    slint::platform::set_platform(Box::new(RenderPlatform(window.clone()))).unwrap();
+    let ui = Tiles::new().unwrap();
+    ui.show().unwrap();
+    window.set_size(PhysicalSize::new(64, 32));
+    let green = slint::Color::from_rgb_u8(0, 255, 0);
+    let blue = slint::Color::from_rgb_u8(0, 0, 255);
+    draw(&window, &mut target.fb).unwrap();
+    ui.set_c(green);
+    draw(&window, &mut target.fb).unwrap(); // Both physical pages are initialized.
+    ui.set_a(green);
+    assert!(prepare(&window, &mut target.fb).unwrap());
+    let mut before = vec![0; target.fb.layout.page_bytes * 2];
+    target.file.read_exact_at(&mut before, 0).unwrap();
+    assert!(target.fb.discard_prepared());
+    let mut after = before.clone();
+    target.file.read_exact_at(&mut after, 0).unwrap();
+    assert_eq!(before, after, "discard must not touch either physical page");
+    ui.set_b(blue);
+    draw(&window, &mut target.fb).unwrap();
+    ui.set_c(blue);
+    draw(&window, &mut target.fb).unwrap(); // Repair the other page too.
+    let check = |expected: [[u8; 4]; 3]| {
+        let frames = target.commits.lock().unwrap();
+        let frame = frames.last().unwrap();
+        for (x, value) in [4, 26, 48].into_iter().zip(expected) {
+            let at = 4 * target.fb.layout.stride + x * 4;
+            assert_eq!(&frame[at..at + 4], value);
+        }
+    };
+    check([[0, 255, 0, 255], [255, 0, 0, 255], [255, 0, 0, 255]]);
+    ui.set_a(blue);
+    prepare(&window, &mut target.fb).unwrap();
+    target.fb.discard_prepared();
+    // Slint has no new changes, but the discarded image was never submitted.
+    assert!(draw(&window, &mut target.fb).unwrap());
+    let frames = target.commits.lock().unwrap();
+    let at = 4 * target.fb.layout.stride + 4 * 4;
+    assert_eq!(&frames.last().unwrap()[at..at + 4], &[255, 0, 0, 255]);
+}

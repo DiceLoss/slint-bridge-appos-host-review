@@ -87,6 +87,13 @@ impl Presentation {
         self.pending
     }
 
+    #[cfg(feature = "nx5-tde")]
+    pub(crate) fn quarantine_session(&self) {
+        // An uncertain accelerator job may still use the SDK. Keep the board
+        // session and its exclusive lock; dropping it would shut down VO/SYS.
+        std::mem::forget(self._contract.clone());
+    }
+
     fn healthy(&self) -> Result<(), Error> {
         match &self.failure {
             Some(error) => Err(Error::PresentationFailed(error.clone())),

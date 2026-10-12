@@ -187,6 +187,13 @@ impl BridgePlatform {
         let result = self.run_frames();
         // A quit or input/render error must still drain the submitted page.
         let completion = self.framebuffer.borrow_mut().wait_for_present();
+        if self.framebuffer.borrow_mut().discard_prepared()
+            && let Some(window) = self.window.borrow().upgrade()
+        {
+            // A later run must render the current component state, even if the
+            // caller uses run_event_loop directly without hiding the window.
+            window.request_redraw();
+        }
         match (result, completion) {
             (Err(error), Err(Error::PresentationFailed(reason)))
                 if !matches!(&error, Error::PresentationFailed(_)) =>

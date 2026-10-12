@@ -10,9 +10,10 @@ use crate::{
     framebuffer::{FixedInfo, Layout, VariableInfo},
 };
 use std::{
+    ffi::OsStr,
     fs::{self, File, OpenOptions},
     io,
-    os::fd::{AsRawFd, BorrowedFd},
+    os::fd::{AsFd, AsRawFd, BorrowedFd},
     time::{Duration, Instant},
 };
 
@@ -34,10 +35,77 @@ pub(crate) fn validate_layout(f: &FixedInfo, v: &VariableInfo) -> Result<Layout,
     Layout::new(f, v)
 }
 
+fn vo_enabled(state: &str) -> Result<bool, Error> {
+    let devices = state
+        .split_once("-----DEV CONFIG")
+        .and_then(|(_, rest)| rest.split_once("-----VIDEO LAYER STATUS"))
+        .ok_or_else(|| rejected("unrecognized NX5 VO status"))?
+        .0;
+    Ok(devices.lines().any(|line| {
+        let mut columns = line.split_whitespace();
+        columns.next().is_some_and(|id| id.parse::<u32>().is_ok()) && columns.next() == Some("Y")
+    }))
+}
+
 struct Session {
     disable: unsafe extern "C" fn() -> libc::c_int,
-    _library: libloading::Library,
+    library: libloading::Library,
     _lock: File,
+}
+
+impl Session {
+    fn load(
+        lock: File,
+        library_name: &OsStr,
+        mut read_state: impl FnMut() -> io::Result<String>,
+    ) -> Result<Self, Error> {
+        // This firmware's library constructor resets SYS and enables VO. Do not
+        // load it while another application owns an already enabled display.
+        if vo_enabled(&read_state().map_err(|e| Error::io("read NX5 VO ownership", e))?)? {
+            return Err(rejected(
+                "NX5 VO is already enabled; release its current owner before init",
+            ));
+        }
+        // SAFETY: NX5 integration requires the SDK ABI from codec/vd/VoApi.h.
+        // VO_Enable/Disable return 1 for success, 0 for failure. Library loading and
+        // symbol lookup report errors; they cannot verify ABI compatibility.
+        let session = unsafe {
+            // SYS/VB/MMZ descriptors are cached in SDK globals without an unload
+            // destructor. Keep that image resident so retries reuse the cache;
+            // Session still releases VO and its exclusive lock normally.
+            let library: libloading::Library = libloading::os::unix::Library::open(
+                Some(library_name),
+                libc::RTLD_LAZY | libc::RTLD_LOCAL | libc::RTLD_NODELETE,
+            )
+            .map_err(|e| Error::io("load NX5 SDK", io::Error::other(e)))?
+            .into();
+            let disable = *library
+                .get::<unsafe extern "C" fn() -> libc::c_int>(b"VO_Disable\0")
+                .map_err(|e| Error::io("find VO_Disable", io::Error::other(e)))?;
+            // Own the constructor's VO reference before another fallible step.
+            let session = Session {
+                disable,
+                library,
+                _lock: lock,
+            };
+            let enable = *session
+                .library
+                .get::<unsafe extern "C" fn() -> libc::c_int>(b"VO_Enable\0")
+                .map_err(|e| Error::io("find VO_Enable", io::Error::other(e)))?;
+            // A first dlopen may already enable VO. A resident or non-auto-
+            // enabling SDK needs exactly one explicit acquire instead.
+            if !vo_enabled(&read_state().map_err(|e| Error::io("read NX5 VO state", e))?)?
+                && enable() == 0
+            {
+                return Err(Error::io(
+                    "enable NX5 display",
+                    io::Error::other("VO_Enable returned 0"),
+                ));
+            }
+            session
+        };
+        Ok(session)
+    }
 }
 
 impl Drop for Session {
@@ -60,54 +128,10 @@ pub(crate) fn open() -> Result<PresentationContract, Error> {
         .truncate(false)
         .open("/run/slint-bridge-nx5.lock")
         .map_err(|e| Error::io("open NX5 owner lock", e))?;
-    // SAFETY: lock is owned until the display session is dropped.
-    if unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } < 0 {
-        return Err(Error::io(
-            "lock NX5 display session",
-            io::Error::last_os_error(),
-        ));
-    }
-    // This firmware's library constructor resets SYS and enables VO. Do not
-    // load it while another application owns an already enabled display.
-    let state =
-        fs::read_to_string("/proc/umap/vo").map_err(|e| Error::io("read NX5 VO ownership", e))?;
-    let devices = state
-        .split_once("-----DEV CONFIG")
-        .and_then(|(_, rest)| rest.split_once("-----VIDEO LAYER STATUS"))
-        .ok_or_else(|| rejected("unrecognized NX5 VO status"))?
-        .0;
-    if devices.lines().any(|line| {
-        let mut columns = line.split_whitespace();
-        columns.next().is_some_and(|id| id.parse::<u32>().is_ok()) && columns.next() == Some("Y")
-    }) {
-        return Err(rejected(
-            "NX5 VO is already enabled; release its current owner before init",
-        ));
-    }
-    // SAFETY: NX5 integration requires the SDK ABI from codec/vd/VoApi.h.
-    // VO_Enable/Disable return 1 for success, 0 for failure. Library loading and
-    // symbol lookup report errors; they cannot verify ABI compatibility.
-    let session = unsafe {
-        let library = libloading::Library::new(LIBRARY)
-            .map_err(|e| Error::io("load NX5 SDK", io::Error::other(e)))?;
-        let enable = *library
-            .get::<unsafe extern "C" fn() -> libc::c_int>(b"VO_Enable\0")
-            .map_err(|e| Error::io("find VO_Enable", io::Error::other(e)))?;
-        let disable = *library
-            .get::<unsafe extern "C" fn() -> libc::c_int>(b"VO_Disable\0")
-            .map_err(|e| Error::io("find VO_Disable", io::Error::other(e)))?;
-        if enable() == 0 {
-            return Err(Error::io(
-                "enable NX5 display",
-                io::Error::other("VO_Enable returned 0"),
-            ));
-        }
-        Session {
-            disable,
-            _library: library,
-            _lock: lock,
-        }
-    };
+    crate::backends::lock_exclusive(lock.as_fd(), "lock NX5 display session")?;
+    let session = Session::load(lock, OsStr::new(LIBRARY), || {
+        fs::read_to_string("/proc/umap/vo")
+    })?;
     let trace = std::env::var_os("SLINT_BRIDGE_TRACE").is_some();
     let mut count = 0u64;
     let mut batch = Instant::now();
@@ -269,3 +293,6 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod session_tests;

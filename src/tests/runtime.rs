@@ -444,3 +444,100 @@ fn event_loop_accepts_deferred_window_creation() {
         &[0, 255, 0, 255]
     );
 }
+
+#[test]
+fn rerun_redraws_current_state_before_presenting() {
+    const NAME: &str = "tests::runtime::rerun_redraws_current_state_before_presenting";
+    if std::env::var("SLINT_BRIDGE_TEST_CHILD").as_deref() != Ok(NAME) {
+        for outcome in ["quit", "layout-error"] {
+            let run = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", NAME, "--nocapture"])
+                .env("SLINT_BRIDGE_TEST_CHILD", NAME)
+                .env("SLINT_BRIDGE_TEST_EXIT", outcome)
+                .output()
+                .unwrap();
+            assert!(
+                run.status.success(),
+                "{outcome}: {}{}",
+                String::from_utf8_lossy(&run.stdout),
+                String::from_utf8_lossy(&run.stderr)
+            );
+        }
+        return;
+    }
+    let layout_error = std::env::var("SLINT_BRIDGE_TEST_EXIT").as_deref() == Ok("layout-error");
+    let (entered, started) = mpsc::sync_channel(1);
+    let (release, gate) = mpsc::sync_channel(1);
+    let mut first = true;
+    let target = surface_with_completion(8, 6, 32, 0, move |_| {
+        if first {
+            first = false;
+            entered.send(()).unwrap();
+            gate.recv_timeout(Duration::from_secs(3)).unwrap();
+        }
+        Ok(())
+    });
+    let commits = target.commits.clone();
+    let platform = crate::runtime::BridgePlatform::with_inputs(
+        Config {
+            frame_interval: Duration::from_millis(1),
+            ..Config::default()
+        },
+        target.fb,
+        Vec::new(),
+        Vec::new(),
+    )
+    .unwrap();
+    let wake = platform.wake.clone();
+    slint::platform::set_platform(Box::new(platform)).unwrap();
+    let ui = LoopScene::new().unwrap();
+    let weak = ui.as_weak();
+    let control = thread::spawn(move || {
+        started.recv_timeout(Duration::from_secs(3)).unwrap();
+        Proxy(wake)
+            .invoke_from_event_loop(Box::new(move || {
+                weak.upgrade()
+                    .unwrap()
+                    .set_paint(slint::Color::from_rgb_u8(0, 255, 0));
+                slint::Timer::single_shot(Duration::from_millis(30), move || {
+                    if layout_error {
+                        weak.upgrade().unwrap().set_required_width(200.0);
+                    } else {
+                        slint::quit_event_loop().unwrap();
+                    }
+                    release.send(()).unwrap();
+                });
+            }))
+            .unwrap();
+    });
+    let result = ui.run();
+    if layout_error {
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("window layout constraints")
+        );
+        ui.set_required_width(0.0);
+    } else {
+        result.unwrap();
+    }
+    control.join().unwrap();
+    assert_eq!(commits.lock().unwrap().len(), 1);
+    ui.set_paint(slint::Color::from_rgb_u8(0, 0, 255));
+    slint::Timer::single_shot(Duration::from_millis(30), || {
+        slint::quit_event_loop().unwrap()
+    });
+    ui.run().unwrap();
+    let frames = commits.lock().unwrap();
+    eprintln!(
+        "presented BGRA colors: {:?}",
+        frames.iter().map(|f| &f[..4]).collect::<Vec<_>>()
+    );
+    assert!(frames.len() >= 2);
+    assert_eq!(
+        &frames[1][..4],
+        &[255, 0, 0, 255],
+        "first frame after rerun must use current blue state, not the old green preparation"
+    );
+}

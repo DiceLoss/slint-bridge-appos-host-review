@@ -152,6 +152,9 @@ impl Buffer {
     pub fn pixels(&self) -> &[PremultipliedRgbaColor] {
         &self.pixels
     }
+    pub(crate) fn has_unknown_dma(&self) -> bool {
+        self.fatal.is_some()
+    }
     pub fn render(&mut self, renderer: &SoftwareRenderer) -> Result<PhysicalRegion, Error> {
         if let Some(error) = self.fatal {
             return Err(Error::AccelerationFailed(format!(

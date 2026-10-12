@@ -34,3 +34,8 @@ path = "src/bin/basic.rs"
 name = "startup-regression"
 path = "src/bin/startup-regression.rs"
 required-features = ["nx5-tde"]
+
+[[bin]]
+name = "init-retry"
+path = "src/bin/init-retry.rs"
+required-features = ["nx5"]
