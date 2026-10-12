@@ -91,10 +91,21 @@ class Adb:
 def inspect(adb):
     work = '/tmp/nx5-deploy-' + uuid.uuid4().hex
     adb.shell('mkdir', work)
+    adb.run('push', str(HERE / 'deploy-control.sh'), work + '/control.sh')
     adb.run('push', str(HERE / 'deploy-device.sh'), work + '/device.sh')
     print('Run in the verified NX5 root terminal:')
     print(shlex.join(['sh', work + '/device.sh', 'inventory', work]))
     print('Then use prepare --work ' + work)
+
+
+def control(adb, work, mode, *args):
+    if not re.fullmatch(r'/tmp/nx5-deploy-[0-9a-f]{32}', work):
+        raise ValueError('use a work directory returned by inspect')
+    if mode in ('control-manifest', 'purge'):
+        # This small helper fits legacy adbd's command limit and works even if
+        # inspect's transfer or a previous purge left the remote scripts incomplete.
+        return adb.shell('sh', '-c', (HERE / 'deploy-control.sh').read_text(), 'sh', mode, work)
+    return adb.shell('sh', work + '/device.sh', mode, work, *args)
 
 
 def prepare(adb, work, policy_path, archive):
@@ -105,13 +116,8 @@ def prepare(adb, work, policy_path, archive):
     if binaries[0] == binaries[1]:
         raise ValueError('current and recovery must be distinct files')
     keep = binaries + [device_path(p) for p in policy['keep']]
-    # Resolve retained symlinks/directories too, including dependencies loaded later.
-    for path in list(keep):
+    for path in keep:
         adb.shell('test', '-e', path)
-        resolved = adb.shell('readlink', '-f', path)
-        if not resolved:
-            raise ValueError(f'retained path cannot be resolved: {path}')
-        keep.append(device_path(resolved))
     boot = adb.read(work + '/boot-id')
     if boot != adb.read('/proc/sys/kernel/random/boot_id'):
         raise RuntimeError('inventory belongs to another boot')
@@ -119,28 +125,41 @@ def prepare(adb, work, policy_path, archive):
     if any(binary not in files for binary in binaries):
         raise ValueError('current/recovery binaries must exist as regular inventoried files')
     active = [line for line in adb.read(work + '/protected.paths').splitlines() if line.startswith('/')]
-    candidates = {path: sha for path, sha in files.items() if not retained(path, keep + active)}
     archive = Path(archive).resolve()
     archive.mkdir(parents=True, exist_ok=False)
+    control(adb, work, 'begin')  # One attempt per inventory, including interrupted attempts.
     (archive / 'policy.json').write_text(json.dumps(policy, indent=2) + '\n')
     (archive / 'inventory.json').write_text(json.dumps(files, indent=2) + '\n')
+    (archive / 'retain.paths').write_text('\n'.join(keep) + '\n')
+    adb.run('push', str(archive / 'retain.paths'), work + '/retain.paths')
+    keep = sorted(set(keep + [device_path(p) for p in control(adb, work, 'protect').splitlines()]))
+    candidates = {path: sha for path, sha in files.items() if not retained(path, keep + active)}
     for remote, sha in candidates.items():
         local = archive / 'files' / remote.lstrip('/')
         local.parent.mkdir(parents=True, exist_ok=True)
+        adb.shell('sh', '-c', '[ -f "$1" ] && [ ! -L "$1" ] && [ "$(readlink -f "$1")" = "$1" ]',
+                  'sh', remote)
         adb.run('pull', remote, str(local))  # Only regular files, never device aliases.
         if digest(local) != sha:
             raise RuntimeError(f'archive checksum mismatch: {remote}; no cleanup plan issued')
     plan = dict(serial=adb.serial, work=work, boot=boot, keep=sorted(set(keep)),
                 files=candidates, binaries={p: files[p] for p in binaries})
-    (archive / 'plan.json').write_text(json.dumps(plan, indent=2) + '\n')
     for name, contents in {
         'delete.sha256': ''.join(f'{sha}  {path}\n' for path, sha in candidates.items()),
         'retained.sha256': ''.join(f'{files[path]}  {path}\n' for path in binaries),
-        'retain.paths': '\n'.join(plan['keep']) + '\n',
     }.items():
         local = archive / name
         local.write_text(contents)
         adb.run('push', str(local), work + '/' + name)
+    # Publish readiness last; incomplete transfers never authorize root cleanup.
+    (archive / 'boot-id').write_text(boot + '\n')
+    ready = archive / 'plan.ready'
+    ready.write_text(''.join(f'{digest(archive / name)}  {work}/{name}\n' for name in
+                            ('boot-id', 'retain.paths', 'retained.sha256', 'delete.sha256')))
+    plan['seal'] = digest(ready)
+    (archive / 'plan.json').write_text(json.dumps(plan, indent=2) + '\n')
+    adb.run('push', str(ready), work + '/plan.ready.pending')
+    control(adb, work, 'seal', plan['seal'])
     print(f'Archived and verified {len(candidates)} files in {archive}')
     print('Run in the same verified root terminal:')
     print(shlex.join(['sh', work + '/device.sh', 'cleanup', work]))
@@ -153,32 +172,42 @@ def load_plan(adb, path):
         raise ValueError('plan serial/work directory mismatch')
     if plan['boot'] != adb.read('/proc/sys/kernel/random/boot_id'):
         raise RuntimeError('device rebooted; discard this plan')
-    if adb.read(plan['work'] + '/cleaned') != plan['boot']:
-        raise RuntimeError('root cleanup has not completed')
+    if adb.read(plan['work'] + '/cleaned') != plan.get('seal'):
+        raise RuntimeError('root cleanup has not completed for this exact plan')
     return plan
+
+
+def archive_control(adb, work, archive):
+    manifest = control(adb, work, 'control-manifest')
+    files = []
+    for line in manifest.splitlines():
+        match = re.fullmatch(r'([0-9a-f]{64})  ' + re.escape(work) + r'/([a-zA-Z0-9_.-]+)', line)
+        if not match or match[2] in ('.', '..'):
+            raise ValueError('invalid control archive manifest')
+        files.append(match.groups())
+    archive = Path(archive)
+    archive.mkdir(parents=True, exist_ok=False)
+    for sha, name in files:
+        local = archive / name
+        adb.run('pull', work + '/' + name, str(local))
+        if digest(local) != sha:
+            raise RuntimeError(f'control archive checksum mismatch: {name}; device files retained')
+    receipt = archive / 'purge.sha256'
+    receipt.write_text(manifest + '\n')
+    adb.run('push', str(receipt), work + '/purge.sha256')
+    control(adb, work, 'purge')
 
 
 def finish(adb, plan_path):
     plan = load_plan(adb, plan_path)
     archive = Path(plan_path).resolve().parent
-    for name in ('before.meminfo', 'after.meminfo', 'protected.paths', 'protected-now.paths', 'cleaned'):
-        (archive / name).write_text(adb.read(plan['work'] + '/' + name) + '\n')
-    # inspect creates this flat directory as the ADB user; root-created files
-    # can be unlinked by its owner without changing any device permissions.
-    adb.shell('rm', '-rf', plan['work'])
+    archive_control(adb, plan['work'], archive / ('control-' + uuid.uuid4().hex))
     print('Deployment transaction archived; device-side control files removed.')
 
 
 def discard(adb, work, archive):
     """Archive an interrupted transaction's small control directory, without applying it."""
-    if not re.fullmatch(r'/tmp/nx5-deploy-[0-9a-f]{32}', work):
-        raise ValueError('invalid deployment work directory')
-    adb.shell('test', '!', '-d', '/tmp/nx5-deploy-cleanup.lock')
-    archive = Path(archive)
-    if archive.exists():
-        raise ValueError('discard archive must be a new directory')
-    adb.run('pull', work, str(archive))
-    adb.shell('rm', '-rf', work)
+    archive_control(adb, work, archive)
     print(f'Interrupted control files archived in {archive}; no deployment files deleted.')
 
 
@@ -206,11 +235,18 @@ def upload(adb, plan_path, source, destination):
             raise RuntimeError('uploaded binary checksum mismatch')
         adb.shell('chmod', '755', temporary)
         adb.memory()
-        adb.shell('ln', temporary, destination)  # Atomic no-clobber publication on the same tmpfs.
+        load_plan(adb, plan_path)
+        # Keep the final boot/receipt check in the same command as publication.
+        adb.shell('sh', '-c',
+                  '[ "$(cat /proc/sys/kernel/random/boot_id)" = "$1" ] && '
+                  '[ "$(cat "$2/cleaned")" = "$3" ] && ln -- "$4" "$5"',
+                  'sh', plan['boot'], plan['work'], plan['seal'], temporary, destination)
         if adb.shell('sha256sum', destination).split()[0] != sha:
             raise RuntimeError('destination changed during upload')
     finally:
-        adb.shell('rm', '-f', temporary)
+        adb.shell('sh', '-c',
+                  '[ "$(cat /proc/sys/kernel/random/boot_id)" != "$1" ] || rm -f -- "$2"',
+                  'sh', plan['boot'], temporary)
     (Path(plan_path).resolve().parent / 'uploaded.json').write_text(
         json.dumps(dict(destination=destination, sha256=sha), indent=2) + '\n')
     finish(adb, plan_path)
