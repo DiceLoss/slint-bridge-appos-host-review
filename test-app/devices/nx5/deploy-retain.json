@@ -1,11 +1,11 @@
 {
-  "current_binary": "/tmp/slint-bridge-touch-2de9168/display",
-  "recovery_binary": "/tmp/slint-bridge-review-fixes/display",
+  "current_binary": "/tmp/slint-bridge-alpha-f963558/display",
+  "recovery_binary": "/tmp/slint-bridge-touch-2de9168/display",
   "keep": [
+    "/tmp/slint-bridge-alpha-f963558/start-live.sh",
+    "/tmp/slint-bridge-alpha-f963558/live.log",
     "/tmp/slint-bridge-touch-2de9168/start-live.sh",
     "/tmp/slint-bridge-touch-2de9168/live.log",
-    "/tmp/slint-bridge-review-fixes/start-live.sh",
-    "/tmp/slint-bridge-review-fixes/fixed-results/live-restored.log",
     "/tmp/slint-bridge-c03c3bb/start-live.sh",
     "/tmp/slint-bridge-c03c3bb/lib",
     "/tmp/slint-bridge-c03c3bb/dev",
