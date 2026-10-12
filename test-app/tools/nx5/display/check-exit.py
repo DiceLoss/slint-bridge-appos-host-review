@@ -29,9 +29,10 @@ def check(base):
     final = read(".mmz")
     names = re.findall(r'name="(bridge_tde_[^"]+)"', live)
     assert sorted(names) == ["bridge_tde_sourc", "bridge_tde_sourc", "bridge_tde_targe"], names
+    summaries = [re.search(r"used=(\d+)KB.*block_number=(\d+)", state).groups() for state in [initial, final]]
+    assert summaries[0] == summaries[1], "MMZ did not return to its initial baseline"
     for state in [initial, final]:
         assert "bridge_tde_" not in state and 'name="vou-wbc"' not in state, state
-        assert "used=4900KB" in state and "block_number=2" in state, state
     assert not leaks, "kernel forced MMZ reclamation:\n" + "\n".join(leaks)
     assert "slint-bridge: TDE enabled;" in log
     assert not re.search(r"errors=[1-9]|VO_Disable failed|hide after event-loop failure", log), log
@@ -45,7 +46,7 @@ def check(base):
         assert 'name="vou-wbc"' in read(".before.mmz")
         assert re.search(r"^frame=\d+ ", log[injected:observed], re.M), "no WBC frames after EIO"
     return {"pid": pid, "exit_code": code, "active_tde_blocks": len(names),
-            "forced_reclaims": leaks, "final_mmz_kib": 4900, "passed": True}
+            "forced_reclaims": leaks, "final_mmz_kib": int(summaries[1][0]), "passed": True}
 
 
 if __name__ == "__main__":

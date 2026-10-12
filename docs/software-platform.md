@@ -10,7 +10,7 @@
 
 | `Config` 字段 | 默认值 | 当前约束 |
 | --- | --- | --- |
-| `framebuffer` | `/dev/fb0` | NX5 后端只接受此路径 |
+| `framebuffer` | `/dev/fb0` | 可配置任意 framebuffer 设备路径或设备链接 |
 | `inputs` | 空列表 | 至多一个 `Touchscreen` 和一个 `Keys` |
 | `rotation` | `Rotation::None` | 固定为不旋转或顺时针 90、180、270 度；90/270 度交换逻辑宽高 |
 | `frame_interval` | 16667 微秒 | 非零且可加到单调时钟；约束两次渲染启动的最小间隔 |
@@ -73,13 +73,13 @@ CPU fence 不等于 DMA 缓存一致性。设备专有实现仍须负责缓存�
 
 ## 准入边界
 
-[src/backends/mod.rs](../src/backends/mod.rs) 将 NX5 分派给 [src/backends/nx5/mod.rs](../src/backends/nx5/mod.rs)。检查 ARM32 和 `/dev/fb0`，再获取进程锁、检查 VO 未被占用并加载厂商库。不读取内核版本、构建时间或 framebuffer 驱动名称，也不计算 SDK、fyfb、vou 文件的 SHA256；兼容重编译不再因这些元数据变化被拒绝。库加载本身具有 SYS/VO 初始化副作用，不能与其他 SDK 进程并用。[current-target.json](../test-app/devices/nx5/current-target.json) 仅保存带时间戳的环境观测，不控制代码准入，也不实时更新设备状态。
+[src/backends/mod.rs](../src/backends/mod.rs) 将 NX5 分派给 [src/backends/nx5/mod.rs](../src/backends/nx5/mod.rs)。检查 ARM32，再获取进程锁、检查 VO 未被占用并加载厂商库。不读取内核版本、构建时间或 framebuffer 驱动名称，也不计算 SDK、fyfb、vou 文件的 SHA256；兼容重编译不再因这些元数据变化被拒绝。库加载本身具有 SYS/VO 初始化副作用，不能与其他 SDK 进程并用。[current-target.json](../test-app/devices/nx5/current-target.json) 仅保存带时间戳的环境观测，不控制代码准入，也不实时更新设备状态。
 
 SDK 按无版本库名 `libVideoDec.so` 交给系统动态加载器查找，可在启动进程时用 `LD_LIBRARY_PATH=/任意/SDK目录` 指定位置；代码不再要求 `/system/app/clib`。若 SDK 文件自带版本后缀，在该目录提供 `libVideoDec.so` 链接即可，后端不限制实际文件的版本名称。VO 检查必需符号与调用结果，TDE 以同一库名及 `RTLD_NOLOAD` 复用会话，不会另行初始化 SDK。调用者仍需提供兼容 `codec/vd/VoApi.h`、TDE 头文件和阻塞 PAN 完成语义的 SDK/驱动；符号存在和布局通过并不能自动证明 ABI 或完成语义兼容。
 
 完成提交的回调及内存显示替身均为 crate 私有，应用不能注入回调、构造“已验证”标记或选择公开的无检查显示路径。内存替身用于测试像素、页生命周期和完整事件循环，不能证明物理屏幕行为。
 
-当前 NX5 要求 1024×600 ARGB8888、stride 4096、虚拟高度 1200 和完整两页容量。提交线程调用阻塞 `FBIOPAN_DISPLAY`，成功并读回目标页后才复用旧页；不提供单缓冲或忽略错误的回退。页号读回用于错误检测，不作为硬件退休证明。其他设备仍须提供与驱动匹配的实现和验证。TDE 绘制范围由 [tde/mod.rs](../src/backends/nx5/tde/mod.rs) 与 [native.c](../src/backends/nx5/tde/native.c) 实现，说明及历史像素比较见 [TDE 报告](nx5-tde.md)。
+NX5 打开 `Config::framebuffer` 指定的设备，通过 `FBIOGET_FSCREENINFO` / `FBIOGET_VSCREENINFO` 获取实际分辨率、stride、像素位域、虚拟尺寸和显存容量，使用前述通用布局校验，不限定 1024×600 或固定 stride。尺寸由设备当前模式决定，要求至少两页完整容量；两页偏移为 `0` 与实际 `yres`。初始化布局传给提交线程；每次 PAN 前核对尺寸、stride 和像素格式，读回后再次核对尺寸/格式与目标页，布局变化或无效偏移会终止提交。提交线程调用阻塞 `FBIOPAN_DISPLAY`，成功并读回目标页后才复用旧页；不提供单缓冲或忽略错误的回退。页号读回用于错误检测，不作为硬件退休证明。其他设备仍须提供与驱动匹配的实现和验证。TDE 不再以 1024×600 限制画布大小，仍检查尺寸溢出、SDK 对齐及作业完成状态；SDK 不支持或无法分配时使用既有软件回退。TDE 绘制范围由 [tde/mod.rs](../src/backends/nx5/tde/mod.rs) 与 [native.c](../src/backends/nx5/tde/native.c) 实现，说明及历史像素比较见 [TDE 报告](nx5-tde.md)。
 
 ## 构建依赖
 
@@ -95,7 +95,8 @@ Cargo.lock 不固定外部 path 依赖的 Git 提交，构建环境需同时保�
 
 主机测试覆盖以下实际行为：
 
-- 准入拒绝发生在设备访问之前；错误帧间隔、布局及 ABI 尺寸检查。
+- 不受支持的后端在设备访问前拒绝；错误帧间隔、布局及 ABI 尺寸检查。
+- framebuffer 与触摸设备使用配置路径，布局支持不同分辨率与行尾 padding，触摸轴映射到实际面板尺寸；翻页拒绝错误偏移及运行中的布局变化。
 - 真实 Slint 场景输出 RGB565、32 位像素，四种旋转与触摸变换一致，行尾 padding 保持不变。
 - 从前台页 0 或 1 启动的交替页脏区修复，准备新帧不修改活动页，空帧不提交，失败后不再写页。
 - 字体像素渲染、触摸同步、丢事件重同步、按键重复与释放、设备掉线。
@@ -111,11 +112,13 @@ Cargo.lock 不固定外部 path 依赖的 Git 提交，构建环境需同时保�
 
 2026-10-12 核对当前源码的测试分布如下；计数随测试增减，以执行结果为准：
 
-| Feature | 库内主机测试 | 独立工程公共接口测试 | WBC 生命周期测试 | 默认忽略的实机测试 |
+| Feature | 库内主机测试 | 独立工程公共接口测试 | WBC 加载/生命周期测试 | 默认忽略的实机测试 |
 | --- | ---: | ---: | ---: | ---: |
-| `fbdev` | 30 | 2 | 0 | 0 |
-| `nx5` | 30 | 2 | 3 | 1 |
-| `nx5-tde` | 33 | 2 | 3 | 3 |
+| `fbdev` | 33 | 2 | 0 | 0 |
+| `nx5` | 35 | 2 | 4 | 1 |
+| `nx5-tde` | 38 | 2 | 4 | 3 |
+
+`nx5-tde` 还运行启动诊断程序中的一项 Linux framebuffer UAPI 布局测试。
 
 ```sh
 # 从仓库根执行；不访问真实显示设备。
@@ -127,7 +130,7 @@ cargo doc --locked --offline --workspace --features nx5-tde --no-deps
 
 公共接口测试在 [test-app/tests/public_api.rs](../test-app/tests/public_api.rs)；私有回归在 [src/tests/](../src/tests/)、显示/等待模块内及 [TDE 测试](../src/backends/nx5/tde/tests.rs)。三个实机测试分别测量阻塞翻页、TDE 像素/回退和实际演示的双页像素；需单独部署并独占设备，不能把主机的 ignored 计为通过。执行命令见 [TDE 报告的构建与接入](nx5-tde.md#构建与接入)。
 
-[Framebuffer 析构回归](../src/tests/framebuffer_lifecycle.rs) 使用内存文件、受控提交回调及 TDE 资源替身，不访问真实硬件。[WBC 生命周期回归](../test-app/src/nx5_observer.rs) 使用真实 Slint 应用/定时器、返回错误的平台及受控观察线程，验证错误退出等待和 panic 处理；它不替代设备 WBC 采样。
+[Framebuffer 析构回归](../src/tests/framebuffer_lifecycle.rs) 使用内存文件、受控提交回调及 TDE 资源替身，不访问真实硬件。[WBC 生命周期回归](../test-app/src/nx5_observer.rs) 使用真实 Slint 应用/定时器、返回错误的平台及受控观察线程，验证错误退出等待和 panic 处理，并通过子进程与替身动态库确认 `LD_LIBRARY_PATH` 加载及配置路径传递；它不替代设备 WBC 采样。
 
 此前 ARM 构建记录为 EABI5 soft-float、最高 GLIBC 符号版本 2.18、未直接链接 Fontconfig 或厂商库；这是对应二进制的检查结果，换工具链或依赖后需重新核对。历史原始记录存放在被 Git 忽略的 `evidence/`，检出仓库后需另行获取。
 

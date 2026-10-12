@@ -8,9 +8,11 @@
 #define _POSIX_C_SOURCE 200809L
 #include <fcntl.h>
 #include <inttypes.h>
+#include <linux/fb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+#include <sys/ioctl.h>
 #include <time.h>
 #include <unistd.h>
 #include "mpi_vo.h"
@@ -24,9 +26,17 @@ static int check(const char *name, int rc) {
     return rc;
 }
 int main(int argc, char **argv) {
-    if (argc != 2) { fprintf(stderr, "usage: %s frames (1..1800)\n", argv[0]); return 2; }
+    if (argc != 3) { fprintf(stderr, "usage: %s frames (1..1800) framebuffer\n", argv[0]); return 2; }
     char *end; unsigned long limit = strtoul(argv[1], &end, 10);
     if (*end || !limit || limit > 1800) return 2;
+    int fb = open(argv[2], O_RDONLY | O_CLOEXEC);
+    if (fb < 0) { perror("open framebuffer for WBC"); return 2; }
+    struct fb_var_screeninfo mode = {0};
+    int queried = ioctl(fb, FBIOGET_VSCREENINFO, &mode);
+    close(fb);
+    if (queried < 0 || !mode.xres || !mode.yres) {
+        fprintf(stderr, "WBC requires a valid framebuffer resolution\n"); return 2;
+    }
     int mem = open("/dev/mem", O_RDONLY | O_SYNC);
     if (mem < 0) { perror("/dev/mem"); return 2; }
     const volatile unsigned *regs = mmap(NULL, 4096, PROT_READ, MAP_SHARED, mem, 0x34101000u);
@@ -35,7 +45,7 @@ int main(int argc, char **argv) {
     munmap((void *)regs, 4096);
     if (enabled) { fprintf(stderr, "WBC is already enabled\n"); close(mem); return 2; }
     VO_WBC_SOURCE_S source = {VO_WBC_SOURCE_DEV, 0};
-    VO_WBC_ATTR_S attr = {{1024, 600}, PIXEL_FORMAT_YUV_SEMIPLANAR_420, 60};
+    VO_WBC_ATTR_S attr = {{mode.xres, mode.yres}, PIXEL_FORMAT_YUV_SEMIPLANAR_420, 60};
     int result = 2;
     unsigned black = 0, white = 0, mixed = 0, received = 0;
     uint64_t start = now_ns(), first_pts = 0, last_pts = 0;
@@ -48,8 +58,9 @@ int main(int argc, char **argv) {
         if (check("get", FY_MPI_VO_GetWbcFrame(0, &frame, 500))) goto disable;
         unsigned width = frame.stVFrame.u32Width, height = frame.stVFrame.u32Height;
         unsigned stride = frame.stVFrame.u32Stride[0], address = frame.stVFrame.u32PhyAddr[0];
-        int valid = width == 1024 && height == 600 && stride >= width && stride <= 8192 && address &&
-            frame.stVFrame.enPixelFormat == PIXEL_FORMAT_YUV_SEMIPLANAR_420;
+        int valid = width == mode.xres && height == mode.yres && stride >= width && address &&
+            frame.stVFrame.enPixelFormat == PIXEL_FORMAT_YUV_SEMIPLANAR_420 &&
+            height <= (SIZE_MAX - (address & 4095u)) / stride;
         unsigned low = 255, high = 0;
         if (valid) {
             unsigned offset = address & 4095u;
@@ -60,7 +71,8 @@ int main(int argc, char **argv) {
                 /* Sample every row at five columns. Full bytewise reads from
                  * uncached /dev/mem reduce this firmware to ~7 captures/s.
                  * This is deliberately a bounded sample, not all pixels. */
-                const unsigned columns[] = {0, 256, 512, 768, 1023};
+                const unsigned columns[] = {0, (width - 1) / 4, (width - 1) / 2,
+                    (unsigned)((uint64_t)(width - 1) * 3 / 4), width - 1};
                 for (unsigned y = 0; y < height; ++y) {
                     const unsigned char *row = map + offset + (size_t)y * stride;
                     for (unsigned x = 0; x < 5; ++x) {

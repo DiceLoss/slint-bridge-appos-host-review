@@ -274,7 +274,7 @@ fn clipping_preserves_source_origin_and_empty_intersections() {
 #[test]
 #[ignore = "requires exclusive current NX5; run with --ignored --nocapture"]
 fn nx5_hardware_compare() {
-    let _display = crate::backends::nx5::open(std::path::Path::new("/dev/fb0")).unwrap();
+    let _display = crate::backends::nx5::open().unwrap();
     let (window, scene) = setup();
     let mut hardware = Buffer::new(512, 384).unwrap();
     assert!(hardware.engine.is_some(), "TDE must actually be active");
@@ -509,7 +509,7 @@ fn setup_demo() -> (Rc<MinimalSoftwareWindow>, actual_demo::App) {
 }
 fn demo_frame(app: &actual_demo::App, frame: i32) {
     app.set_frame(frame);
-    app.set_bar_x(((frame * 12) % 924) as f32);
+    app.set_bar_x((frame * 12) as f32 % app.get_bar_range().max(1.0));
 }
 
 // Uses the actual demo UI and the production double-page writer, comparing every
@@ -522,7 +522,7 @@ fn nx5_demo_pages_match_full_frames() {
         fs::File,
         os::{fd::FromRawFd, unix::fs::FileExt},
     };
-    let display = crate::backends::nx5::open(std::path::Path::new("/dev/fb0")).unwrap();
+    let display = crate::backends::nx5::open().unwrap();
     let (send, receive) = std::sync::mpsc::sync_channel(1);
     let reference = std::thread::spawn(move || {
         let (window, app) = setup_demo();
@@ -575,8 +575,8 @@ fn nx5_demo_pages_match_full_frames() {
     let mut count = 0;
     let mut last = 0;
     let contract = crate::backends::PresentationContract {
-        validate_layout: |_, _| Ok(()),
-        complete: Box::new(move |_, offset| {
+        validate_layout: crate::framebuffer::Layout::new,
+        complete: Box::new(move |_, offset, _| {
             assert_ne!(offset, last);
             last = offset;
             let expected = receive.recv().unwrap();

@@ -31,10 +31,14 @@ static void test_sdk_loading(void) {
     assert(constructors && *constructors == 1);
     /* The stub's Open result proves the production loader reused that SDK. */
     assert(!bridge_tde_create(4, 4, &error) && error == -177);
+    assert(!bridge_tde_create(1280, 720, &error) && error == -177);
+    assert(!bridge_tde_create(480, 800, &error) && error == -177);
+    assert(!bridge_tde_create(UINT32_MAX - 3u, 2, &error) && error == -1);
+    assert(!bridge_tde_create(800, 481, &error) && error == -1);
     assert(*constructors == 1);
     assert(!dlclose(owner));
     assert(!dlopen("libVideoDec.so", RTLD_NOW | RTLD_NOLOAD));
-    puts("PASS SDK search path, unversioned alias, NOLOAD and reference cleanup");
+    puts("PASS SDK search path, unversioned alias, dynamic dimensions, NOLOAD and reference cleanup");
 }
 int main(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "--sdk-loading")) {

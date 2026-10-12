@@ -362,3 +362,30 @@ fn software_path_renders_font_pixels() {
         "expected actual glyph pixels against a black background, got {lit}"
     );
 }
+
+#[test]
+fn framebuffer_uses_the_configured_device_path() {
+    let path =
+        std::env::temp_dir().join(format!("slint-bridge-framebuffer {}", std::process::id()));
+    let file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+        .unwrap();
+    let result = Framebuffer::open(
+        &path,
+        PresentationContract {
+            validate_layout: Layout::new,
+            complete: Box::new(|_, _, _| unreachable!()),
+        },
+    );
+    drop(file);
+    std::fs::remove_file(path).unwrap();
+    assert!(matches!(
+        result,
+        Err(Error::Io {
+            operation: "read framebuffer layout",
+            ..
+        })
+    ));
+}

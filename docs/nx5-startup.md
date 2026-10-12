@@ -71,11 +71,11 @@ for mode in retry queued timer queued-retry; do
 done
 ```
 
-取回日志及 `*.state/` 快照后执行 [检查器](../test-app/tools/nx5/display/check-startup.py)：
+取回日志及 `*.state/` 快照后执行 [检查器](../test-app/tools/nx5/display/check-startup.py)。本报告的旧日志未写入宽高，重放时显式指定当时的 1024×600；新程序日志会记录实际设备尺寸：
 
 ```sh
-python3 test-app/tools/nx5/display/check-startup.py evidence/nx5-startup/2026-10-11-949ceb9/device/round1/show-error
-python3 test-app/tools/nx5/display/check-startup.py evidence/nx5-startup/2026-10-11-949ceb9/device/round1/retry
+python3 test-app/tools/nx5/display/check-startup.py evidence/nx5-startup/2026-10-11-949ceb9/device/round1/show-error --size 1024x600
+python3 test-app/tools/nx5/display/check-startup.py evidence/nx5-startup/2026-10-11-949ceb9/device/round1/retry --size 1024x600
 ```
 
 检查器要求运行中存在真实 TDE 分配，退出后 MMZ/VO/WBC 干净，内核记录覆盖整次运行，无该 PID 的泄漏回收，且窗口状态、创建顺序、任务执行及全部像素满足预期。八种破坏后的证据均被正确拒绝：泄漏、缺少 TDE、内核日志断档、错像素、旧画面、错误可见状态、丢失任务及错误退出码。

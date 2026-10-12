@@ -50,11 +50,11 @@ NX5_SDK_LIBRARY=/home/dpower/data/GitLab/LGUI3/c_library/third_party/lib/NX5/cod
 sh test-app/tools/nx5/display/build-observer.sh
 ```
 
-将输出 `target/nx5-display/libobserver.so` 部署到 **`/run/slint-bridge-display/libobserver.so`**；这个位置由 [nx5_observer.rs](../../src/nx5_observer.rs) 固定，和应用部署目录无关。通过设备 root 会话进行有限时长采样：
+将输出 `target/nx5-display/libobserver.so` 部署到任意动态库目录；[nx5_observer.rs](../../src/nx5_observer.rs) 按 `libobserver.so` 加载。下例约定部署到 `/run/slint-bridge-display/`，并将它与 SDK 目录一起加入 `LD_LIBRARY_PATH`。插件接收应用配置的 framebuffer 路径并查询实际尺寸，需与新程序一起重建部署。通过设备 root 会话进行有限时长采样：
 
 ```sh
 SLINT_DEFAULT_FONT=/run/slint-bridge-display/DejaVuSans.ttf \
-SLINT_BRIDGE_TRACE=1 LD_LIBRARY_PATH=/system/app/clib \
+SLINT_BRIDGE_TRACE=1 LD_LIBRARY_PATH=/run/slint-bridge-display:/system/app/clib \
 /run/slint-bridge-test/display --pattern --observe=300 --seconds=20 \
   > /run/slint-bridge-test/pattern.log 2>&1
 ```

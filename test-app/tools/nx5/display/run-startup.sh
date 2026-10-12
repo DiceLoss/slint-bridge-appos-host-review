@@ -20,9 +20,11 @@ sha256sum "$binary" > "$base.binary.sha256"
 cat /proc/uptime > "$base.start"
 run_app() {
     unset SLINT_MCP_PORT LD_PRELOAD NX5_REGRESSION_INPUT NX5_REGRESSION_TRIGGER
-    export LD_LIBRARY_PATH=/system/app/clib
+    # Preserve the caller's SDK search path.
     export SLINT_BRIDGE_TRACE=1
-    exec "$binary" "$mode" "$base.state"
+    set -- "$mode" "$base.state" "--framebuffer=${NX5_FRAMEBUFFER:-/dev/fb0}"
+    if [ -n "${NX5_TOUCH_DEVICE:-}" ]; then set -- "$@" "--touch=$NX5_TOUCH_DEVICE"; fi
+    exec "$binary" "$@"
 }
 run_app > "$base.log" 2>&1 &
 pid=$!

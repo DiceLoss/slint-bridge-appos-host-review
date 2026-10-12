@@ -105,8 +105,10 @@ fn surface_with_completion(
     let mut front = layout.initial_page;
     let mut previous = vec![0xa5; layout.page_bytes];
     let contract = PresentationContract {
-        validate_layout: |_, _| Ok(()),
-        complete: Box::new(move |_, yoffset| {
+        validate_layout: crate::framebuffer::Layout::new,
+        complete: Box::new(move |_, yoffset, reported_layout| {
+            assert_eq!(reported_layout.size, layout.size);
+            assert_eq!(reported_layout.stride, layout.stride);
             let next = (yoffset / height) as usize;
             assert_eq!(next, 1 - front, "must only prepare the inactive page");
             let mut bytes = vec![0; layout.page_bytes * 2];

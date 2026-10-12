@@ -73,7 +73,9 @@ void bridge_tde_destroy(Engine *e) {
 
 Engine *bridge_tde_create(uint32_t width, uint32_t height, int *error) {
     *error = -1;
-    if (!width || !height || width > 1024 || height > 600 || (width & 3u) || (height & 1u)) return NULL;
+    /* Reserve room for page-aligned cache ranges without 32-bit wraparound. */
+    if (!width || !height || (uint64_t)width * height > (UINT32_MAX - 4095u) / 4u ||
+        (width & 3u) || (height & 1u)) return NULL;
     if (!__sync_bool_compare_and_swap(&in_use, 0, 1)) { *error = -2; return NULL; }
     Engine *e = calloc(1, sizeof(*e));
     if (!e) { __sync_lock_release(&in_use); return NULL; }

@@ -19,20 +19,26 @@ impl Drop for Observer {
     }
 }
 
-pub fn start(samples: String) -> Observer {
+pub fn start(samples: String, framebuffer: std::path::PathBuf) -> Observer {
     Observer(Some(std::thread::spawn(move || {
         // Loading this SDK in a second process resets the global VO/SYS hardware.
         unsafe {
-            let library = libloading::Library::new("/run/slint-bridge-display/libobserver.so")
-                .expect("load observer");
+            let library = libloading::Library::new("libobserver.so").expect("load observer");
             let function = library
                 .get::<unsafe extern "C" fn(i32, *const *const libc::c_char) -> i32>(
                     b"bridge_wbc_observe\0",
                 )
                 .expect("observer function");
             let argument = std::ffi::CString::new(samples).unwrap();
-            let args = [c"observer".as_ptr(), argument.as_ptr()];
-            let result = function(2, args.as_ptr());
+            use std::os::unix::ffi::OsStrExt;
+            let framebuffer = std::ffi::CString::new(framebuffer.as_os_str().as_bytes())
+                .expect("framebuffer path");
+            let args = [
+                c"observer".as_ptr(),
+                argument.as_ptr(),
+                framebuffer.as_ptr(),
+            ];
+            let result = function(args.len() as i32, args.as_ptr());
             eprintln!("display: observation result={result}");
             result
         }
@@ -60,6 +66,59 @@ mod tests {
         thread,
         time::Duration,
     };
+
+    #[test]
+    fn observer_loads_from_the_process_library_search_path() {
+        const CHILD: &str = "SLINT_BRIDGE_OBSERVER_TEST_CHILD";
+        if std::env::var_os(CHILD).is_some() {
+            assert_eq!(
+                start("17".into(), "/custom path/framebuffer".into())
+                    .join()
+                    .unwrap(),
+                17
+            );
+            return;
+        }
+        let directory =
+            std::env::temp_dir().join(format!("slint-bridge-observer {}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let source = directory.join("observer.c");
+        std::fs::write(
+            &source,
+            r#"
+            #include <stdlib.h>
+            #include <string.h>
+            int bridge_wbc_observe(int argc, const char **argv) {
+                return argc == 3 && !strcmp(argv[2], "/custom path/framebuffer") ? atoi(argv[1]) : -1;
+            }
+        "#,
+        )
+        .unwrap();
+        let compiled = std::process::Command::new("cc")
+            .args(["-shared", "-fPIC"])
+            .arg(&source)
+            .arg("-o")
+            .arg(directory.join("libobserver.so"))
+            .status()
+            .unwrap();
+        assert!(compiled.success());
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "nx5_observer::tests::observer_loads_from_the_process_library_search_path",
+                "--nocapture",
+            ])
+            .env(CHILD, "1")
+            .env("LD_LIBRARY_PATH", &directory)
+            .output()
+            .unwrap();
+        std::fs::remove_dir_all(directory).unwrap();
+        assert!(
+            child.status.success(),
+            "{}",
+            String::from_utf8_lossy(&child.stderr)
+        );
+    }
 
     struct FailingPlatform(Rc<MinimalSoftwareWindow>);
     impl Platform for FailingPlatform {

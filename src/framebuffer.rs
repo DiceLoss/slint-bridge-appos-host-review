@@ -38,7 +38,7 @@ impl Pixel for i_slint_renderer_software::PremultipliedRgbaColor {
 // Linux UAPI linux/fb.h. c_ulong is intentional: these layouts differ on ARM32
 // and x86_64. No build-host-generated bindings are embedded in the ARM build.
 #[repr(C)]
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Bitfield {
     pub offset: u32,
     pub length: u32,
@@ -182,6 +182,14 @@ impl Layout {
             bytes_per_pixel,
             channels,
         })
+    }
+
+    #[cfg(feature = "nx5")]
+    pub(crate) fn same_mode(self, other: Self) -> bool {
+        self.size == other.size
+            && self.stride == other.stride
+            && self.bytes_per_pixel == other.bytes_per_pixel
+            && self.channels == other.channels
     }
 
     fn pixel(self, pixel: Rgb8Pixel) -> u32 {
@@ -415,8 +423,8 @@ impl Framebuffer {
                 io::Error::last_os_error(),
             ));
         }
-        (contract.validate_layout)(&fixed, &variable)?;
-        Self::from_file(file, Layout::new(&fixed, &variable)?, contract)
+        let layout = (contract.validate_layout)(&fixed, &variable)?;
+        Self::from_file(file, layout, contract)
     }
 
     pub(crate) fn from_file(
@@ -428,6 +436,7 @@ impl Framebuffer {
         let presentation = Presentation::new(
             file.try_clone()
                 .map_err(|e| Error::io("duplicate framebuffer for presentation", e))?,
+            layout,
             contract,
         )?;
         #[cfg(feature = "nx5-tde")]

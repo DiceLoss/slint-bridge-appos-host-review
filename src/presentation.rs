@@ -1,5 +1,5 @@
 //! One blocking board submission at a time, independent of pixel rendering.
-use crate::{Error, backends::PresentationContract, wake::WakeQueue};
+use crate::{Error, backends::PresentationContract, framebuffer::Layout, wake::WakeQueue};
 use std::{
     fs::File,
     io,
@@ -24,7 +24,11 @@ pub(crate) struct Presentation {
 }
 
 impl Presentation {
-    pub(crate) fn new(file: File, contract: PresentationContract) -> Result<Self, Error> {
+    pub(crate) fn new(
+        file: File,
+        layout: Layout,
+        contract: PresentationContract,
+    ) -> Result<Self, Error> {
         let wake = WakeQueue::new()?;
         let (requests, incoming) = mpsc::sync_channel(1);
         let (finished, completions) = mpsc::sync_channel(1);
@@ -54,7 +58,7 @@ impl Presentation {
                 };
                 while let Ok(offset) = incoming.recv() {
                     let result = match worker_contract.lock() {
-                        Ok(mut contract) => (contract.complete)(file.as_fd(), offset),
+                        Ok(mut contract) => (contract.complete)(file.as_fd(), offset, &layout),
                         Err(_) => Err(io::Error::other("presentation callback panicked")),
                     };
                     let failed = result.is_err();
@@ -168,15 +172,23 @@ mod tests {
         let (entered, started) = mpsc::sync_channel(1);
         let (release, gate) = mpsc::sync_channel(1);
         let contract = PresentationContract {
-            validate_layout: |_, _| Ok(()),
-            complete: Box::new(move |_, _| {
+            validate_layout: crate::framebuffer::Layout::new,
+            complete: Box::new(move |_, _, _| {
                 let _alive = &session;
                 entered.send(()).unwrap();
                 gate.recv_timeout(Duration::from_secs(3))
                     .map_err(io::Error::other)
             }),
         };
-        let mut presenter = Presentation::new(File::open("/dev/null").unwrap(), contract).unwrap();
+        let mut presenter = Presentation::new(
+            File::open("/dev/null").unwrap(),
+            {
+                let (fixed, variable) = crate::tests::info(8, 6, 32);
+                Layout::new(&fixed, &variable).unwrap()
+            },
+            contract,
+        )
+        .unwrap();
         presenter.submit(0).unwrap();
         started.recv_timeout(Duration::from_secs(3)).unwrap();
         let (joined, joined_rx) = mpsc::sync_channel(1);
@@ -204,13 +216,21 @@ mod tests {
         let dropped = Arc::new(AtomicBool::new(false));
         let session = Session(dropped.clone());
         let contract = PresentationContract {
-            validate_layout: |_, _| Ok(()),
-            complete: Box::new(move |_, _| {
+            validate_layout: crate::framebuffer::Layout::new,
+            complete: Box::new(move |_, _, _| {
                 let _alive = &session;
                 panic!("injected presentation callback panic");
             }),
         };
-        let mut presenter = Presentation::new(File::open("/dev/null").unwrap(), contract).unwrap();
+        let mut presenter = Presentation::new(
+            File::open("/dev/null").unwrap(),
+            {
+                let (fixed, variable) = crate::tests::info(8, 6, 32);
+                Layout::new(&fixed, &variable).unwrap()
+            },
+            contract,
+        )
+        .unwrap();
         presenter.submit(0).unwrap();
         let mut fd = libc::pollfd {
             fd: presenter.wake.fd(),

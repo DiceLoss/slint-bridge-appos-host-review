@@ -7,13 +7,12 @@ pub(crate) mod tde;
 use crate::{
     Backend, Error,
     backends::PresentationContract,
-    framebuffer::{FixedInfo, VariableInfo},
+    framebuffer::{FixedInfo, Layout, VariableInfo},
 };
 use std::{
     fs::{self, File, OpenOptions},
     io,
     os::fd::{AsRawFd, BorrowedFd},
-    path::Path,
     time::{Duration, Instant},
 };
 
@@ -31,28 +30,8 @@ fn rejected(reason: &'static str) -> Error {
     }
 }
 
-fn verify_target(path: &Path) -> Result<(), Error> {
-    if !cfg!(all(target_arch = "arm", target_pointer_width = "32")) || path != Path::new("/dev/fb0")
-    {
-        return Err(rejected("NX5 requires ARM32 and /dev/fb0"));
-    }
-    Ok(())
-}
-
-pub(crate) fn validate_layout(f: &FixedInfo, v: &VariableInfo) -> Result<(), Error> {
-    if v.xres != 1024
-        || v.yres != 600
-        || v.bits_per_pixel != 32
-        || f.line_length != 4096
-        || v.yres_virtual != 1200
-        || [v.red.offset, v.green.offset, v.blue.offset, v.alpha.offset] != [16, 8, 0, 24]
-        || [v.red.length, v.green.length, v.blue.length, v.alpha.length] != [8, 8, 8, 8]
-    {
-        return Err(Error::UnsupportedFramebuffer(
-            "NX5 requires 1024x600 ARGB8888, stride 4096 and two pages",
-        ));
-    }
-    Ok(())
+pub(crate) fn validate_layout(f: &FixedInfo, v: &VariableInfo) -> Result<Layout, Error> {
+    Layout::new(f, v)
 }
 
 struct Session {
@@ -70,8 +49,10 @@ impl Drop for Session {
     }
 }
 
-pub(crate) fn open(path: &Path) -> Result<PresentationContract, Error> {
-    verify_target(path)?;
+pub(crate) fn open() -> Result<PresentationContract, Error> {
+    if !cfg!(all(target_arch = "arm", target_pointer_width = "32")) {
+        return Err(rejected("NX5 requires ARM32"));
+    }
     let lock = OpenOptions::new()
         .read(true)
         .write(true)
@@ -134,10 +115,10 @@ pub(crate) fn open(path: &Path) -> Result<PresentationContract, Error> {
     eprintln!("slint-bridge: NX5 VO enabled; blocking PAN, two pages");
     Ok(PresentationContract {
         validate_layout,
-        complete: Box::new(move |fd, yoffset| {
+        complete: Box::new(move |fd, yoffset, layout| {
             let _keep_alive = &session;
             let start = Instant::now();
-            present(fd, yoffset)?;
+            present(fd, yoffset, layout)?;
             if trace {
                 count += 1;
                 blocking_us += start.elapsed().as_micros();
@@ -156,17 +137,33 @@ pub(crate) fn open(path: &Path) -> Result<PresentationContract, Error> {
     })
 }
 
-fn present(fd: BorrowedFd<'_>, yoffset: u32) -> io::Result<()> {
+fn validate_present(
+    expected: &Layout,
+    fixed: &FixedInfo,
+    variable: &VariableInfo,
+    yoffset: u32,
+) -> io::Result<()> {
+    let actual = Layout::new(fixed, variable).map_err(io::Error::other)?;
+    if !expected.same_mode(actual) || (yoffset != 0 && yoffset != expected.size.height) {
+        return Err(io::Error::other(
+            "NX5 display layout changed or page offset is invalid",
+        ));
+    }
+    Ok(())
+}
+
+fn present(fd: BorrowedFd<'_>, yoffset: u32, layout: &Layout) -> io::Result<()> {
+    let mut fixed = FixedInfo::default();
     let mut requested = VariableInfo::default();
     let mut actual = VariableInfo::default();
     // SAFETY: native Linux fb UAPI layout; no concurrent submitter in this session.
     unsafe {
-        if libc::ioctl(fd.as_raw_fd(), 0x4600, &mut requested) < 0 {
+        if libc::ioctl(fd.as_raw_fd(), 0x4602, &mut fixed) < 0
+            || libc::ioctl(fd.as_raw_fd(), 0x4600, &mut requested) < 0
+        {
             return Err(io::Error::last_os_error());
         }
-        if requested.xres != 1024 || requested.yres != 600 || !matches!(yoffset, 0 | 600) {
-            return Err(io::Error::other("NX5 display geometry changed"));
-        }
+        validate_present(layout, &fixed, &requested, yoffset)?;
         requested.yoffset = yoffset;
         // NX5 integration requires PAN to wait for completion, as measured on
         // #233 fyfb. Change only the page offset, preserving mode flags and
@@ -177,6 +174,7 @@ fn present(fd: BorrowedFd<'_>, yoffset: u32) -> io::Result<()> {
             return Err(io::Error::last_os_error());
         }
     }
+    validate_present(layout, &fixed, &actual, yoffset)?;
     if actual.yoffset != yoffset {
         return Err(io::Error::other("NX5 page readback mismatch"));
     }
@@ -189,25 +187,70 @@ mod tests {
     use std::os::fd::AsFd;
 
     #[test]
+    fn accepts_device_reported_resolutions_and_padded_rows() {
+        for (width, height) in [(800, 480), (1280, 720), (480, 800)] {
+            let (fixed, variable) = crate::tests::info(width, height, 32);
+            let layout = validate_layout(&fixed, &variable).unwrap();
+            assert_eq!(layout.size, slint::PhysicalSize::new(width, height));
+            assert_eq!(
+                layout.page_bytes,
+                fixed.line_length as usize * height as usize
+            );
+        }
+    }
+
+    #[test]
+    fn presentation_uses_actual_page_height_and_rejects_changed_layouts() {
+        let (mut fixed, mut variable) = crate::tests::info(800, 480, 32);
+        let expected = validate_layout(&fixed, &variable).unwrap();
+        for front in [0, 480] {
+            variable.yoffset = front;
+            for next in [0, 480] {
+                validate_present(&expected, &fixed, &variable, next).unwrap();
+            }
+        }
+        assert!(validate_present(&expected, &fixed, &variable, 600).is_err());
+        variable.xres -= 1;
+        assert!(validate_present(&expected, &fixed, &variable, 0).is_err());
+        variable.xres += 1;
+        fixed.line_length -= 4;
+        assert!(validate_present(&expected, &fixed, &variable, 0).is_err());
+        fixed.line_length += 4;
+        std::mem::swap(&mut variable.red, &mut variable.blue);
+        assert!(validate_present(&expected, &fixed, &variable, 0).is_err());
+        std::mem::swap(&mut variable.red, &mut variable.blue);
+        variable.yres_virtual = variable.yres;
+        assert!(validate_layout(&fixed, &variable).is_err());
+    }
+
+    #[test]
     #[ignore = "requires exclusive current NX5; alternates existing pages without writing pixels"]
     fn blocking_flip_cadence() {
-        let mut contract = open(Path::new("/dev/fb0")).unwrap();
+        let mut contract = open().unwrap();
+        let path = std::env::var_os("SLINT_BRIDGE_TEST_FRAMEBUFFER")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| crate::Config::default().framebuffer);
         let file = OpenOptions::new()
             .read(true)
             .write(true)
-            .open("/dev/fb0")
+            .open(path)
             .unwrap();
+        let mut fixed = FixedInfo::default();
         let mut actual = VariableInfo::default();
         assert_eq!(
             unsafe { libc::ioctl(file.as_raw_fd(), 0x4600, &mut actual) },
             0
         );
-        assert!(matches!(actual.yoffset, 0 | 600));
+        assert_eq!(
+            unsafe { libc::ioctl(file.as_raw_fd(), 0x4602, &mut fixed) },
+            0
+        );
+        let layout = validate_layout(&fixed, &actual).unwrap();
         let mut times = Vec::new();
         for frame in 0..128 {
             let start = Instant::now();
-            actual.yoffset = 600 - actual.yoffset;
-            (contract.complete)(file.as_fd(), actual.yoffset).unwrap();
+            actual.yoffset = layout.size.height - actual.yoffset;
+            (contract.complete)(file.as_fd(), actual.yoffset, &layout).unwrap();
             let elapsed = start.elapsed().as_micros();
             if frame >= 8 {
                 times.push(elapsed);

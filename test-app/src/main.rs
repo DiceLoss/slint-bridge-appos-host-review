@@ -9,6 +9,8 @@ mod nx5_observer;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = config_from_args();
     let frame_interval = config.frame_interval;
+    #[cfg(feature = "nx5")]
+    let framebuffer = config.framebuffer.clone();
     slint_bridge::init(config)?;
     let app = App::new()?;
     app.set_pattern(std::env::args().any(|arg| arg == "--pattern"));
@@ -47,7 +49,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             && timer_observer.borrow().is_none()
             && observation.is_some()
         {
-            *timer_observer.borrow_mut() = Some(nx5_observer::start(observation.clone().unwrap()));
+            *timer_observer.borrow_mut() = Some(nx5_observer::start(
+                observation.clone().unwrap(),
+                framebuffer.clone(),
+            ));
         }
         if let Some(app) = weak.upgrade() {
             if app.get_paused() {
@@ -56,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let next = (frame.get() + 1) % 30_000;
             frame.set(next);
             app.set_frame(next);
-            app.set_bar_x(((next * 12) % 924) as f32);
+            app.set_bar_x((next * 12) as f32 % app.get_bar_range().max(1.0));
             // Hold each diagnostic color for two UI ticks so rendering ahead
             // of a two-refresh display does not repeatedly sample one parity.
             app.set_white_frame((next / 2) % 2 == 0);

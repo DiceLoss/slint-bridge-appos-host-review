@@ -130,3 +130,64 @@ fn evdev_disconnect_is_an_error_instead_of_an_idle_spin() {
         matches!(input.read_ready(&mut Vec::new()), Err(Error::Io { source, .. }) if source.kind() == std::io::ErrorKind::UnexpectedEof)
     );
 }
+
+#[test]
+fn touch_uses_the_configured_device_path() {
+    let path = std::env::temp_dir().join(format!("slint-bridge-touch {}", std::process::id()));
+    let file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+        .unwrap();
+    let result = Evdev::open(
+        &InputDevice::touchscreen(&path),
+        PhysicalSize::new(800, 480),
+        Rotation::None,
+    );
+    drop(file);
+    std::fs::remove_file(path).unwrap();
+    // A normal file opens successfully, then rejects the evdev axis ioctl.
+    // Opening a hard-coded event device would fail at the earlier open step.
+    assert!(matches!(
+        result,
+        Err(Error::Io {
+            operation: "query evdev absolute axis",
+            ..
+        })
+    ));
+}
+
+#[test]
+fn touch_scales_device_axes_to_the_actual_panel_size() {
+    for panel in [
+        PhysicalSize::new(800, 480),
+        PhysicalSize::new(1280, 720),
+        PhysicalSize::new(480, 800),
+    ] {
+        let mut decoder = Decoder::new(
+            panel,
+            Rotation::None,
+            Some((
+                Axis {
+                    min: -100,
+                    max: 1900,
+                    value: 1900,
+                },
+                Axis {
+                    min: 200,
+                    max: 4200,
+                    value: 4200,
+                },
+            )),
+            &[],
+        )
+        .unwrap();
+        let mut events = Vec::new();
+        decoder.event(1, 330, 1, &mut events);
+        decoder.event(0, 0, 0, &mut events);
+        assert!(
+            matches!(events[0], WindowEvent::PointerPressed { position, .. }
+            if position.x == (panel.width - 1) as f32 && position.y == (panel.height - 1) as f32)
+        );
+    }
+}

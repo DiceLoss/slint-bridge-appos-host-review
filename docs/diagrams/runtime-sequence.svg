@@ -42,11 +42,11 @@
 <line data-graph-role="decoration" x1="1370" y1="367" x2="1370" y2="1460" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7"/>
 <rect id="driver" data-graph-bounds="1540,230,1780,302" data-node-id="driver" data-graph-role="node" x="1540" y="230" width="240" height="72" rx="9" fill="#fff7ed" stroke="#c2410c" stroke-width="1.6"/>
 <text id="text-17" data-graph-role="content" x="1660" y="259" text-anchor="middle" font-size="20" font-weight="600" fill="#c2410c">fyfb 驱动</text>
-<text id="text-18" data-graph-role="content" x="1660" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">/dev/fb0 · 阻塞 PAN</text>
+<text id="text-18" data-graph-role="content" x="1660" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">配置的设备 · 阻塞 PAN</text>
 <line data-graph-role="decoration" x1="1660" y1="367" x2="1660" y2="1460" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7"/>
 <line data-graph-role="decoration" x1="1228" y1="215" x2="1228" y2="1475" stroke="#fdba74" stroke-width="1.5" stroke-dasharray="6 7"/>
 <rect data-graph-role="decoration" x="60" y="320" width="1720" height="43" rx="9" fill="#f8fafc" stroke="none" stroke-width="1.6"/>
-<text id="text-19" data-graph-role="label" data-graph-bounds="80.00,331,906.02,353" x="80" y="349" text-anchor="start" font-size="18" font-weight="400" fill="#475569">示例起点：A（yoffset=0）为前台；B（yoffset=600）可写。时间从上往下，图中高度不代表实际耗时。</text>
+<text id="text-19" data-graph-role="label" data-graph-bounds="80.00,331,1014.31,353" x="80" y="349" text-anchor="start" font-size="18" font-weight="400" fill="#475569">示例起点：A（yoffset=0）为前台；B（yoffset=H）可写；H 为设备高度。时间从上往下，图中高度不代表实际耗时。</text>
 <text id="text-20" data-graph-role="label" data-graph-bounds="25.00,374,50.61,394" x="25" y="390" text-anchor="start" font-size="16" font-weight="400" fill="#475569">t ↓</text>
 <line data-graph-role="decoration" x1="38" y1="410" x2="38" y2="1440" stroke="#94a3b8" stroke-width="1.5"/>
 <rect data-graph-role="decoration" x="194" y="402" width="12" height="171" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1.6"/>
@@ -64,9 +64,9 @@
 <line id="copy-b" data-graph-role="edge" data-edge-id="copy-b" data-source="ui" data-target="pages" x1="200" y1="495" x2="780" y2="495" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)"/>
 <text id="text-23" data-graph-role="label" data-owner="copy-b" data-graph-bounds="295.93,462,684.07,484" x="490.0" y="480" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">② present()：画布 → B（合并脏区；首次整页）</text>
 <line id="submit-b" data-graph-role="edge" data-edge-id="submit-b" data-source="ui" data-target="worker" x1="200" y1="565" x2="1080" y2="565" stroke="#7c3aed" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-async)"/>
-<text id="text-24" data-graph-role="label" data-owner="submit-b" data-graph-bounds="454.46,532,825.54,554" x="640.0" y="550" text-anchor="middle" font-size="18" font-weight="500" fill="#7c3aed">③ submit(600)：入队即返回；pending = true</text>
+<text id="text-24" data-graph-role="label" data-owner="submit-b" data-graph-bounds="462.88,532,817.12,554" x="640.0" y="550" text-anchor="middle" font-size="18" font-weight="500" fill="#7c3aed">③ submit(H)：入队即返回；pending = true</text>
 <line id="contract-b" data-graph-role="edge" data-edge-id="contract-b" data-source="worker" data-target="nx5" x1="1080" y1="625" x2="1370" y2="625" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)"/>
-<text id="text-25" data-graph-role="label" data-owner="contract-b" data-graph-bounds="1109.95,593,1340.05,614" x="1225.0" y="610" text-anchor="middle" font-size="17" font-weight="500" fill="#2563eb">④ contract.complete(fd, 600)</text>
+<text id="text-25" data-graph-role="label" data-owner="contract-b" data-graph-bounds="1123.83,593,1326.17,614" x="1225.0" y="610" text-anchor="middle" font-size="17" font-weight="500" fill="#2563eb">④ complete(fd, H, layout)</text>
 <line id="pan-b" data-graph-role="edge" data-edge-id="pan-b" data-source="nx5" data-target="driver" x1="1370" y1="680" x2="1660" y2="680" stroke="#c2410c" stroke-width="2.3" marker-end="url(#arrow-driver)"/>
 <text id="text-26" data-graph-role="label" data-owner="pan-b" data-graph-bounds="1426.66,647,1603.34,669" x="1515.0" y="665" text-anchor="middle" font-size="18" font-weight="500" fill="#c2410c">⑤ FBIOPAN_DISPLAY</text>
 <rect data-graph-role="decoration" x="70" y="732" width="1710" height="234" rx="10" fill="#f0fdf4" stroke="#86efac" stroke-width="1.6"/>
@@ -100,7 +100,7 @@
 <line id="pan-done" data-graph-role="edge" data-edge-id="pan-done" data-source="driver" data-target="nx5" x1="1660" y1="1010" x2="1370" y2="1010" stroke="#15803d" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-return)"/>
 <text id="text-37" data-graph-role="label" data-owner="pan-done" data-graph-bounds="1448.80,977,1581.20,999" x="1515.0" y="995" text-anchor="middle" font-size="18" font-weight="500" fill="#15803d">⑥ PAN 成功返回</text>
 <line id="get-offset" data-graph-role="edge" data-edge-id="get-offset" data-source="nx5" data-target="driver" x1="1370" y1="1065" x2="1660" y2="1065" stroke="#c2410c" stroke-width="2.3" marker-end="url(#arrow-driver)"/>
-<text id="text-38" data-graph-role="label" data-owner="get-offset" data-graph-bounds="1440.73,1032,1589.27,1054" x="1515.0" y="1050" text-anchor="middle" font-size="18" font-weight="500" fill="#c2410c">GET + 校验 yoffset</text>
+<text id="text-38" data-graph-role="label" data-owner="get-offset" data-graph-bounds="1427.52,1032,1602.48,1054" x="1515.0" y="1050" text-anchor="middle" font-size="18" font-weight="500" fill="#c2410c">GET + 校验布局 / 页号</text>
 <line id="checked-offset" data-graph-role="edge" data-edge-id="checked-offset" data-source="driver" data-target="nx5" x1="1660" y1="1110" x2="1370" y2="1110" stroke="#15803d" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-return)"/>
 <text id="text-39" data-graph-role="label" data-owner="checked-offset" data-graph-bounds="1434.00,1077,1596.00,1099" x="1515.0" y="1095" text-anchor="middle" font-size="18" font-weight="500" fill="#15803d">一致：仅作错误检查</text>
 <line id="contract-done" data-graph-role="edge" data-edge-id="contract-done" data-source="nx5" data-target="worker" x1="1370" y1="1165" x2="1080" y2="1165" stroke="#15803d" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-return)"/>
@@ -129,7 +129,7 @@
 <text id="text-54" data-graph-role="content" x="910.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">通过私有 PresentationContract 调用板级实现</text>
 <rect id="board-contract" data-graph-bounds="1220,1565,1780,1708" data-graph-role="reserved" x="1220" y="1565" width="560" height="143" rx="9" fill="#fff7ed" stroke="#c2410c" stroke-width="1.6"/>
 <text id="text-55" data-graph-role="content" x="1500.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#c2410c">NX5 适配负责</text>
-<text id="text-56" data-graph-role="content" x="1500.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">固件 / 布局准入、SYS/VO 会话与资源</text>
+<text id="text-56" data-graph-role="content" x="1500.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">实际布局检查、SYS/VO 会话与资源</text>
 <text id="text-57" data-graph-role="content" x="1500.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">阻塞 PAN 的完成语义及 yoffset 校验</text>
 <text id="text-58" data-graph-role="content" x="1500.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">读回或定时器精度均不能单独证明页面已释放</text>
 <line data-graph-role="decoration" x1="70" y1="1748" x2="113" y2="1748" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)"/>

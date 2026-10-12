@@ -44,7 +44,7 @@ pub const fn selected_backend() -> Backend {
 /// Configuration shared by all board implementations.
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// Defaults to `/dev/fb0`; the NX5 backend requires this exact path.
+    /// Framebuffer device path. Defaults to `/dev/fb0` and may be overridden.
     pub framebuffer: PathBuf,
     /// Empty by default; at most one touchscreen and one mapped-key device.
     pub inputs: Vec<InputDevice>,
@@ -127,7 +127,7 @@ impl std::error::Error for Error {
 /// Install the platform on the UI thread, before constructing a Slint component.
 /// Then create the component and call its usual `run()` method.
 ///
-/// NX5 requires ARM32, `/dev/fb0`, exclusive display ownership and a compatible
+/// NX5 requires ARM32, exclusive display ownership and a compatible
 /// SDK/driver ABI. It does not check kernel versions, driver names or file hashes.
 /// Target/ownership mismatches and generic fbdev return [`Error::DisplayNotAdmitted`];
 /// SDK loading and device I/O failures return [`Error::Io`]. Frame timing and input
@@ -156,7 +156,7 @@ pub fn init(config: Config) -> Result<(), Error> {
             "at most one touchscreen and one key device are supported",
         ));
     }
-    let admitted = backends::require(selected_backend(), &config.framebuffer)?;
+    let admitted = backends::require(selected_backend())?;
     let framebuffer = framebuffer::Framebuffer::open(&config.framebuffer, admitted.presentation)?;
     let platform = runtime::BridgePlatform::new(config, framebuffer, admitted.timer_quantum)?;
     slint::platform::set_platform(Box::new(platform)).map_err(Error::Platform)

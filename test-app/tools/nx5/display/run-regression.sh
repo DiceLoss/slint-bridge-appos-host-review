@@ -8,13 +8,20 @@ fi
 binary=$1
 output=$2
 mode=$3
+framebuffer=${NX5_FRAMEBUFFER:-/dev/fb0}
+touch=${NX5_TOUCH_DEVICE:-}
 case "$mode" in
     pattern) set -- --pattern --observe=300 --seconds=20 ;;
     mixed) set -- --pattern --split --observe=30 --seconds=8 ;;
-    fault) set -- --pattern --observe=600 --seconds=30 --touch=/dev/input/event0 ;;
-    textures) set -- --textures --touch=/dev/input/event0 --seconds=60 ;;
+    fault) : "${touch:?set NX5_TOUCH_DEVICE for input fault injection}"; set -- --pattern --observe=600 --seconds=30 ;;
+    textures) set -- --textures --seconds=60 ;;
     *) echo "unknown case: $mode" >&2; exit 2 ;;
 esac
+set -- "$@" "--framebuffer=$framebuffer"
+if [ -n "$touch" ]; then set -- "$@" "--touch=$touch"; fi
+major=$(stat -L -c %t "$framebuffer") || exit 2
+minor=$(stat -L -c %T "$framebuffer") || exit 2
+fb_sysfs=/sys/dev/char/$((0x$major)):$((0x$minor))
 base=$output/$mode
 test -x "$binary" && test -d "$output" || exit 2
 if [ -e "$base.log" ] || [ -e "$base.rc" ]; then
@@ -29,19 +36,18 @@ fi
 snapshot() {
     cat /proc/umap/vo > "$1.vo"
     cat /proc/media-mem > "$1.mmz"
-    cat /sys/class/graphics/fb0/virtual_size > "$1.virtual-size"
-    cat /sys/class/graphics/fb0/pan > "$1.pan"
+    cat "$fb_sysfs/virtual_size" > "$1.virtual-size"
+    cat "$fb_sysfs/pan" > "$1.pan"
     devmem 0x34101090 32 > "$1.wbc"
 }
 
 run_app() {
     unset SLINT_MCP_PORT LD_PRELOAD NX5_REGRESSION_INPUT NX5_REGRESSION_TRIGGER
-    export SLINT_DEFAULT_FONT=/run/slint-bridge-display/DejaVuSans.ttf
-    export LD_LIBRARY_PATH=/system/app/clib
+    # Preserve the caller's font and SDK/plugin search paths.
     export SLINT_BRIDGE_TRACE=1
     if [ "$mode" = fault ]; then
         export LD_PRELOAD=$output/inject-read-error.so
-        export NX5_REGRESSION_INPUT=/dev/input/event0
+        export NX5_REGRESSION_INPUT="$(readlink -f "$touch")"
         export NX5_REGRESSION_TRIGGER=$output/fail-read
     fi
     exec "$binary" "$@"
@@ -78,7 +84,7 @@ if [ "$mode" = fault ]; then
         # real received frames and the driver's live WBC allocation instead.
         if grep -q 'name="vou-wbc"' "$base.before.mmz" &&
             awk '/-----WBC INFO/ { wbc=1; next }
-                wbc && $1==0 && $2==1024 && $3==600 && $4==420 && $6>0 && $11>=30 { active=1 }
+                wbc && $1==0 && $2>0 && $3>0 && $4==420 && $6>0 && $11>=30 { active=1 }
                 END { exit !active }' "$base.before.vo" &&
             ! grep -q '^display: observation result=' "$base.log"; then
             cat /proc/uptime > "$base.trigger"

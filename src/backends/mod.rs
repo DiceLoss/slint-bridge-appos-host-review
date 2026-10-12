@@ -3,11 +3,11 @@ pub(crate) mod nx5;
 
 use crate::{
     Backend, Error,
-    framebuffer::{FixedInfo, VariableInfo},
+    framebuffer::{FixedInfo, Layout, VariableInfo},
 };
-use std::{io, os::fd::BorrowedFd, path::Path, time::Duration};
+use std::{io, os::fd::BorrowedFd, time::Duration};
 
-type CompletePresentation = dyn FnMut(BorrowedFd<'_>, u32) -> io::Result<()> + Send;
+type CompletePresentation = dyn FnMut(BorrowedFd<'_>, u32, &Layout) -> io::Result<()> + Send;
 
 /// Private seam for a board's blocking presentation implementation. Success
 /// transfers the previous scanout page back to the renderer. NX5 uses the
@@ -15,7 +15,7 @@ type CompletePresentation = dyn FnMut(BorrowedFd<'_>, u32) -> io::Result<()> + S
 /// No public API can create this value or supply a callback.
 pub(crate) struct PresentationContract {
     pub(crate) complete: Box<CompletePresentation>,
-    pub(crate) validate_layout: fn(&FixedInfo, &VariableInfo) -> Result<(), Error>,
+    pub(crate) validate_layout: fn(&FixedInfo, &VariableInfo) -> Result<Layout, Error>,
 }
 
 /// Verified board resources and OS timing information. Timer precision affects
@@ -25,15 +25,14 @@ pub(crate) struct Admission {
     pub(crate) timer_quantum: Duration,
 }
 
-pub(crate) fn require(backend: Backend, path: &Path) -> Result<Admission, Error> {
+pub(crate) fn require(backend: Backend) -> Result<Admission, Error> {
     #[cfg(feature = "nx5")]
     if backend == Backend::Nx5 {
         return Ok(Admission {
-            presentation: crate::backends::nx5::open(path)?,
+            presentation: crate::backends::nx5::open()?,
             timer_quantum: crate::backends::nx5::TIMER_QUANTUM,
         });
     }
-    let _ = path;
     Err(Error::DisplayNotAdmitted {
         backend,
         reason: match backend {

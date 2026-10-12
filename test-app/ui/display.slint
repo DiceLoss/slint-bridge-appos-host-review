@@ -1,6 +1,7 @@
 export component App inherits Window {
     in property <int> frame;
     in property <length> bar-x;
+    out property <length> bar-range: max(1px, root.width - 100px);
     in property <bool> pattern;
     in property <bool> white-frame;
     in property <bool> split-pattern;
@@ -17,10 +18,10 @@ export component App inherits Window {
         x: 36px; y: 32px; width: parent.width - 72px; height: 100px;
         background: #183b48; border-radius: 12px;
         Text { x: 24px; y: 15px; text: "SLINT BRIDGE / NX5"; font-size: 30px; color: #eaf7f6; }
-        Text { x: 24px; y: 60px; text: "1024 x 600  |  double framebuffer  |  async presentation"; font-size: 18px; color: #87c7cd; }
+        Text { x: 24px; y: 60px; text: round(root.width / 1px) + " x " + round(root.height / 1px) + "  |  double framebuffer  |  async presentation"; font-size: 18px; color: #87c7cd; }
     }
     if !pattern: Rectangle {
-        x: 36px; y: 160px; width: parent.width - 72px; height: 300px;
+        x: 36px; y: 160px; width: parent.width - 72px; height: max(1px, parent.height - 300px);
         background: #09171f; clip: true;
         if textures: Image { source: root.backdrop; width: parent.width; height: parent.height; image-fit: fill; }
         for i in 16: Rectangle {
@@ -38,12 +39,12 @@ export component App inherits Window {
         if textures: Image { source: root.overlay; x: root.bar-x; y: 22px; width: 256px; height: 256px; }
     }
     if !pattern: status := Text {
-        x: 36px; y: 493px;
+        x: 36px; y: parent.height - 107px;
         text: "Frame " + frame + (paused ? "    PAUSED" : "    RUNNING");
         font-size: 24px; color: #eaf7f6;
     }
     if !pattern: Text {
-        x: 36px; y: 541px; text: "Touch anywhere to pause / resume";
+        x: 36px; y: parent.height - 59px; text: "Touch anywhere to pause / resume";
         font-size: 18px; color: #87c7cd;
     }
     pause-area := TouchArea { clicked => { root.tapped(); } }

@@ -78,7 +78,7 @@ headers = [
  ('pages','物理显示页 A / B','两张 framebuffer',BLUE,'#eff6ff'),
  ('worker','后台提交线程','presentation.rs · fb-present',PURPLE,'#faf5ff'),
  ('nx5','NX5 完成回调','backends/nx5/mod.rs',ORANGE,'#fff7ed'),
- ('driver','fyfb 驱动','/dev/fb0 · 阻塞 PAN',ORANGE,'#fff7ed'),
+ ('driver','fyfb 驱动','配置的设备 · 阻塞 PAN',ORANGE,'#fff7ed'),
 ]
 for ident, title, sub, color, fill in headers:
     cx = X[ident]
@@ -88,7 +88,7 @@ for ident, title, sub, color, fill in headers:
     line(cx,367,cx,1460,'#cbd5e1','5 7')
 line(1228,215,1228,1475,'#fdba74','6 7')
 rect(60,320,1720,43,'#f8fafc')
-text(80,349,'示例起点：A（yoffset=0）为前台；B（yoffset=600）可写。时间从上往下，图中高度不代表实际耗时。',18,MUTED)
+text(80,349,'示例起点：A（yoffset=0）为前台；B（yoffset=H）可写；H 为设备高度。时间从上往下，图中高度不代表实际耗时。',18,MUTED)
 text(25,390,'t ↓',16,MUTED)
 line(38,410,38,1440,'#94a3b8')
 
@@ -104,8 +104,8 @@ for ident,y,h,color,fill in [
 msg('render-n','ui','canvas',410,'① render(N) → 画布',size=18)
 text(498,440,'软件渲染 / 可选 TDE',17,MUTED)
 msg('copy-b','ui','pages',495,'② present()：画布 → B（合并脏区；首次整页）')
-msg('submit-b','ui','worker',565,'③ submit(600)：入队即返回；pending = true','async')
-msg('contract-b','worker','nx5',625,'④ contract.complete(fd, 600)',size=17)
+msg('submit-b','ui','worker',565,'③ submit(H)：入队即返回；pending = true','async')
+msg('contract-b','worker','nx5',625,'④ complete(fd, H, layout)',size=17)
 msg('pan-b','nx5','driver',680,'⑤ FBIOPAN_DISPLAY','driver',18)
 
 rect(70,732,1710,234,'#f0fdf4','#86efac',radius=10)
@@ -125,7 +125,7 @@ note('frozen-pages',638,766,284,167,'pending 期间两页均不可写',['A：旧
 note('blocked-worker',990,801,735,106,'后台线程阻塞于 complete → NX5 PAN',['等待驱动完成；通用层没有发起第二次页面提交'],ORANGE,'#fff7ed')
 
 msg('pan-done','driver','nx5',1010,'⑥ PAN 成功返回','return',18)
-msg('get-offset','nx5','driver',1065,'GET + 校验 yoffset','driver',18)
+msg('get-offset','nx5','driver',1065,'GET + 校验布局 / 页号','driver',18)
 msg('checked-offset','driver','nx5',1110,'一致：仅作错误检查','return',18)
 msg('contract-done','nx5','worker',1165,'⑦ Ok：旧前台可复用','return',18)
 msg('wake-ui','worker','ui',1220,'⑧ completion.send(Ok) + eventfd 唤醒','async')
@@ -138,7 +138,7 @@ rect(60,1490,1720,44,'#f0fdf4')
 text(80,1520,'循环：A 提交后两页再次冻结；UI 在保留画布渲染 N+2，后台等待 A 的翻页完成。',19,GREEN,500)
 note('capacity',60,1565,540,143,'并行与容量',['最多 1 次提交进行中 + 1 帧等待提交','保留画布不是第三张物理 framebuffer','渲染可并行；复制显示页须先确认完成'],BLUE,'#eff6ff')
 note('generic-contract',640,1565,540,143,'通用层负责',['事件 / 帧期限、脏区复制、前后台角色','提交线程、完成队列、eventfd 与错误传播','通过私有 PresentationContract 调用板级实现'],PURPLE,'#faf5ff')
-note('board-contract',1220,1565,560,143,'NX5 适配负责',['固件 / 布局准入、SYS/VO 会话与资源','阻塞 PAN 的完成语义及 yoffset 校验','读回或定时器精度均不能单独证明页面已释放'],ORANGE,'#fff7ed')
+note('board-contract',1220,1565,560,143,'NX5 适配负责',['实际布局检查、SYS/VO 会话与资源','阻塞 PAN 的完成语义及 yoffset 校验','读回或定时器精度均不能单独证明页面已释放'],ORANGE,'#fff7ed')
 
 # Legend outside the message corridors.
 for x,name,color,label,dash in [(70,'call',BLUE,'同步调用 / UI 复制',False),(440,'async',PURPLE,'跨线程请求 / 完成通知',True),(900,'return',GREEN,'成功返回',True),(1215,'driver',ORANGE,'NX5 驱动调用',False)]:

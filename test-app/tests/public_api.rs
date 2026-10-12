@@ -1,8 +1,11 @@
-use slint_bridge::{Config, Error, InputDevice, init, selected_backend};
+use slint_bridge::{Config, Error, init};
+#[cfg(not(all(feature = "nx5", target_arch = "arm", target_pointer_width = "32")))]
+use slint_bridge::{InputDevice, selected_backend};
 use std::time::Duration;
 
 #[test]
-fn admission_precedes_all_device_access() {
+#[cfg(not(all(feature = "nx5", target_arch = "arm", target_pointer_width = "32")))]
+fn unsupported_backend_is_rejected_before_device_access() {
     let error = init(Config {
         framebuffer: "/does/not/exist".into(),
         inputs: vec![InputDevice::touchscreen("/also/missing")],

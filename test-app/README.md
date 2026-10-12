@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | 通用 framebuffer 软件组合 | `--features fbdev` |
 | NX5 软件渲染 | `--features nx5` |
 | NX5 TDE 和软件回退 | `--features nx5-tde` |
-| framebuffer 路径 | `--framebuffer=/dev/fb0`，默认 `/dev/fb0`；NX5 准入只接受此路径 |
+| framebuffer 路径 | `--framebuffer=/dev/fb0`，默认 `/dev/fb0`，可替换为目标设备路径或设备链接 |
 | 触摸设备 | `--touch=/dev/input/event0`，默认不开启输入设备 |
 | Slint MCP | 构建加 `slint/mcp`，并按 [MCP 指南](../docs/slint-mcp.md) 设置环境变量 |
 
@@ -75,13 +75,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 `basic` 只使用 `--framebuffer` 和 `--touch` 路径配置。`display` 另外支持 `--textures`、`--pattern`、`--split`、`--observe=N` 和 `--seconds=N`；这些选项使用表中所示的 `--name=value` 或独立开关格式。旋转、按键映射和帧间隔通过 Rust `Config` 配置，当前没有对应命令行参数。
 
+WBC 按无版本库名 `libobserver.so` 通过系统搜索路径加载，部署目录可由 `LD_LIBRARY_PATH` 指定；新插件接收应用配置的 framebuffer 路径，并通过 ioctl 获取采样尺寸，旧插件需重新构建。
+
 `--split` 与 `--pattern` 配合使用；`--observe=N` 仅在 NX5 构建中启用，在启动约 2 秒后创建观察线程。`--seconds=N` 请求事件循环退出；进程还会等待在途提交和已启动的观察线程结束。正常退出显式等待 WBC，事件循环返回错误时由观察器资源所有者自动等待，保证采集线程结束后才返回应用错误。若观察线程也 panic，清理时记录该错误并保留原 UI 错误；正常退出时观察线程 panic 仍会作为错误返回。
 
 观察器的采样结果写入日志，当前应用不会将非零采样结果转换成非零退出码，验收需使用 [check-run.py](tools/nx5/display/check-run.py) 检查日志。
 
-`startup-regression` 是独占 NX5 的专用验证程序，不加入日常显示流程。参数为 `show-error|retry|queued|timer|queued-retry` 加输出目录；`show-error` 保留预期布局错误并返回 1，其余用例应返回 0。它通过公开平台接口运行真实组件，读取实际 framebuffer 像素并保存 TDE 状态；完整退出由外层脚本检查。构建、采集与结果见 [启动实机回归](../docs/nx5-startup.md)。
+`startup-regression` 是独占 NX5 的专用验证程序，不加入日常显示流程。参数为 `show-error|retry|queued|timer|queued-retry` 加输出目录，可追加 `--framebuffer=PATH`、`--touch=PATH`；`show-error` 保留预期布局错误并返回 1，其余用例应返回 0。它通过公开平台接口运行真实组件，按设备 ioctl 获取实际宽高、stride 和前台页，逐行检查实际像素并保存 TDE 状态；完整退出由外层脚本检查。构建、采集与结果见 [启动实机回归](../docs/nx5-startup.md)。
 
-基础窗口适合新设备接入检查；运动/纹理场景使用 1024×600 的 NX5 测量布局。默认不打开触摸设备，检查暂停/恢复时需指定 `--touch`，或使用 MCP 注入交互。
+基础窗口适合新设备接入检查；运动/纹理场景使用窗口实际尺寸显示分辨率、安排绘图区和限制运动范围。默认不打开触摸设备，检查暂停/恢复时需指定 `--touch`，或使用 MCP 注入交互。
 
 MCP 使用 Slint 自带功能，不另建截图或输入服务器。稳定元素 ID 为 `App::pause-area` 和 `App::status`。先发现窗口与句柄，再执行以下流程：
 
