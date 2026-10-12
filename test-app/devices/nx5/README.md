@@ -1,10 +1,10 @@
 # NX5 测试目标
 
-本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中引用的仓库路径相对于仓库根目录；最近记录时间为 2026-10-12 09:20:25（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
+本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中引用的仓库路径相对于仓库根目录；最近记录时间为 2026-10-12 11:04:01（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
 
-三项此前未重跑的 ignored TDE/翻页测试已在 [2026-10-12 实机回归](../../../docs/nx5-hardware.md) 中逐项补齐，全部通过。测试二进制基于 `a9fd3c8` 构建，库实现与 `949ceb9` 一致；测试后恢复原显示程序和 MCP，常驻 PID 3351。每项退出均无新增 MMZ 泄漏回收。启动、WBC、EIO 等前几轮结果保留在各自报告，不计入本轮重测。
+当前已部署 `c03c3bb`，常驻 PID 3698，路径 `/tmp/slint-bridge-c03c3bb/display`。自定义设备路径、用户真实触摸、双页像素与 WBC 正/负对照均通过，详见 [本轮实机报告](../../../docs/nx5-configured-paths.md)。三项独立 ignored 测试和其他启动/EIO 用例保留此前报告口径。
 
-当前板为 DPower Terminal 的 `/dev/ttyUSB1`，网络为 `192.168.1.151:5555`（ADB），内核 #233。库要求独占显示；当前源码不再比对内核版本、驱动名称或固件摘要，SDK 加载规则见 [平台说明](../../../docs/software-platform.md#准入边界)。上述设备快照和实测仍对应变更前的程序。详细环境及 SDK 使用约束见 [当前环境](../../../docs/current-environment.md)。
+当前板为 DPower Terminal `/dev/ttyUSB1`、ADB `192.168.1.151:5555`、内核 #233。运行行为见 [平台说明](../../../docs/software-platform.md#准入边界)，部署快照及恢复前提见 [当前环境](../../../docs/current-environment.md)。
 
 以下命令从仓库根执行：
 

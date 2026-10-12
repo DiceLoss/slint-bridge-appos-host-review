@@ -115,7 +115,9 @@ cargo build --locked --offline --release -p slint-bridge-test-app \
 
 NX5 TDE、观察器插件、部署与 MCP 运行命令见 [devices/nx5/README.md](devices/nx5/README.md)。所有构建仍使用仓库指定的同一份 Slint 1.18.1 源码。
 
-[最新启动实机回归](../docs/nx5-startup.md) 验证了 `949ceb9` 的五个启动用例各两轮、10 帧全幅实际像素和完整进程清理，另有 WBC 与纹理运行。三项 ignored TDE/翻页测试已在 [2026-10-12 补测](../docs/nx5-hardware.md) 中全部通过；EIO 的历史结果仍见 [前一轮报告](../docs/nx5-tde-exit.md)。
+[此前启动实机回归](../docs/nx5-startup.md) 验证了 `949ceb9` 的五个启动用例各两轮、10 帧全幅实际像素和完整进程清理，另有 WBC 与纹理运行。三项 ignored TDE/翻页测试已在 [2026-10-12 补测](../docs/nx5-hardware.md) 中全部通过；EIO 的历史结果仍见 [前一轮报告](../docs/nx5-tde-exit.md)。
+
+最新 `c03c3bb` 的自定义设备路径、两页实际像素、用户真实点触与 WBC 动态库采样已在 [本轮实机验证](../docs/nx5-configured-paths.md) 中通过，最终运行新版本。
 
 ## 增加设备或用例
 

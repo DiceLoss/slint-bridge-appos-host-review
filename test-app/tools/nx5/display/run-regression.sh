@@ -19,9 +19,14 @@ case "$mode" in
 esac
 set -- "$@" "--framebuffer=$framebuffer"
 if [ -n "$touch" ]; then set -- "$@" "--touch=$touch"; fi
-major=$(stat -L -c %t "$framebuffer") || exit 2
-minor=$(stat -L -c %T "$framebuffer") || exit 2
-fb_sysfs=/sys/dev/char/$((0x$major)):$((0x$minor))
+# The NX5 BusyBox image has no stat applet. Numeric ls output follows links
+# and reports the character device's major/minor without assuming its basename.
+fb_device=$(LC_ALL=C ls -ldnL "$framebuffer" | awk '$1 ~ /^c/ { sub(/,$/, "", $5); print $5 ":" $6 }')
+if [ -z "$fb_device" ] || [ ! -d "/sys/dev/char/$fb_device" ]; then
+    echo "cannot locate framebuffer sysfs device: $framebuffer" >&2
+    exit 2
+fi
+fb_sysfs=/sys/dev/char/$fb_device
 base=$output/$mode
 test -x "$binary" && test -d "$output" || exit 2
 if [ -e "$base.log" ] || [ -e "$base.rc" ]; then

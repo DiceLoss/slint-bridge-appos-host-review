@@ -37,6 +37,6 @@ python3 test-app/tools/nx5/single-cycle/analyze.py evidence/nx5-single-cycle/sta
 
 `NX5_SDK_INCLUDE=<codec头文件目录> sh test-app/tools/nx5/tde/check-native.sh` 在主机运行原生故障注入和像素转换边界检查，并用替身 SDK 验证：从两个临时目录（含空格路径）加载无版本库名 `libVideoDec.so`，TDE 在显示会话加载前拒绝自行加载、加载后复用同一会话，构造函数只运行一次，引用正确释放。该检查不加载真实 SDK，也不访问设备。
 
-维护中的 `display/run-regression.sh` 与 `display/run-startup.sh` 接受 `NX5_FRAMEBUFFER`（默认 `/dev/fb0`）和可选的 `NX5_TOUCH_DEVICE`；输入 EIO 用例必须指定触摸设备。脚本继承调用者的 `LD_LIBRARY_PATH` 和 `SLINT_DEFAULT_FONT`，不覆盖 SDK、插件或字体目录。显示回归的 sysfs 快照按所选设备的主次设备号定位，支持设备链接。退出检查将 MMZ 用量和块数与同次初始快照比较，不再假定某一分辨率下的固定显存占用。历史原始记录保持不变。
+维护中的 `display/run-regression.sh` 与 `display/run-startup.sh` 接受 `NX5_FRAMEBUFFER`（默认 `/dev/fb0`）和可选的 `NX5_TOUCH_DEVICE`；输入 EIO 用例必须指定触摸设备。脚本继承调用者的 `LD_LIBRARY_PATH` 和 `SLINT_DEFAULT_FONT`，不覆盖 SDK、插件或字体目录。显示回归使用板上已有的 `ls -ldnL` 获取所选设备的主次设备号并定位 sysfs，支持设备链接；不依赖该固件缺少的 `stat` 命令。退出检查将 MMZ 用量和块数与同次初始快照比较，不再假定某一分辨率下的固定显存占用。历史原始记录保持不变。
 
 `blocking_flip_cadence` 可用 `SLINT_BRIDGE_TEST_FRAMEBUFFER` 选择 framebuffer，默认使用 `Config` 的路径；页偏移来自设备实际高度。TDE 像素比较中的固定图像尺寸是测试素材，不限制运行时显示尺寸。

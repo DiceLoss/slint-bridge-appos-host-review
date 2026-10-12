@@ -1,16 +1,14 @@
 # NX5 最近环境记录
 
-最近一次设备记录时间为 **2026-10-12 09:20:25（北京时间）**，对应 [current-target.json](../test-app/devices/nx5/current-target.json) 的 `checked_at_utc`。本文保存观测快照，不实时探测设备；PID、端口和启动状态在操作前需重新确认。时钟、调度 CPU 及单周期调查保留各自报告的历史测量。
+最近一次设备记录时间为 **2026-10-12 11:04:01（北京时间）**，对应 [current-target.json](../test-app/devices/nx5/current-target.json)。本文是观测快照，PID、端口和所有权在操作前仍须重新核对。
 
-[三项 TDE/翻页实机回归](nx5-hardware.md) 已补齐此前未重跑的 ignored 测试。ARM 程序基于 `a9fd3c8` 重建，库实现与 `949ceb9` 一致；三个测试逐项独占运行，均为 1 passed、0 failed、0 ignored。TDE 比较和 80 帧增量重绘通过；100 帧双页像素最大通道差 1/255、超容差通道为 0；128 次真实阻塞翻页排除 8 次预热后，均值 34.479450 ms，29.003 FPS。
+`c03c3bb` 已通过 [自定义路径与动态布局实机验证](nx5-configured-paths.md)，目前运行 `/tmp/slint-bridge-c03c3bb/display`，PID **3698**。framebuffer 与触摸使用测试目录下的 `dev/panel`、`dev/touch` 链接，SDK/WBC 使用独立 `lib/` 目录。设备实际为 1024×600、stride 4096、两页；启动重试验证了两页完整像素，用户两次真实点触完成暂停/恢复。Slint 接收 12 条事件，全部接受且无丢失。
 
-每项开始与结束均确认 VO/WBC 关闭，MMZ 回到 4900 KiB / 2 块基线，测试期间内核记录无新增 MMZ 泄漏回收。双页像素测试使用真实 TDE 和生产写页代码、内存文件承载两页；真实 framebuffer 的阻塞 PAN 由第三项覆盖，不等同于物理 LCD 的逐帧扫描认证。
+WBC 正向采样 300 帧无混色，负对照 30 帧全部检出混色；提交统计为 28.81–29.00 FPS。三个新程序有限用例退出后均回到 4900 KiB / 2 块 MMZ，无对应新进程的内核强制回收。切换旧 PID 3351 时的 SIGTERM 回收单独记在报告中。
 
-测试后恢复原 `949ceb9` 显示程序，路径 `/run/slint-bridge-mcp/display-mcp`，PID **3351**，参数 `--textures --touch=/dev/input/event0`。SHA256 与备份一致：`f2fa90209df824c1b94bbddbf125a70190089f6ebc4aac24934c87dd6185dee5`。摘要与来源见 [构建及恢复清单](../evidence/nx5-hardware/2026-10-12-a9fd3c8/deployment-manifest.json)。MCP 设备 localhost 9315、主机转发 19315；6/18 个原生工具检查通过，暂停/恢复及截图正常，最终 RUNNING。
+最终界面 RUNNING，MCP 设备 localhost 9315、主机转发 19315。持续性能日志、WBC 与故障注入关闭；RSS 11092 KiB、3 个线程，运行中 MMZ 12100 KiB / 5 块。新程序 SHA256 为 `416c00518e7de9ffdb0ac75c771c748e1fcb1e5342da29606e697e41b2408689`，见 [部署清单](../evidence/nx5-configured-paths/2026-10-12-c03c3bb/deployment-manifest.json) 和 [最终设备快照](../evidence/nx5-configured-paths/2026-10-12-c03c3bb/device/results/final-device.txt)。旧程序及恢复入口保留；`/tmp`、`/run` 文件重启后需重新部署。
 
-恢复后持续性能日志和故障注入关闭。MMZ 为运行所需的 12100 KiB / 5 块，WBC 未运行；RSS 11080 KiB，`/run` 剩余 2396 KiB。测试程序在归档后已从设备移除，主机保留原始记录和二进制备份。
-
-[2026-10-11 启动回归](nx5-startup.md) 的十次启动/重试、10 帧前台像素、300 帧 WBC 及 60 秒纹理结果仍保持历史口径，本轮没有重跑；EIO 结果见 [177c18a 报告](nx5-tde-exit.md)，混色负对照见 [2cd98fa 报告](nx5-regression.md)。未知 DMA 完成状态仍按原实现保留资源，不能提前释放。
+[三项 TDE/翻页回归](nx5-hardware.md) 记录此前 `a9fd3c8` 的独立 ignored 测试；[启动回归](nx5-startup.md) 记录 `949ceb9` 的完整启动矩阵；[EIO 回归](nx5-tde-exit.md) 保留 `177c18a` 的结果。这些未在本轮全部重跑，不等同于当前二进制的新验证。
 
 [单周期翻页调查](nx5-single-cycle.md) 完成 128 次无像素写入的状态观测：新页准备与锁存仍分别占一次刷新，纯翻页 29.00031 FPS。调查没有改变驱动或正式显示实现，结束时恢复原进程和 MCP；未形成可部署的安全单周期路径。
 
