@@ -39,3 +39,8 @@ required-features = ["nx5-tde"]
 name = "init-retry"
 path = "src/bin/init-retry.rs"
 required-features = ["nx5"]
+
+[[bin]]
+name = "alpha-regression"
+path = "src/bin/alpha-regression.rs"
+required-features = ["nx5"]

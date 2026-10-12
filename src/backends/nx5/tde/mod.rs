@@ -6,7 +6,12 @@ use i_slint_renderer_software::{
 };
 
 #[cfg(target_arch = "arm")]
-pub(crate) unsafe fn rgba_to_bgra(source: *const u8, destination: *mut u8, count: usize) -> bool {
+pub(crate) unsafe fn rgba_to_bgra(
+    source: *const u8,
+    destination: *mut u8,
+    count: usize,
+    alpha_max: u8,
+) -> bool {
     unsafe extern "C" {
         fn bridge_neon_available() -> i32;
         fn bridge_rgba_to_bgra(
@@ -14,6 +19,7 @@ pub(crate) unsafe fn rgba_to_bgra(source: *const u8, destination: *mut u8, count
             source: *const u8,
             count: usize,
             reciprocals: *const u32,
+            alpha_max: u8,
         );
     }
     // SAFETY: caller guarantees disjoint, valid count*4 byte ranges. The C
@@ -27,6 +33,7 @@ pub(crate) unsafe fn rgba_to_bgra(source: *const u8, destination: *mut u8, count
             source,
             count,
             crate::framebuffer::ALPHA_RECIPROCALS.as_ptr(),
+            alpha_max,
         );
     }
     true

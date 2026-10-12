@@ -29,7 +29,7 @@ static uint8_t straight_channel(uint8_t value, uint32_t factor) {
 }
 
 void bridge_rgba_to_bgra(uint8_t *destination, const uint8_t *source, size_t count,
-                         const uint32_t *reciprocals) {
+                         const uint32_t *reciprocals, uint8_t alpha_max) {
     while (count) {
         size_t block = count < 16 ? count : 16;
 #ifdef __ARM_NEON
@@ -39,7 +39,7 @@ void bridge_rgba_to_bgra(uint8_t *destination, const uint8_t *source, size_t cou
             if (vget_lane_u64(vreinterpret_u64_u8(alpha), 0) == UINT64_MAX) {
                 uint8x16x4_t bgra;
                 bgra.val[0] = rgba.val[2]; bgra.val[1] = rgba.val[1];
-                bgra.val[2] = rgba.val[0]; bgra.val[3] = rgba.val[3];
+                bgra.val[2] = rgba.val[0]; bgra.val[3] = vdupq_n_u8(alpha_max);
                 vst4q_u8(destination, bgra);
                 source += 64; destination += 64; count -= 16;
                 continue;
@@ -56,7 +56,7 @@ void bridge_rgba_to_bgra(uint8_t *destination, const uint8_t *source, size_t cou
                 destination[1] = straight_channel(source[1], factor);
                 destination[2] = straight_channel(source[0], factor);
             }
-            destination[3] = alpha;
+            destination[3] = ((unsigned)alpha * alpha_max + 127) / 255;
             source += 4; destination += 4;
         }
         count -= block;

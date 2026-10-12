@@ -32,7 +32,11 @@ fn rejected(reason: &'static str) -> Error {
 }
 
 pub(crate) fn validate_layout(f: &FixedInfo, v: &VariableInfo) -> Result<Layout, Error> {
-    Layout::new(f, v)
+    let mut layout = Layout::new(f, v)?;
+    // This board's ARGB8888 scanout reaches full opacity at 128. WBC paired
+    // color measurements establish the range; bitfield length alone does not.
+    layout.alpha_max = 128;
+    Ok(layout)
 }
 
 fn vo_enabled(state: &str) -> Result<bool, Error> {

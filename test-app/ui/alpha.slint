@@ -1,0 +1,17 @@
+// Paired translucent patches and opaque references over the existing black VO background.
+export component AlphaWindow inherits Window {
+    background: transparent;
+    in property<int> offset: 4;
+    in property<bool> patches: true;
+    in property<[color]> colors;
+    if patches: Rectangle {
+        background: transparent;
+        for color[index] in root.colors: Rectangle {
+            x: mod(index, 8) * root.width / 8 + root.offset * 1px;
+            y: floor(index / 8) * root.height / 6 + 8px;
+            width: root.width / 8 - 16px;
+            height: root.height / 6 - 16px;
+            background: color;
+        }
+    }
+}

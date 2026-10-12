@@ -7,19 +7,21 @@
 ```text
 test-app/
 ├── Cargo.toml                 # 转发板级 feature，依赖公开库接口
-├── build.rs                   # 编译 ui/app.slint
+├── build.rs                   # 编译应用和设备回归界面
 ├── src/
 │   ├── lib.rs                 # 生成的界面类型、设备路径配置
 │   ├── main.rs                # display：运动、纹理、暂停/恢复
 │   ├── bin/basic.rs           # basic：最小接入示例
 │   ├── bin/init-retry.rs      # NX5 同进程初始化失败与资源清理验证
 │   ├── bin/startup-regression.rs # NX5 启动/重试/退出实机验证
+│   ├── bin/alpha-regression.rs # NX5 透明 UI、实际页及 WBC 比较
 │   └── nx5_observer.rs        # NX5 专用进程内 WBC 观察器
 ├── ui/
 │   ├── app.slint              # 导出测试界面
 │   ├── basic.slint            # 不依赖设备尺寸的基础窗口
 │   ├── display.slint          # 随窗口尺寸布局的运动/纹理场景
-│   └── startup.slint          # 可拒绝布局与纯色像素验证
+│   ├── startup.slint          # 可拒绝布局与纯色像素验证
+│   └── alpha.slint            # 半透明色块与黑底参考色
 ├── fixtures/textures.rs       # 确定性的纹理素材；底层 TDE 比较也复用它
 ├── tests/public_api.rs        # 仅使用适配库公开接口的回归
 ├── devices/nx5/               # 当前设备记录与构建/运行说明
@@ -72,6 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | MCP 交互 | `display` 加 MCP 构建和运行环境 | 元素树、截图、点击/拖动、输入事件录制 |
 | NX5 合成输出 | `display --pattern --observe=300 --seconds=20` | WBC 黑白样本；需先部署 NX5 观察器插件 |
 | NX5 混色负对照 | 上一项加 `--split`，采样改为 `--observe=30` | 应报告混色，不能当作通过 |
+| NX5 透明输出 | `--bin alpha-regression -- OUTPUT_DIRECTORY`，需 `nx5` 或 `nx5-tde` | 五阶段实际前台页像素及进程内 WBC 的半透明/参考色比较，需部署专用插件 |
 | NX5 初始化清理 | `--bin init-retry`，需 `nx5` 或 `nx5-tde` | 同进程中 framebuffer/输入初始化失败、重试与 UI 线程退出后的 VO/TDE 清理 |
 | NX5 窗口启动 | `--bin startup-regression`，仅 `nx5-tde` | 首次显示失败清理、同一组件重试、延迟创建和真实前台页像素 |
 
@@ -89,7 +92,7 @@ WBC 按无版本库名 `libobserver.so` 通过系统搜索路径加载，部署�
 
 `init-retry OUTPUT_DIRECTORY [--framebuffer=PATH] [--touch=PATH]` 需要已有的输出目录并独占设备。它连续执行两次 framebuffer 路径错误和两次输入路径错误，然后成功启动并结束一个 UI 线程；在进程仍存活时断言 VO 已关闭、无 TDE MMZ 分配，核对重复失败及 UI 退出后的设备描述符缓存不增长，并保存 `.vo`、`.mmz`、`.fds` 快照。按设备说明构建时将 `--bin display` 换为 `--bin init-retry`；正常应返回 0，不能与显示进程同时运行。
 
-应用要透出下层视频时，可将 `.slint` 根窗口设为 `background: transparent;`，在其上绘制局部 UI；当前示例仍使用各自原有背景。透明和半透明像素的输出、无 alpha 格式限制及尚未接入的视频层边界见 [Framebuffer 软件路径](../docs/software-platform.md#framebuffer-软件路径)。库内透明窗口回归使用内存双页验证移动和消失后的 alpha、颜色及行尾 padding；不代表实机视频合成已验证。
+应用要透出下层视频时，可将 `.slint` 根窗口设为 `background: transparent;`，在其上绘制局部 UI；当前示例仍使用各自原有背景。透明和半透明像素的输出、无 alpha 格式限制及尚未接入的视频层边界见 [Framebuffer 软件路径](../docs/software-platform.md#framebuffer-软件路径)。库内透明窗口回归使用内存双页验证移动和消失后的 alpha、颜色及行尾 padding。`alpha-regression` 另用于设备上的实际页和 WBC 检查，构建、前提及输出见 [设备工具](tools/nx5/README.md#硬件诊断与证据重放)；它使用现有黑色 VO 底色，不代表视频解码和业务视频接入已经验证。
 
 基础窗口适合新设备接入检查；运动/纹理场景使用窗口实际尺寸显示分辨率、安排绘图区和限制运动范围。默认不打开触摸设备，检查暂停/恢复时需指定 `--touch`，或使用 MCP 注入交互。
 

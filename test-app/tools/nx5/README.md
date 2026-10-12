@@ -111,3 +111,13 @@ python3 test-app/tools/nx5/single-cycle/analyze.py evidence/nx5-single-cycle/sta
 维护中的 `display/run-regression.sh` 与 `display/run-startup.sh` 接受 `NX5_FRAMEBUFFER`（默认 `/dev/fb0`）和可选的 `NX5_TOUCH_DEVICE`；输入 EIO 用例必须指定触摸设备。脚本继承调用者的 `LD_LIBRARY_PATH` 和 `SLINT_DEFAULT_FONT`，不覆盖 SDK、插件或字体目录。显示回归使用板上已有的 `ls -ldnL` 获取所选设备的主次设备号并定位 sysfs，支持设备链接；不依赖该固件缺少的 `stat` 命令。退出检查将 MMZ 用量和块数与同次初始快照比较，不再假定某一分辨率下的固定显存占用。历史原始记录保持不变。
 
 `blocking_flip_cadence` 可用 `SLINT_BRIDGE_TEST_FRAMEBUFFER` 选择 framebuffer，默认使用 `Config` 的路径；页偏移来自设备实际高度。TDE 像素比较中的固定图像尺寸是测试素材，不限制运行时显示尺寸。
+
+`display/build-alpha-observer.sh` 构建 `libalpha-observer.so`，由 `alpha-regression` 在已取得显示所有权的进程内加载。它只读取物理前台页、VO 公共属性，并临时使用空闲 WBC；不初始化/关闭共用 VO，不改图层 alpha，也不接入解码器。framebuffer 检查采用当前 NX5 的 0–128 alpha 编码，WBC 比较半透明 RGB 色块与对应黑底不透明参考色的 Y/UV，要求设备现有底色为黑，通道误差至多 2。全透明阶段还检查输出为黑；不透明原色必须可见，避免全黑采样误判通过。UI 在每阶段事件循环退出并等待提交完成后采样；这是静态阶段和交替前台页验证，不是连续运动中每个扫描帧的验证。
+
+```sh
+NX5_SDK_INCLUDE=/home/dpower/data/GitLab/LGUI3/c_library/third_party/include/NX5/codec \
+NX5_SDK_LIBRARY=/home/dpower/data/GitLab/LGUI3/c_library/third_party/lib/NX5/codec_rorate/libVideoDec-1.6.6.so \
+sh test-app/tools/nx5/display/build-alpha-observer.sh
+```
+
+按设备说明交叉构建 `--bin alpha-regression`，分别使用 `nx5` 和 `nx5-tde` 验证软件/TDE feature 的输出。部署插件和程序、确认原显示所有者退出后，设置同一个 SDK/字体环境和插件搜索路径，运行 `alpha-regression OUTPUT_DIRECTORY [--framebuffer=PATH] [--touch=PATH]`；输出目录必须已存在。可用 `run-alpha.sh BINARY_DIRECTORY tde|software` 保存资源和内核快照；目录内分别放置 `alpha-tde`、`alpha-software` 及插件，同一结果目录拒绝覆盖。成功返回 0，日志应有五个 `passed=true` 阶段、每帧 `bad=0`，保存五份 WBC CSV；在主机运行 `python3 test-app/tools/nx5/display/check-alpha.py <结果目录>` 核对实际页、样本完整性、误差和退出资源。此测试只接受对应 8×6 色块网格可整除的诊断尺寸，不限制库支持的面板大小。

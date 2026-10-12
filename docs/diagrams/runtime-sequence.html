@@ -69,7 +69,7 @@
 <line data-graph-role="decoration" x1="480" y1="367" x2="480" y2="1460" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
 <rect id="pages" data-graph-bounds="660,230,900,302" data-node-id="pages" data-graph-role="node" x="660" y="230" width="240" height="72" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" />
 <text id="text-11" data-graph-role="content" x="780" y="259" text-anchor="middle" font-size="20" font-weight="600" fill="#2563eb">物理显示页 A / B</text>
-<text id="text-12" data-graph-role="content" x="780" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">含 alpha 时：straight RGB+A</text>
+<text id="text-12" data-graph-role="content" x="780" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">NX5：straight RGB / A≤128</text>
 <line data-graph-role="decoration" x1="780" y1="367" x2="780" y2="1460" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
 <rect id="worker" data-graph-bounds="960,230,1200,302" data-node-id="worker" data-graph-role="node" x="960" y="230" width="240" height="72" rx="9" fill="#faf5ff" stroke="#7c3aed" stroke-width="1.6" />
 <text id="text-13" data-graph-role="content" x="1080" y="259" text-anchor="middle" font-size="20" font-weight="600" fill="#7c3aed">后台提交线程</text>
@@ -100,7 +100,7 @@
 <line id="render-n" data-graph-role="edge" data-edge-id="render-n" data-source="ui" data-target="canvas" x1="200" y1="410" x2="480" y2="410" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)" />
 <text id="text-21" data-graph-role="label" data-owner="render-n" data-graph-bounds="257.45,377,422.55,399" x="340.0" y="395" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">① render(N) → 画布</text>
 <text id="text-22" data-graph-role="label" data-graph-bounds="498.00,423,650.00,444" x="498" y="440" text-anchor="start" font-size="17" font-weight="400" fill="#475569">软件渲染 / 可选 TDE</text>
-<text id="text-23" data-graph-role="label" data-graph-bounds="212.00,501,609.80,521" x="212" y="517" text-anchor="start" font-size="16" font-weight="400" fill="#475569">首次整页；随后合并两帧脏区；保留 alpha；源画布不变</text>
+<text id="text-23" data-graph-role="label" data-graph-bounds="212.00,501,609.80,521" x="212" y="517" text-anchor="start" font-size="16" font-weight="400" fill="#475569">首次整页；随后合并两帧脏区；编码 alpha；源画布不变</text>
 <line id="copy-b" data-graph-role="edge" data-edge-id="copy-b" data-source="ui" data-target="pages" x1="200" y1="495" x2="780" y2="495" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)" />
 <text id="text-24" data-graph-role="label" data-owner="copy-b" data-graph-bounds="304.91,462,675.09,484" x="490.0" y="480" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">② present()：反预乘 + 位域转换 → B（脏区）</text>
 <line id="submit-b" data-graph-role="edge" data-edge-id="submit-b" data-source="ui" data-target="worker" x1="200" y1="565" x2="1080" y2="565" stroke="#7c3aed" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-async)" />

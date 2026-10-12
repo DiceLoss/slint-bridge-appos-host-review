@@ -112,10 +112,10 @@ fn next_color(path: &Path) -> Result<(slint::Color, [u8; 4]), Box<dyn std::error
     )?;
     eprintln!("startup: previous_bgra={previous:?}");
     // Require a different color, so stale pixels cannot satisfy the assertion.
-    Ok(if previous == [0, 255, 0, 255] {
-        (slint::Color::from_rgb_u8(0, 0, 255), [255, 0, 0, 255])
+    Ok(if previous == [0, 255, 0, 128] {
+        (slint::Color::from_rgb_u8(0, 0, 255), [255, 0, 0, 128])
     } else {
-        (slint::Color::from_rgb_u8(0, 255, 0), [0, 255, 0, 255])
+        (slint::Color::from_rgb_u8(0, 255, 0), [0, 255, 0, 128])
     })
 }
 

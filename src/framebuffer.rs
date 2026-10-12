@@ -114,6 +114,8 @@ pub(crate) struct Layout {
     pub stride: usize,
     pub page_bytes: usize,
     pub initial_page: usize,
+    // Board scanout alpha range; independent of the fbdev channel bit width.
+    pub alpha_max: u8,
     bytes_per_pixel: usize,
     channels: [Bitfield; 4],
 }
@@ -188,6 +190,7 @@ impl Layout {
             stride,
             page_bytes,
             initial_page: (v.yoffset / v.yres) as usize,
+            alpha_max: 255,
             bytes_per_pixel,
             channels,
         })
@@ -203,7 +206,7 @@ impl Layout {
 
     fn pixel(self, pixel: PremultipliedRgbaColor) -> u32 {
         let channels = if self.channels[3].length == 8 {
-            straight_rgba(pixel)
+            self.output_rgba(pixel)
         } else {
             // Alpha-less outputs retain the black-matted premultiplied RGB.
             [pixel.red, pixel.green, pixel.blue, pixel.alpha]
@@ -220,6 +223,12 @@ impl Layout {
             })
     }
 
+    fn output_rgba(self, pixel: PremultipliedRgbaColor) -> [u8; 4] {
+        let mut rgba = straight_rgba(pixel);
+        rgba[3] = ((u16::from(rgba[3]) * u16::from(self.alpha_max) + 127) / 255) as u8;
+        rgba
+    }
+
     fn write_row(self, source: &[PremultipliedRgbaColor], destination: &mut [u8]) {
         assert_eq!(destination.len(), source.len() * self.bytes_per_pixel);
         #[cfg(all(feature = "nx5-tde", target_arch = "arm"))]
@@ -233,6 +242,7 @@ impl Layout {
                     source.as_ptr().cast(),
                     destination.as_mut_ptr(),
                     source.len(),
+                    self.alpha_max,
                 )
             } {
                 return;
@@ -247,7 +257,7 @@ impl Layout {
             };
             if self.channels.map(|c| (c.offset, c.length)) == [(16, 8), (8, 8), (0, 8), (24, 8)] {
                 for (word, pixel) in words.iter_mut().zip(source) {
-                    let [r, g, b, a] = straight_rgba(*pixel);
+                    let [r, g, b, a] = self.output_rgba(*pixel);
                     *word = (u32::from(a) << 24)
                         | (u32::from(r) << 16)
                         | (u32::from(g) << 8)
@@ -277,6 +287,31 @@ impl Layout {
 #[cfg(test)]
 mod row_tests {
     use super::*;
+
+    #[cfg(feature = "nx5")]
+    #[test]
+    fn nx5_scanout_encodes_alpha_in_the_measured_zero_to_128_range() {
+        let (fixed, variable) = crate::tests::info(256, 1, 32);
+        let layout = crate::backends::nx5::validate_layout(&fixed, &variable).unwrap();
+        let source: Vec<_> = (0..=255u8)
+            .map(|alpha| PremultipliedRgbaColor {
+                red: alpha,
+                green: 0,
+                blue: 0,
+                alpha,
+            })
+            .collect();
+        let mut bytes = vec![0; 256 * 4];
+        layout.write_row(&source, &mut bytes);
+        for (alpha, pixel) in bytes.as_chunks::<4>().0.iter().enumerate() {
+            let expected = if alpha == 0 {
+                0
+            } else {
+                (alpha.div_ceil(2) as u32) << 24 | 0x00ff0000
+            };
+            assert_eq!(*pixel, expected.to_ne_bytes(), "UI alpha={alpha}");
+        }
+    }
 
     #[test]
     fn straight_alpha_matches_rounded_division_for_every_channel_and_alpha() {
@@ -326,6 +361,7 @@ mod row_tests {
                 stride: 160,
                 page_bytes: 160,
                 initial_page: 0,
+                alpha_max: 255,
                 bytes_per_pixel,
                 channels: fields.map(|(offset, length)| Bitfield {
                     offset,

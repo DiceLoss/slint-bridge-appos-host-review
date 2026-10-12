@@ -57,6 +57,7 @@ int main(int argc, char **argv) {
     uint32_t reciprocals[256] = {0};
     for (unsigned alpha = 1; alpha < 256; ++alpha)
         reciprocals[alpha] = ((255u << 16) + alpha - 1) / alpha;
+    for (unsigned alpha_max = 128; alpha_max <= 255; alpha_max += 127) {
     for (unsigned alpha = 0; alpha < 256; ++alpha) {
         uint8_t source[256*4], original[256*4], actual[256*4];
         for (unsigned channel = 0; channel < 256; ++channel) {
@@ -64,13 +65,13 @@ int main(int argc, char **argv) {
             source[channel*4+3] = alpha;
         }
         memcpy(original,source,sizeof source);
-        bridge_rgba_to_bgra(actual,source,256,reciprocals);
+        bridge_rgba_to_bgra(actual,source,256,reciprocals,alpha_max);
         assert(!memcmp(source,original,sizeof source));
         for (unsigned channel = 0; channel < 256; ++channel) {
             unsigned expected = alpha ? (channel*255u+alpha/2)/alpha : 0;
             if (expected > 255) expected = 255;
             for (unsigned c=0;c<3;++c) assert(actual[channel*4+c]==expected);
-            assert(actual[channel*4+3]==alpha);
+            assert(actual[channel*4+3]==(alpha_max == 128 ? (alpha+1)/2 : alpha));
         }
     }
     for (unsigned count = 0; count <= 65; ++count) {
@@ -88,15 +89,16 @@ int main(int argc, char **argv) {
                         unsigned straight=alpha ? (value*255u+alpha/2)/alpha : 0;
                         expected[shift+i*4+c]=straight > 255 ? 255 : straight;
                     }
-                    expected[shift+i*4+3]=alpha;
+                    expected[shift+i*4+3]=alpha_max == 128 ? (alpha+1)/2 : alpha;
                 }
-                bridge_rgba_to_bgra(actual+shift,source+shift,count,reciprocals);
+                bridge_rgba_to_bgra(actual+shift,source+shift,count,reciprocals,alpha_max);
                 assert(!memcmp(actual,expected,sizeof actual));
                 assert(!memcmp(source,original,sizeof source));
             }
         }
     }
-    puts("PASS pixel-conversion all channel/alpha pairs, lengths=0..65 alignments=0..3 guards/source unchanged");
+    }
+    puts("PASS pixel-conversion alpha_max=128/255 all channel/alpha pairs, lengths=0..65 alignments=0..3 guards/source unchanged");
     for(fault=0;fault<=5;++fault) {
         cancels=ends=frees=closes=flushes=0;
         Engine *e=calloc(1,sizeof(*e)); current=e;
