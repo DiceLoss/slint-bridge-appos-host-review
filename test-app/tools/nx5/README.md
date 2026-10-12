@@ -7,7 +7,7 @@
 | 目录 | 用途 | 对应记录 |
 | --- | --- | --- |
 | `display/` | 进程内 WBC 采样、混色负对照、输入 EIO/TDE 退出、窗口启动回归与日志检查 | [最新实机回归](../../../docs/nx5-startup.md) |
-| `tde/` | 原生故障注入及 TDE 输出结果重放 | [TDE 验证](../../../docs/nx5-tde.md) |
+| `tde/` | 原生故障注入及 TDE 输出结果重放 | [TDE 验证](../../../docs/nx5-tde.md) · [三项实机补测](../../../docs/nx5-hardware.md) |
 | `present/` | 早期板级准入调查与原始观测判读 | [早期准入记录](../../../docs/nx5-present-validation.md) |
 | `flip/` | 阻塞 PAN 周期与实际刷新时序分析 | [翻页分析](../../../docs/nx5-flip.md) |
 | `single-cycle/` | 队列、待锁存与当前页状态诊断 | [单周期调查](../../../docs/nx5-single-cycle.md) |
