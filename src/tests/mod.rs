@@ -155,6 +155,7 @@ slint::slint! {
     export component LoopScene inherits Window {
         preferred-width: 8px; preferred-height: 6px;
         in-out property<int> taps: 0;
+        callback tapped();
         in-out property<int> keys: 0;
         in-out property<color> paint: red;
         in-out property<float> overlay-opacity: 0;
@@ -163,7 +164,7 @@ slint::slint! {
         animate overlay-opacity { duration: 100ms; }
         background: root.paint;
         Rectangle { background: white; opacity: root.overlay-opacity; }
-        TouchArea { clicked => { root.taps += 1; } }
+        TouchArea { clicked => { root.taps += 1; root.tapped(); } }
         key-focus := FocusScope {
             key-pressed(event) => { root.keys += 1; accept }
         }

@@ -1,6 +1,6 @@
 use super::*;
 
-fn touch_decoder(rotation: Rotation) -> Decoder {
+pub(super) fn touch_decoder(rotation: Rotation) -> Decoder {
     Decoder::new(
         PhysicalSize::new(8, 6),
         rotation,

@@ -5,6 +5,7 @@ use std::{
     io,
     os::fd::{AsRawFd, FromRawFd, OwnedFd},
     sync::{Arc, Mutex},
+    time::{Duration, Instant},
 };
 
 type Task = Box<dyn FnOnce() + Send>;
@@ -77,10 +78,20 @@ impl WakeQueue {
         }
     }
 
-    pub(crate) fn tasks(&self) -> Vec<Task> {
-        let mut state = self.state.lock().unwrap();
-        let count = state.tasks.len().min(128);
-        state.tasks.drain(..count).collect()
+    pub(crate) fn tasks(&self) -> impl Iterator<Item = Task> + '_ {
+        let start = Instant::now();
+        let mut first = true;
+        // A count limit alone can block input for hundreds of milliseconds on
+        // a slow CPU. Check elapsed time between callbacks, always allowing one
+        // to make progress. Unstarted work stays queued in FIFO order.
+        std::iter::from_fn(move || {
+            if !first && start.elapsed() >= Duration::from_millis(2) {
+                return None;
+            }
+            first = false;
+            self.state.lock().unwrap().tasks.pop_front()
+        })
+        .take(128)
     }
 
     pub(crate) fn quit_requested(&self) -> bool {

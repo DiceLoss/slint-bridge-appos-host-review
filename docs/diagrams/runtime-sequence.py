@@ -120,7 +120,7 @@ for ident,y,h,color,fill in [
 rect(82,774,73,32,'#dcfce7','#86efac')
 text(118,796,'PAR',18,GREEN,700,'middle',role='content')
 msg('render-next','ui','canvas',790,'render(N+1) → 画布',size=18)
-note('ui-work',96,857,498,77,'最多预渲染一帧，然后暂停后续绘制',['仍处理输入、任务与定时器'],BLUE,'#eff6ff')
+note('ui-work',96,857,498,77,'最多预渲染一帧，然后暂停后续绘制',['任务每批约 2 ms / 最多 128 个；继续处理输入'],BLUE,'#eff6ff')
 note('frozen-pages',638,766,284,167,'pending 期间两页均不可写',['A：旧前台，等待释放','B：提交中，禁止修改','此时仅允许写保留画布'],GREEN,'#ffffff')
 note('blocked-worker',990,801,735,106,'后台线程阻塞于 complete → NX5 PAN',['等待驱动完成；通用层没有发起第二次页面提交'],ORANGE,'#fff7ed')
 

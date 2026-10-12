@@ -18,6 +18,128 @@ fn send_input(writer: &mut File, events: &[(u16, u16, i32)]) {
 }
 
 #[test]
+fn queued_callbacks_yield_to_touch_before_finishing_the_backlog() {
+    const NAME: &str =
+        "tests::runtime::queued_callbacks_yield_to_touch_before_finishing_the_backlog";
+    if std::env::var("SLINT_BRIDGE_TEST_CHILD").as_deref() != Ok(NAME) {
+        let run = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", NAME, "--nocapture"])
+            .env("SLINT_BRIDGE_TEST_CHILD", NAME)
+            .output()
+            .unwrap();
+        assert!(
+            run.status.success(),
+            "{}{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        return;
+    }
+    let (frame_ready, rendered) = mpsc::sync_channel(1);
+    let target = surface_with_completion(8, 6, 32, 0, move |_| {
+        let _ = frame_ready.try_send(());
+        Ok(())
+    });
+    let (reader, writer) = input_pipe();
+    let platform = crate::runtime::BridgePlatform::with_inputs(
+        Config::default(),
+        target.fb,
+        vec![Evdev {
+            file: reader,
+            decoder: super::input::touch_decoder(Rotation::None),
+        }],
+        Vec::new(),
+    )
+    .unwrap();
+    slint::platform::set_platform(Box::new(platform)).unwrap();
+    let ui = LoopScene::new().unwrap();
+    ui.invoke_focus_keys();
+    let completed = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let observed = Arc::new(Mutex::new(None));
+    let started = Arc::new(Mutex::new(None::<std::time::Instant>));
+    let count = completed.clone();
+    let result = observed.clone();
+    let start = started.clone();
+    ui.on_tapped(move || {
+        *result.lock().unwrap() = Some((
+            count.load(Ordering::SeqCst),
+            start.lock().unwrap().unwrap().elapsed(),
+        ));
+    });
+    let mut input_writer = Some(writer.try_clone().unwrap());
+    let task_count = completed.clone();
+    let producer = thread::spawn(move || {
+        // Input needs the real window's first layout, just like a displayed UI.
+        rendered.recv_timeout(Duration::from_secs(3)).unwrap();
+        let (release, gate) = mpsc::sync_channel(1);
+        let (entered, staging) = mpsc::sync_channel(1);
+        slint::invoke_from_event_loop(move || {
+            entered.send(()).unwrap();
+            gate.recv_timeout(Duration::from_secs(3)).unwrap();
+        })
+        .unwrap();
+        staging.recv_timeout(Duration::from_secs(3)).unwrap();
+        for index in 0..64 {
+            let mut writer = input_writer.take();
+            let count = task_count.clone();
+            let start = started.clone();
+            slint::invoke_from_event_loop(move || {
+                assert_eq!(
+                    count.fetch_add(1, Ordering::SeqCst),
+                    index,
+                    "task FIFO changed"
+                );
+                if let Some(writer) = &mut writer {
+                    *start.lock().unwrap() = Some(std::time::Instant::now());
+                    send_input(
+                        writer,
+                        &[
+                            (3, 0, 400),
+                            (3, 1, 500),
+                            (1, 330, 1),
+                            (0, 0, 0),
+                            (1, 330, 0),
+                            (0, 0, 0),
+                        ],
+                    );
+                }
+                // Model small UI updates on a slow CPU, not one uninterruptible task.
+                thread::sleep(Duration::from_millis(2));
+                if index == 63 {
+                    slint::Timer::single_shot(Duration::from_millis(10), || {
+                        slint::quit_event_loop().unwrap()
+                    });
+                }
+            })
+            .unwrap();
+        }
+        release.send(()).unwrap();
+    });
+    ui.run().unwrap();
+    producer.join().unwrap();
+    let (callbacks, elapsed) = observed
+        .lock()
+        .unwrap()
+        .expect("touch callback was not dispatched");
+    eprintln!("touch handled after {callbacks} callbacks, elapsed={elapsed:?}");
+    assert_eq!(
+        ui.get_taps(),
+        1,
+        "pending touch must reach the Slint component"
+    );
+    assert!(
+        callbacks <= 8,
+        "touch waited for {callbacks} queued callbacks ({elapsed:?})"
+    );
+    assert_eq!(
+        completed.load(Ordering::SeqCst),
+        64,
+        "yielding lost queued work"
+    );
+    drop(writer);
+}
+
+#[test]
 fn event_loop_runs_callbacks_and_timers_during_flip_and_reports_idle_failure() {
     // Slint installs its process-global proxy once; isolate this second real
     // platform from the existing event-loop integration test.
