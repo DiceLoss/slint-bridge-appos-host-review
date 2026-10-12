@@ -19,13 +19,13 @@ cargo --config .cargo/nx5.toml build --locked --offline --release \
   --target arm-unknown-linux-gnueabi --features nx5-tde,slint/mcp -p slint-bridge-test-app --bin display
 ```
 
-将 `target/arm-unknown-linux-gnueabi/release/display` 按 [NX5 设备说明](../test-app/devices/nx5/README.md) 部署为 `/run/slint-bridge-test/display` 后，在没有其他显示所有者的情况下，通过 DPower Terminal 的 USB1 root 会话启动：
+将 `target/arm-unknown-linux-gnueabi/release/display` 按 [NX5 设备说明](../test-app/devices/nx5/README.md) 通过部署脚本上传为新的 `/tmp/slint-bridge-next/display` 后，在没有其他显示所有者的情况下，通过 DPower Terminal 的 USB1 root 会话启动：
 
 ```sh
 SLINT_MCP_PORT=9315 \
 SLINT_DEFAULT_FONT=/run/slint-bridge-display/DejaVuSans.ttf \
 LD_LIBRARY_PATH=/system/app/clib \
-/run/slint-bridge-test/display --textures --touch=/dev/input/event0
+/tmp/slint-bridge-next/display --textures --touch=/dev/input/event0
 ```
 
 这里沿用当前设备已部署的字体及 SDK 路径。日常 MCP 会话不启用持续的 `SLINT_BRIDGE_TRACE`；需要性能采样时，配合 `--seconds=120` 运行有限时长并保存日志。`/run` 是临时文件系统，重启后需重新部署。
@@ -85,7 +85,16 @@ du -k /run/slint-* /tmp/slint-*
 
 先把已完成测试的普通文件取回主机并核对摘要，再清理设备副本；归档时跳过指向 framebuffer 和输入设备的链接。用当前进程的 `exe`、`maps`、`fd`、启动配置核对依赖，保留运行程序、字体、SDK、活动日志、设备链接及独占锁，并保留一份必要恢复程序。不要累积多轮测试二进制，也不要把 `/run` 整体清空。
 
-清理后先确认 `MemAvailable` 留有截图峰值及系统运行余量，再顺序截图并观察内存和进程状态。当前实测峰值增加约 5 MiB；在低于 16 MiB 可用内存时，先归档清理后再截图。这是本板当前尺寸的保守操作余量，不是并发截图或任意场景的保证。图像直接保存到主机，验证结束后取回并移除设备采样文件。最新实测及清理清单见 [截图内存报告](nx5-screenshot-memory.md)。
+日常截图统一使用 [部署工具](../test-app/tools/nx5/README.md#部署归档清理和截图) 的受检查入口，输出目录须存在、文件须不存在：
+
+```sh
+python3 test-app/tools/nx5/deploy.py --serial 192.168.1.151:5555 screenshot \
+  evidence/nx5-deploy/screenshot-01.png
+```
+
+入口先检查 16 MiB 最低可用内存，再查询实际窗口尺寸，并在调用原生 `take_screenshot` 前立即检查 `max(16 MiB, 3 × 两份 RGBA 像素缓冲)` 的余量；字段缺失或不足均拒绝。图像直接保存到主机。归档清理也由同一工具维护，校验完成后再删设备副本，保留规则见 `deploy-retain.json`，不再依赖一次性清理命令。
+
+此检查覆盖部署脚本发出的顺序截图。其他 MCP 客户端仍应在截图前执行同样的设备内存检查，避免并发截图或其他进程占用使检查后的余量失效。当前实测峰值增加约 5 MiB；16 MiB 是本板当前尺寸的保守操作余量，不是任意场景的保证。最新实测和历史清理清单见 [截图内存报告](nx5-screenshot-memory.md)。
 
 ## 本地 Slint 版本的 18 个工具
 

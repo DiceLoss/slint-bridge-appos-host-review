@@ -117,6 +117,8 @@ cargo build --locked --offline --release -p slint-bridge-test-app \
   --features nx5 --target arm-unknown-linux-gnueabi --bin basic
 ```
 
+NX5 部署与测试后的归档清理统一使用 [deploy.py](tools/nx5/README.md#部署归档清理和截图)，保留当前程序、一份恢复版本及其依赖；截图子命令会即时检查设备可用内存。
+
 NX5 TDE、观察器插件、部署与 MCP 运行命令见 [devices/nx5/README.md](devices/nx5/README.md)。所有构建仍使用仓库指定的同一份 Slint 1.18.1 源码。
 
 [此前启动实机回归](../docs/nx5-startup.md) 验证了 `949ceb9` 的五个启动用例各两轮、10 帧全幅实际像素和完整进程清理，另有 WBC 与纹理运行。三项 ignored TDE/翻页测试已在 [2026-10-12 补测](../docs/nx5-hardware.md) 中全部通过；EIO 的历史结果仍见 [前一轮报告](../docs/nx5-tde-exit.md)。

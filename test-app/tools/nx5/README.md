@@ -4,6 +4,72 @@
 
 `target/` 和 `evidence/` 均不纳入 Git。下方证据重放命令需要已有的本地档案；它们不采集新数据，也不证明当前二进制已通过实机测试。当前进程内 WBC 插件的构建、动态库搜索路径和判读命令见 [NX5 设备说明](../../devices/nx5/README.md)。`present/` 中的独立 SDK 探针属于 #22 旧环境，不能直接套用于正在运行 UI 的 #233 设备。
 
+## 部署、归档清理和截图
+
+主机入口为 [deploy.py](deploy.py)，使用 Python 3.11+ 和 ADB；[deploy-device.sh](deploy-device.sh) 在已有 root 终端中执行清单采集与清理。当前板 ADB 为 UID 2000，脚本沿用 ADB 传输、root 串口执行的方式，不修改设备权限或认证配置。每次显式指定 ADB 目标，并重新核对设备身份及显示所有者。已有 UI 可以保持运行；一轮部署完成后再启动新的测试。
+
+[deploy-retain.json](../../devices/nx5/deploy-retain.json) 是维护中的保留策略，和观测快照 `current-target.json` 分开：`current_binary` 与 `recovery_binary` 必须是两个存在的普通文件，`keep` 列出启动脚本、字体、库目录、许可证及其他需要保留的文件或目录。新版本通过验证并切换后，把原当前程序设为恢复版本，再更新当前路径及依赖；不能只修改 PID 或根据文件时间猜测恢复版本。首次接入或重启后若这些文件不存在，需要先恢复已验证的部署及恢复文件；此维护流程会拒绝在缺少恢复程序时清理。
+
+脚本仅管理 `/run/slint-bridge-*/`、`/tmp/slint-bridge-*/` 下的普通文件。保留策略、活动进程的可执行文件/映射/文件描述符、`SLINT_DEFAULT_FONT`、`LD_LIBRARY_PATH` 及 `.lock` 文件均受保护。目录项和符号链接不作为删除候选，避免读取设备节点或跟随设备链接。保留目录的全部内容均会保留，因此测试日志和探针应放在单独的测试目录，不要放入被整体保留的 SDK 目录。
+
+从仓库根执行以下流程。`--work` 使用 `inspect` 本次输出的真实目录，`--archive` 每轮必须是新的主机目录：
+
+```sh
+# 1. 主机创建小型控制目录，输出 root 终端需要执行的 inventory 命令。
+python3 test-app/tools/nx5/deploy.py --serial 192.168.1.151:5555 inspect
+
+# 2. 执行上一步输出的 root 命令后，在主机归档候选文件并核对 SHA256。
+python3 test-app/tools/nx5/deploy.py --serial 192.168.1.151:5555 prepare \
+  --work /tmp/nx5-deploy-本次32位ID \
+  --retain test-app/devices/nx5/deploy-retain.json \
+  --archive evidence/nx5-deploy/run-01
+
+# 3. 执行 prepare 输出的 root cleanup 命令后，上传到新的版本目录。
+# 此处 source 是已 strip 的部署副本；目标路径必须不存在。
+python3 test-app/tools/nx5/deploy.py --serial 192.168.1.151:5555 upload \
+  --plan evidence/nx5-deploy/run-01/plan.json \
+  target/nx5-deploy/display /tmp/slint-bridge-next/display
+
+```
+
+若仅在测试结束后归档清理、不上传文件，则以 `finish` 替代上面的 `upload`，二者只执行一个：
+
+```sh
+python3 test-app/tools/nx5/deploy.py --serial 192.168.1.151:5555 finish \
+  --plan evidence/nx5-deploy/run-01/plan.json
+```
+
+两者都会取回清理结果并删除本轮设备控制文件；`upload` 只准备新程序路径，现有显示和恢复版本保持原样。完成后按设备显示所有权流程启动新版本。后续部署和测试结束后的清理都重复同一流程，未被保留或使用的旧测试副本会成为下一轮候选。
+
+归档校验不完整时不下发清理计划。root 清理会重新核对启动 ID、当前/恢复程序摘要、实时活动引用及每个候选文件摘要；文件变化、引用变化或重启会使计划失败。上传前要求 `MemAvailable` 至少容纳整个新文件再加 16 MiB 余量，发布前再检查余量；新文件校验后以不可覆盖的方式放到目标路径。ADB 操作有 60 秒超时，并额外核对远端退出码，兼容本板旧 adbd。
+
+失败的主机归档保留用于排查。放弃尚未完成的控制目录时，先确认 root 命令已结束，再执行以下命令归档并删除该控制目录；不会应用旧清理计划，也不会删除已经上传的程序。未使用的上传副本通过下一轮正常归档清理处理：
+
+```sh
+python3 test-app/tools/nx5/deploy.py --serial 192.168.1.151:5555 discard \
+  --work /tmp/nx5-deploy-本次32位ID --archive evidence/nx5-deploy/aborted-01
+```
+
+日常截图使用同一入口，仍调用 Slint 原生 MCP，不新增截图服务器。输出目录须存在、文件须不存在；PNG 只保存在主机：
+
+```sh
+python3 test-app/tools/nx5/deploy.py --serial 192.168.1.151:5555 screenshot \
+  evidence/nx5-deploy/screenshot-01.png
+```
+
+该命令先检查 16 MiB 最低可用内存，再查询实际窗口尺寸，并在发送 `take_screenshot` 前立即要求至少 `max(16 MiB, 3 × 两份 RGBA 像素缓冲)` 的余量。内存字段缺失或不足时拒绝截图。`--port` 默认 19315，自动转发到设备 localhost 9315。此检查覆盖脚本发出的顺序截图；直接调用其他 MCP 客户端时仍须遵守 [内存检查说明](../../../docs/slint-mcp.md#截图前的内存检查)。
+
+部署工具回归不访问硬件，使用临时文件和模拟 `/proc` 执行实际清理 shell，覆盖归档损坏、当前/恢复文件保留、活动引用、设备链接、重启、摘要变化、低内存拒绝，以及只读控制文件的非交互清理：
+
+```sh
+python3 -m unittest discover -s test-app/tools/nx5 -p 'test_deploy.py' -v
+sh -n test-app/tools/nx5/deploy-device.sh
+```
+
+2026-10-12 实机验证完成日志归档清理、校验上传约 5.8 MB 程序副本、受内存检查保护的原生截图，以及下一轮归档移除该非活动副本；PID 3972、当前程序和恢复文件未变。原始记录在 `evidence/nx5-deploy-script/2026-10-12/`，需另行取得；此前手工清理与十次截图的证据保持在 [内存报告](../../../docs/nx5-screenshot-memory.md)。
+
+## 硬件诊断与证据重放
+
 | 目录 | 用途 | 对应记录 |
 | --- | --- | --- |
 | `display/` | 进程内 WBC 采样、混色负对照、输入 EIO/TDE 退出、窗口启动回归与日志检查 | [最新实机回归](../../../docs/nx5-startup.md) |

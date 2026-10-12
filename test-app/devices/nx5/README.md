@@ -21,16 +21,24 @@ cargo --config .cargo/nx5.toml build --locked --offline --release \
   --target arm-unknown-linux-gnueabi --bin display
 ```
 
-程序输出为 `target/arm-unknown-linux-gnueabi/release/display`。需要时使用当前 ARM 工具链的 `strip -o` 产生部署副本；以下运行命令约定将其部署为 `/run/slint-bridge-test/display`，并赋予执行权限。字体需另行部署到下方路径。以下示例使用设备原有 SDK 目录；SDK 可以放在其他目录，只需在启动前将 `LD_LIBRARY_PATH` 改为对应位置，并提供无版本库名 `libVideoDec.so`（可链接到实际 SDK 文件）。`/run` 中的程序和字体在重启后需重新部署。确认旧显示实例已经退出后，再通过 USB1 root 会话运行：
+程序输出为 `target/arm-unknown-linux-gnueabi/release/display`。使用当前配置的 ARM 工具链生成部署副本：
+
+```sh
+mkdir -p target/nx5-deploy
+/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-strip \
+  -o target/nx5-deploy/display target/arm-unknown-linux-gnueabi/release/display
+```
+
+通过 [部署脚本](../../tools/nx5/README.md#部署归档清理和截图) 先归档清理，再上传到新的版本目录；以下运行命令以 `/tmp/slint-bridge-next/display` 为例。脚本会校验上传摘要并赋予执行权限。字体需另行部署到下方路径。以下示例使用设备原有 SDK 目录；SDK 可以放在其他目录，只需在启动前将 `LD_LIBRARY_PATH` 改为对应位置，并提供无版本库名 `libVideoDec.so`（可链接到实际 SDK 文件）。`/run` 中的程序和字体在重启后需重新部署。确认旧显示实例已经退出后，再通过 USB1 root 会话运行：
 
 ```sh
 SLINT_MCP_PORT=9315 \
 SLINT_DEFAULT_FONT=/run/slint-bridge-display/DejaVuSans.ttf \
 LD_LIBRARY_PATH=/system/app/clib \
-/run/slint-bridge-test/display --textures --touch=/dev/input/event0 --seconds=20
+/tmp/slint-bridge-next/display --textures --touch=/dev/input/event0 --seconds=20
 ```
 
-部署诊断程序前及验证结束后，按 [截图内存检查](../../../docs/slint-mcp.md#截图前的内存检查) 归档清理已完成测试的设备副本。`/run` 与 `/tmp` 共用物理内存预算，避免保留多轮二进制；保留当前依赖、活动日志、独占锁及一份必要恢复程序。
+部署诊断程序前及验证结束后，统一使用 [deploy.py 的归档清理流程](../../tools/nx5/README.md#部署归档清理和截图)。维护 [deploy-retain.json](deploy-retain.json) 中的当前程序、恢复程序和共用依赖；脚本执行时还会核对实时活动引用。`/run` 与 `/tmp` 共用物理内存预算，避免保留多轮二进制；保留当前依赖、活动日志、独占锁及一份必要恢复程序。
 
 主机连接 Slint MCP：
 
@@ -57,7 +65,7 @@ sh test-app/tools/nx5/display/build-observer.sh
 ```sh
 SLINT_DEFAULT_FONT=/run/slint-bridge-display/DejaVuSans.ttf \
 SLINT_BRIDGE_TRACE=1 LD_LIBRARY_PATH=/run/slint-bridge-display:/system/app/clib \
-/run/slint-bridge-test/display --pattern --observe=300 --seconds=20 \
+/tmp/slint-bridge-next/display --pattern --observe=300 --seconds=20 \
   > /run/slint-bridge-test/pattern.log 2>&1
 ```
 

@@ -1,0 +1,15 @@
+{
+  "current_binary": "/tmp/slint-bridge-review-fixes/display",
+  "recovery_binary": "/tmp/slint-bridge-c03c3bb/display",
+  "keep": [
+    "/tmp/slint-bridge-review-fixes/start-live.sh",
+    "/tmp/slint-bridge-review-fixes/fixed-results/live-restored.log",
+    "/tmp/slint-bridge-c03c3bb/start-live.sh",
+    "/tmp/slint-bridge-c03c3bb/lib",
+    "/tmp/slint-bridge-c03c3bb/dev",
+    "/run/slint-bridge-display/DejaVuSans.ttf",
+    "/run/slint-bridge-display/DejaVu-font-license.txt",
+    "/run/slint-bridge-display/adbd.log",
+    "/run/slint-bridge-display/dhcp.log"
+  ]
+}
