@@ -105,7 +105,7 @@
       0,
       600
     ],
-    "physical_touch_validation": "287da8c baseline: 12 physical contacts, 49 Slint events Accepted, zero dropped; 24 contact edges matched, maximum timestamp delta 10.209 ms (1 ms precision; conservative bound 11.3 ms). User reported timely pause/resume. f963558 received no new physical input during the finite confirmation window; its 3 native MCP pause/resume cycles passed with 24 Accepted events.",
+    "physical_touch_validation": "287da8c baseline: 12 physical contacts, 49 Slint events Accepted, zero dropped; 24 contact edges matched, maximum timestamp delta 10.209 ms (1 ms precision; conservative bound 11.3 ms). User reported timely pause/resume. f963558: the finite recording window had zero events; the user subsequently confirmed the requested 4 physical taps responded normally, without a new latency sample. Its 3 native MCP pause/resume cycles passed with 24 Accepted events.",
     "physical_touch_evidence": "evidence/nx5-alpha-deploy/2026-10-12-287da8c/results.json"
   },
   "vendor_files": [
@@ -208,7 +208,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "287da8c reproduced bright alpha in software and TDE features despite correct bytes; authorized fix f963558 uses 0..128 scanout alpha. 10 actual front pages exact, 50 WBC samples max Y/UV delta 1 over black. Both 60s texture runs steady 29 FPS. Baseline 12 physical contacts timely; final build 3 MCP cycles passed but no new physical input in confirmation window. 2de9168 rollback retained. No firmware/SDK changes, reboot, actual video decoding, nonblack underlay or ignored-hardware-test rerun.",
+  "observation_scope": "287da8c reproduced bright alpha in software and TDE features despite correct bytes; authorized fix f963558 uses 0..128 scanout alpha. 10 actual front pages exact, 50 WBC samples max Y/UV delta 1 over black. Both 60s texture runs steady 29 FPS. Baseline 12 physical contacts timely; final build 3 MCP cycles passed; user later confirmed 4 physical taps responded normally after the finite recording window, without new latency samples. 2de9168 rollback retained. No firmware/SDK changes, reboot, actual video decoding, nonblack underlay or ignored-hardware-test rerun.",
   "hardware_regression": {
     "report": "docs/nx5-hardware.md",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -358,6 +358,8 @@
     "wbc_samples": 50,
     "paired_points": 30000,
     "max_yuv_difference": 1,
-    "video_decoder_integrated": false
+    "video_decoder_integrated": false,
+    "final_user_physical_response_confirmed": true,
+    "final_physical_latency_measured": false
   }
 }
