@@ -1,6 +1,63 @@
 use super::*;
 
 #[test]
+fn transparent_ui_preserves_alpha_and_clears_moving_content_on_both_pages() {
+    let _serial = SLINT_TEST.lock().unwrap();
+    slint::slint! {
+        export component Overlay inherits Window {
+            preferred-width: 8px; preferred-height: 6px;
+            background: transparent;
+            in property<length> position;
+            in property<color> fill;
+            Rectangle { x: root.position; y: 1px; width: 2px; height: 4px; background: root.fill; }
+        }
+    }
+    let mut target = surface(8, 6, 32);
+    let window = MinimalSoftwareWindow::new(RepaintBufferType::ReusedBuffer);
+    slint::platform::set_platform(Box::new(RenderPlatform(window.clone()))).unwrap();
+    let ui = Overlay::new().unwrap();
+    ui.show().unwrap();
+    window.set_size(PhysicalSize::new(8, 6));
+    for (position, alpha) in [
+        (0, 128),
+        (3, 63),
+        (5, 0),
+        (2, 1),
+        (4, 254),
+        (6, 255),
+        (0, 0),
+    ] {
+        ui.set_position(position as f32);
+        ui.set_fill(slint::Color::from_argb_u8(alpha, 255, 0, 0));
+        assert!(draw(&window, &mut target.fb).unwrap());
+        let frames = target.commits.lock().unwrap();
+        let frame = frames.last().unwrap();
+        for y in 0..6 {
+            for x in 0..8 {
+                let at = y * target.fb.layout.stride + x * 4;
+                let expected =
+                    if (1..5).contains(&y) && (position..position + 2).contains(&x) && alpha != 0 {
+                        u32::from(alpha) << 24 | 0x00ff0000
+                    } else {
+                        0
+                    };
+                assert_eq!(
+                    &frame[at..at + 4],
+                    &expected.to_ne_bytes(),
+                    "x={x} y={y} position={position} alpha={alpha}"
+                );
+            }
+            assert!(
+                frame[y * target.fb.layout.stride + 32..(y + 1) * target.fb.layout.stride]
+                    .iter()
+                    .all(|&byte| byte == 0xa5)
+            );
+        }
+    }
+    assert_eq!(target.commits.lock().unwrap().len(), 7);
+}
+
+#[test]
 fn reject_unsafe_framebuffer_layouts() {
     let (mut f, mut v) = info(8, 6, 32);
     assert!(Layout::new(&f, &v).is_ok());

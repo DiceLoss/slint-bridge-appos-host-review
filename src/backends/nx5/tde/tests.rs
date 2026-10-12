@@ -200,6 +200,77 @@ fn incremental_motion_matches_full_software_frames() {
     compare_incremental(&window, &scene, &mut buffer);
 }
 
+#[test]
+fn changing_foreground_keeps_recent_background_texture_cached() {
+    use std::cell::RefCell;
+
+    #[derive(Default)]
+    struct Uploads {
+        background: usize,
+        foreground: usize,
+        bytes: usize,
+        slots: [Vec<u8>; 2],
+    }
+    struct CacheProbe(Rc<RefCell<Uploads>>);
+    impl Accelerator for CacheProbe {
+        fn draw(
+            &mut self,
+            _: &mut [PremultipliedRgbaColor],
+            texture: &Texture<'_>,
+        ) -> Result<Outcome, Failure> {
+            let mut uploads = self.0.borrow_mut();
+            let slot = texture.slot as usize;
+            if texture.upload {
+                if texture.width == 512 {
+                    uploads.background += 1;
+                } else {
+                    uploads.foreground += 1;
+                }
+                uploads.bytes += texture.data.len();
+                uploads.slots[slot] = texture.data.to_vec();
+            } else {
+                assert_eq!(
+                    uploads.slots[slot], texture.data,
+                    "cache hit reused stale pixels"
+                );
+            }
+            Ok(if texture.width == 512 {
+                Outcome::Copied
+            } else {
+                Outcome::Blended
+            })
+        }
+    }
+
+    let (window, scene) = setup();
+    moving_scene(&scene);
+    let uploads = Rc::new(RefCell::new(Uploads::default()));
+    let mut buffer = Buffer::software(512, 384).unwrap();
+    buffer.engine = Some(Box::new(CacheProbe(uploads.clone())));
+    for frame in 0..8 {
+        let mut pixels = SharedPixelBuffer::<Rgba8Pixel>::new(256, 256);
+        pixels.make_mut_slice().fill(Rgba8Pixel {
+            r: frame * 20,
+            g: 40,
+            b: 80,
+            a: 128,
+        });
+        scene.set_picture(slint::Image::from_rgba8(pixels));
+        draw(&window, &mut buffer).unwrap();
+    }
+    let uploads = uploads.borrow();
+    eprintln!(
+        "texture uploads: background={} foreground={} bytes={}",
+        uploads.background, uploads.foreground, uploads.bytes
+    );
+    assert_eq!(
+        uploads.background, 1,
+        "recently used background was evicted"
+    );
+    assert_eq!(uploads.foreground, 8, "each changed foreground must upload");
+    assert_eq!(uploads.bytes, 512 * 384 * 4 + 8 * 256 * 256 * 4);
+}
+
 struct Reject {
     unknown: bool,
 }

@@ -9,7 +9,12 @@ use i_slint_renderer_software::{
 pub(crate) unsafe fn rgba_to_bgra(source: *const u8, destination: *mut u8, count: usize) -> bool {
     unsafe extern "C" {
         fn bridge_neon_available() -> i32;
-        fn bridge_rgba_to_bgra(destination: *mut u8, source: *const u8, count: usize);
+        fn bridge_rgba_to_bgra(
+            destination: *mut u8,
+            source: *const u8,
+            count: usize,
+            reciprocals: *const u32,
+        );
     }
     // SAFETY: caller guarantees disjoint, valid count*4 byte ranges. The C
     // implementation accepts unaligned rows and handles the scalar remainder.
@@ -17,7 +22,12 @@ pub(crate) unsafe fn rgba_to_bgra(source: *const u8, destination: *mut u8, count
         if bridge_neon_available() == 0 {
             return false;
         }
-        bridge_rgba_to_bgra(destination, source, count);
+        bridge_rgba_to_bgra(
+            destination,
+            source,
+            count,
+            crate::framebuffer::ALPHA_RECIPROCALS.as_ptr(),
+        );
     }
     true
 }
@@ -248,8 +258,10 @@ impl Buffer {
         let slot = cached.unwrap_or(self.next_slot);
         if cached.is_none() {
             self.keys[slot] = None;
-            self.next_slot = 1 - slot;
         }
+        // Keep the texture just used (often a stable background) when the next
+        // draw uploads a changed image. Hits must also update replacement order.
+        self.next_slot = 1 - slot;
         let texture = Texture {
             data: source.data,
             width: source.width,

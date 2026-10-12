@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include "../../../../src/backends/nx5/tde/native.c"
 static int fault, cancels, ends, frees, closes, flushes;
+static int free_fault;
+static void *unreleased;
 static Engine *current;
 static TDE_HANDLE begin(void) { return fault == 1 ? -101 : 7; }
 static FY_S32 cancel(TDE_HANDLE job) { assert(job==7); ++cancels; return fault==3 ? -103 : 0; }
@@ -19,7 +21,14 @@ static FY_S32 flush(FY_U32 p,FY_VOID *v,FY_U32 n) {
     (void)p;(void)v;assert(n); ++flushes;
     return fault==5 && flushes==3 ? -105 : 0;
 }
-static FY_S32 free_mmz(FY_U32 p,FY_VOID *v) { (void)p; ++frees; free(v); return 0; }
+static FY_S32 free_mmz(FY_U32 p,FY_VOID *v) {
+    (void)p; ++frees;
+    if (free_fault && frees == 1) {
+        if (free_fault == 1) unreleased = v; else free(v);
+        return -106;
+    }
+    free(v); return 0;
+}
 static void close_tde(void) { ++closes; }
 static void test_sdk_loading(void) {
     int error;
@@ -45,21 +54,49 @@ int main(int argc, char **argv) {
         test_sdk_loading();
         return 0;
     }
-    for (unsigned count = 0; count <= 65; ++count) {
-        for (unsigned shift = 0; shift < 4; ++shift) {
-            uint8_t source[65*4+8], actual[65*4+8], expected[65*4+8];
-            for (unsigned i=0;i<sizeof source;++i) source[i]=(i*37u+11u)&255u;
-            memset(actual,0xa5,sizeof actual);memcpy(expected,actual,sizeof expected);
-            for (unsigned i=0;i<count;++i) {
-                expected[shift+i*4]=source[shift+i*4+2];
-                expected[shift+i*4+1]=source[shift+i*4+1];
-                expected[shift+i*4+2]=source[shift+i*4];expected[shift+i*4+3]=255;
-            }
-            bridge_rgba_to_bgra(actual+shift,source+shift,count);
-            assert(!memcmp(actual,expected,sizeof actual));
+    uint32_t reciprocals[256] = {0};
+    for (unsigned alpha = 1; alpha < 256; ++alpha)
+        reciprocals[alpha] = ((255u << 16) + alpha - 1) / alpha;
+    for (unsigned alpha = 0; alpha < 256; ++alpha) {
+        uint8_t source[256*4], original[256*4], actual[256*4];
+        for (unsigned channel = 0; channel < 256; ++channel) {
+            memset(source+channel*4, channel, 3);
+            source[channel*4+3] = alpha;
+        }
+        memcpy(original,source,sizeof source);
+        bridge_rgba_to_bgra(actual,source,256,reciprocals);
+        assert(!memcmp(source,original,sizeof source));
+        for (unsigned channel = 0; channel < 256; ++channel) {
+            unsigned expected = alpha ? (channel*255u+alpha/2)/alpha : 0;
+            if (expected > 255) expected = 255;
+            for (unsigned c=0;c<3;++c) assert(actual[channel*4+c]==expected);
+            assert(actual[channel*4+3]==alpha);
         }
     }
-    puts("PASS pixel-conversion lengths=0..65 alignments=0..3 guards=unchanged");
+    for (unsigned count = 0; count <= 65; ++count) {
+        for (unsigned shift = 0; shift < 4; ++shift) {
+            for (unsigned opaque=0;opaque<2;++opaque) {
+                uint8_t source[65*4+8], original[65*4+8], actual[65*4+8], expected[65*4+8];
+                for (unsigned i=0;i<sizeof source;++i) source[i]=(i*37u+11u)&255u;
+                if (opaque) for (unsigned i=0;i<count;++i) source[shift+i*4+3]=255;
+                memcpy(original,source,sizeof source);
+                memset(actual,0xa5,sizeof actual);memcpy(expected,actual,sizeof expected);
+                for (unsigned i=0;i<count;++i) {
+                    unsigned alpha=source[shift+i*4+3];
+                    for (unsigned c=0;c<3;++c) {
+                        unsigned value=source[shift+i*4+2-c];
+                        unsigned straight=alpha ? (value*255u+alpha/2)/alpha : 0;
+                        expected[shift+i*4+c]=straight > 255 ? 255 : straight;
+                    }
+                    expected[shift+i*4+3]=alpha;
+                }
+                bridge_rgba_to_bgra(actual+shift,source+shift,count,reciprocals);
+                assert(!memcmp(actual,expected,sizeof actual));
+                assert(!memcmp(source,original,sizeof source));
+            }
+        }
+    }
+    puts("PASS pixel-conversion all channel/alpha pairs, lengths=0..65 alignments=0..3 guards/source unchanged");
     for(fault=0;fault<=5;++fault) {
         cancels=ends=frees=closes=flushes=0;
         Engine *e=calloc(1,sizeof(*e)); current=e;
@@ -84,6 +121,22 @@ int main(int argc, char **argv) {
         } else assert(!e->quarantined);
         bridge_tde_destroy(e); assert(frees==2 && closes==1);
         printf("PASS fault=%d result=%d sdk=%d\n",fault,result,error);
+    }
+    for (free_fault=1;free_fault<=2;++free_fault) {
+        frees=closes=0; in_use=1;
+        Engine *e=calloc(1,sizeof(*e));
+        e->api.FY_MPI_SYS_MmzFree=free_mmz; e->api.FY_TDE2_Close=close_tde; e->opened=1;
+        e->target.ptr=malloc(64); e->source[0].ptr=malloc(64); e->source[1].ptr=malloc(64);
+        bridge_tde_destroy(e);
+        assert(frees==3 && closes==1);
+        for (unsigned retry=0;retry<3;++retry) {
+            int error;
+            assert(!bridge_tde_create(4,4,&error) && error==-2);
+            assert(frees==3 && closes==1); /* No repeated release or new SDK use. */
+        }
+        printf("PASS MMZ release fault=%d blocks recreation without retrying addresses\n",free_fault);
+        /* Test-only: no DMA/driver allocation; clean up the simulated leak. */
+        free(unreleased); unreleased=NULL; in_use=0;
     }
     return 0;
 }

@@ -74,8 +74,8 @@ text(980,196,'fb-present 的调用栈：同步调用 NX5 回调，再进入驱�
 X = {'ui':200,'canvas':480,'pages':780,'worker':1080,'nx5':1370,'driver':1660}
 headers = [
  ('ui','UI 渲染线程','runtime / framebuffer',BLUE,'#eff6ff'),
- ('canvas','保留画布 retained','UI 所有 · 独立于显示页',BLUE,'#eff6ff'),
- ('pages','物理显示页 A / B','两张 framebuffer',BLUE,'#eff6ff'),
+ ('canvas','保留画布 retained','预乘 RGBA · UI 所有',BLUE,'#eff6ff'),
+ ('pages','物理显示页 A / B','含 alpha 时：straight RGB+A',BLUE,'#eff6ff'),
  ('worker','后台提交线程','presentation.rs · fb-present',PURPLE,'#faf5ff'),
  ('nx5','NX5 完成回调','backends/nx5/mod.rs',ORANGE,'#fff7ed'),
  ('driver','fyfb 驱动','配置的设备 · 阻塞 PAN',ORANGE,'#fff7ed'),
@@ -103,7 +103,8 @@ for ident,y,h,color,fill in [
 
 msg('render-n','ui','canvas',410,'① render(N) → 画布',size=18)
 text(498,440,'软件渲染 / 可选 TDE',17,MUTED)
-msg('copy-b','ui','pages',495,'② present()：画布 → B（合并脏区；首次整页）')
+text(212,517,'首次整页；随后合并两帧脏区；保留 alpha；源画布不变',16,MUTED)
+msg('copy-b','ui','pages',495,'② present()：反预乘 + 位域转换 → B（脏区）')
 msg('submit-b','ui','worker',565,'③ submit(H)：入队即返回；pending = true','async')
 msg('contract-b','worker','nx5',625,'④ complete(fd, H, layout)',size=17)
 msg('pan-b','nx5','driver',680,'⑤ FBIOPAN_DISPLAY','driver',18)

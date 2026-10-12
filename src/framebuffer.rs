@@ -1,5 +1,8 @@
 use crate::{Error, backends::PresentationContract, presentation::Presentation, wake::WakeQueue};
-use slint::{PhysicalSize, Rgb8Pixel, platform::software_renderer::SoftwareRenderer};
+use slint::{
+    PhysicalSize,
+    platform::software_renderer::{PremultipliedRgbaColor, SoftwareRenderer},
+};
 use std::{
     fs::{File, OpenOptions},
     io,
@@ -12,25 +15,31 @@ use std::{
     },
 };
 
-trait Pixel: Copy {
-    #[cfg(all(feature = "nx5-tde", target_arch = "arm"))]
-    const RGBA_BYTES: bool = false;
-    fn rgb(self) -> Rgb8Pixel;
-}
-impl Pixel for Rgb8Pixel {
-    fn rgb(self) -> Rgb8Pixel {
-        self
+// Rounded straight-alpha output without per-channel division. The native
+// conversion borrows the same table; exhaustive tests compare with division.
+pub(crate) static ALPHA_RECIPROCALS: [u32; 256] = {
+    let mut values = [0; 256];
+    let mut alpha = 1;
+    while alpha < 256 {
+        values[alpha] = (255u32 << 16).div_ceil(alpha as u32);
+        alpha += 1;
     }
-}
-#[cfg(feature = "nx5-tde")]
-impl Pixel for i_slint_renderer_software::PremultipliedRgbaColor {
-    #[cfg(target_arch = "arm")]
-    const RGBA_BYTES: bool = true;
-    fn rgb(self) -> Rgb8Pixel {
-        Rgb8Pixel {
-            r: self.red,
-            g: self.green,
-            b: self.blue,
+    values
+};
+
+fn straight_rgba(pixel: PremultipliedRgbaColor) -> [u8; 4] {
+    match pixel.alpha {
+        0 => [0; 4],
+        255 => [pixel.red, pixel.green, pixel.blue, 255],
+        alpha => {
+            let factor = ALPHA_RECIPROCALS[usize::from(alpha)];
+            let channel = |value| ((u32::from(value) * factor + 32768) >> 16).min(255) as u8;
+            [
+                channel(pixel.red),
+                channel(pixel.green),
+                channel(pixel.blue),
+                alpha,
+            ]
         }
     }
 }
@@ -192,8 +201,14 @@ impl Layout {
             && self.channels == other.channels
     }
 
-    fn pixel(self, pixel: Rgb8Pixel) -> u32 {
-        [pixel.r, pixel.g, pixel.b, 255]
+    fn pixel(self, pixel: PremultipliedRgbaColor) -> u32 {
+        let channels = if self.channels[3].length == 8 {
+            straight_rgba(pixel)
+        } else {
+            // Alpha-less outputs retain the black-matted premultiplied RGB.
+            [pixel.red, pixel.green, pixel.blue, pixel.alpha]
+        };
+        channels
             .into_iter()
             .zip(self.channels)
             .fold(0, |bits, (value, field)| {
@@ -205,15 +220,14 @@ impl Layout {
             })
     }
 
-    fn write_row<P: Pixel>(self, source: &[P], destination: &mut [u8]) {
+    fn write_row(self, source: &[PremultipliedRgbaColor], destination: &mut [u8]) {
         assert_eq!(destination.len(), source.len() * self.bytes_per_pixel);
         #[cfg(all(feature = "nx5-tde", target_arch = "arm"))]
-        if P::RGBA_BYTES
-            && self.bytes_per_pixel == 4
+        if self.bytes_per_pixel == 4
             && self.channels.map(|c| (c.offset, c.length)) == [(16, 8), (8, 8), (0, 8), (24, 8)]
         {
-            // SAFETY: the private Pixel implementation identifies repr(C) RGBA
-            // bytes. These distinct retained/mapped slices are exactly sized.
+            // SAFETY: PremultipliedRgbaColor is repr(C) RGBA bytes. These
+            // distinct retained/mapped slices are exactly sized.
             if unsafe {
                 crate::backends::nx5::tde::rgba_to_bgra(
                     source.as_ptr().cast(),
@@ -233,15 +247,15 @@ impl Layout {
             };
             if self.channels.map(|c| (c.offset, c.length)) == [(16, 8), (8, 8), (0, 8), (24, 8)] {
                 for (word, pixel) in words.iter_mut().zip(source) {
-                    let pixel = pixel.rgb();
-                    *word = 0xff00_0000
-                        | (u32::from(pixel.r) << 16)
-                        | (u32::from(pixel.g) << 8)
-                        | u32::from(pixel.b);
+                    let [r, g, b, a] = straight_rgba(*pixel);
+                    *word = (u32::from(a) << 24)
+                        | (u32::from(r) << 16)
+                        | (u32::from(g) << 8)
+                        | u32::from(b);
                 }
             } else {
                 for (word, pixel) in words.iter_mut().zip(source) {
-                    *word = self.pixel(pixel.rgb());
+                    *word = self.pixel(*pixel);
                 }
             }
         } else {
@@ -249,7 +263,7 @@ impl Layout {
                 .chunks_exact_mut(self.bytes_per_pixel)
                 .zip(source)
             {
-                let pixel = self.pixel(pixel.rgb());
+                let pixel = self.pixel(*pixel);
                 if self.bytes_per_pixel == 2 {
                     bytes.copy_from_slice(&(pixel as u16).to_ne_bytes());
                 } else {
@@ -265,14 +279,41 @@ mod row_tests {
     use super::*;
 
     #[test]
+    fn straight_alpha_matches_rounded_division_for_every_channel_and_alpha() {
+        for alpha in 0..=255u8 {
+            for value in 0..=255u8 {
+                let pixel = PremultipliedRgbaColor {
+                    red: value,
+                    green: value,
+                    blue: value,
+                    alpha,
+                };
+                let expected = if alpha == 0 {
+                    0
+                } else {
+                    ((u32::from(value) * 255 + u32::from(alpha) / 2) / u32::from(alpha)).min(255)
+                        as u8
+                };
+                assert_eq!(
+                    straight_rgba(pixel),
+                    [expected, expected, expected, alpha],
+                    "channel={value} alpha={alpha}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn word_writes_match_pixel_format_and_preserve_surrounding_bytes() {
         let source: Vec<_> = (0..37u8)
-            .map(|v| Rgb8Pixel {
-                r: v * 3,
-                g: v * 5,
-                b: 255 - v * 2,
+            .map(|v| PremultipliedRgbaColor {
+                red: v * 3,
+                green: v * 5,
+                blue: 255 - v * 2,
+                alpha: [0, 1, 63, 127, 128, 191, 254, 255][usize::from(v) % 8],
             })
             .collect();
+        let original = source.clone();
         for fields in [
             [(16, 8), (8, 8), (0, 8), (24, 8)],
             [(0, 8), (8, 8), (16, 8), (24, 8)],
@@ -297,7 +338,29 @@ mod row_tests {
                 let mut expected = bytes.clone();
                 for (i, pixel) in source.iter().enumerate() {
                     let at = offset + i * bytes_per_pixel;
-                    let pixel = layout.pixel(*pixel);
+                    let channel = |value: u8| {
+                        if fields[3].1 == 0 {
+                            u32::from(value)
+                        } else if pixel.alpha == 0 {
+                            0
+                        } else {
+                            ((u32::from(value) * 255 + u32::from(pixel.alpha) / 2)
+                                / u32::from(pixel.alpha))
+                            .min(255)
+                        }
+                    };
+                    let pixel = [
+                        channel(pixel.red),
+                        channel(pixel.green),
+                        channel(pixel.blue),
+                        u32::from(pixel.alpha),
+                    ]
+                    .into_iter()
+                    .zip(fields)
+                    .filter(|(_, (_, bits))| *bits != 0)
+                    .fold(0u32, |word, (c, (shift, bits))| {
+                        word | ((c >> (8 - bits)) << shift)
+                    });
                     if bytes_per_pixel == 2 {
                         expected[at..at + 2].copy_from_slice(&(pixel as u16).to_ne_bytes());
                     } else {
@@ -306,6 +369,13 @@ mod row_tests {
                 }
                 layout.write_row(&source, &mut bytes[offset..offset + 37 * bytes_per_pixel]);
                 assert_eq!(bytes, expected, "fields={fields:?}, offset={offset}");
+                for (actual, expected) in source.iter().zip(&original) {
+                    assert_eq!(
+                        [actual.red, actual.green, actual.blue, actual.alpha],
+                        [expected.red, expected.green, expected.blue, expected.alpha],
+                        "conversion modified the retained canvas"
+                    );
+                }
             }
         }
     }
@@ -385,7 +455,7 @@ fn row_spans(rectangles: &[Rect], y: usize, spans: &mut Vec<(usize, usize)>) {
 
 pub(crate) struct Framebuffer {
     #[cfg(not(feature = "nx5-tde"))]
-    retained: Vec<Rgb8Pixel>,
+    retained: Vec<PremultipliedRgbaColor>,
     #[cfg(feature = "nx5-tde")]
     retained: crate::backends::nx5::tde::Buffer,
     // Retire TDE resources before closing the parent SDK/VO session.
@@ -448,7 +518,7 @@ impl Framebuffer {
             retained
                 .try_reserve_exact(count)
                 .map_err(|_| Error::UnsupportedFramebuffer("software buffer allocation failed"))?;
-            retained.resize(count, Rgb8Pixel::default());
+            retained.resize(count, PremultipliedRgbaColor::default());
             retained
         };
         Ok(Self {

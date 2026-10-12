@@ -5,6 +5,7 @@
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <mpi_tde.h>
@@ -22,22 +23,43 @@ int bridge_neon_available(void) {
 #endif
 }
 
-void bridge_rgba_to_bgra(uint8_t *destination, const uint8_t *source, size_t count) {
+static uint8_t straight_channel(uint8_t value, uint32_t factor) {
+    uint32_t scaled = ((uint32_t)value * factor + 32768) >> 16;
+    return scaled > 255 ? 255 : (uint8_t)scaled;
+}
+
+void bridge_rgba_to_bgra(uint8_t *destination, const uint8_t *source, size_t count,
+                         const uint32_t *reciprocals) {
+    while (count) {
+        size_t block = count < 16 ? count : 16;
 #ifdef __ARM_NEON
-    while (count >= 16) {
-        uint8x16x4_t rgba = vld4q_u8(source);
-        uint8x16x4_t bgra;
-        bgra.val[0] = rgba.val[2]; bgra.val[1] = rgba.val[1];
-        bgra.val[2] = rgba.val[0]; bgra.val[3] = vdupq_n_u8(255);
-        vst4q_u8(destination, bgra);
-        source += 64; destination += 64; count -= 16;
-    }
+        if (count >= 16) {
+            uint8x16x4_t rgba = vld4q_u8(source);
+            uint8x8_t alpha = vand_u8(vget_low_u8(rgba.val[3]), vget_high_u8(rgba.val[3]));
+            if (vget_lane_u64(vreinterpret_u64_u8(alpha), 0) == UINT64_MAX) {
+                uint8x16x4_t bgra;
+                bgra.val[0] = rgba.val[2]; bgra.val[1] = rgba.val[1];
+                bgra.val[2] = rgba.val[0]; bgra.val[3] = rgba.val[3];
+                vst4q_u8(destination, bgra);
+                source += 64; destination += 64; count -= 16;
+                continue;
+            }
+        }
 #endif
-    for (size_t x = 0; x < count; ++x) {
-        destination[x*4] = source[x*4+2];
-        destination[x*4+1] = source[x*4+1];
-        destination[x*4+2] = source[x*4];
-        destination[x*4+3] = 255;
+        for (size_t x = 0; x < block; ++x) {
+            uint8_t alpha = source[3];
+            if (alpha == 255) {
+                destination[0] = source[2]; destination[1] = source[1]; destination[2] = source[0];
+            } else {
+                uint32_t factor = reciprocals[alpha]; /* alpha=0 produces zero RGB. */
+                destination[0] = straight_channel(source[2], factor);
+                destination[1] = straight_channel(source[1], factor);
+                destination[2] = straight_channel(source[0], factor);
+            }
+            destination[3] = alpha;
+            source += 4; destination += 4;
+        }
+        count -= block;
     }
 }
 
@@ -62,13 +84,23 @@ static int in_use;
 
 void bridge_tde_destroy(Engine *e) {
     if (!e || e->quarantined) return; /* Retain MMZ, fd and dlopen ref on unknown DMA. */
-    for (unsigned i = 0; i < 2; ++i)
-        if (e->source[i].ptr) e->api.FY_MPI_SYS_MmzFree(e->source[i].phy, e->source[i].ptr);
-    if (e->target.ptr) e->api.FY_MPI_SYS_MmzFree(e->target.phy, e->target.ptr);
+    int release_failed = 0;
+    Buffer *buffers[] = { &e->source[0], &e->source[1], &e->target };
+    for (unsigned i = 0; i < 3; ++i) {
+        if (!buffers[i]->ptr) continue;
+        int result = e->api.FY_MPI_SYS_MmzFree(buffers[i]->phy, buffers[i]->ptr);
+        if (result) {
+            release_failed = 1;
+            fprintf(stderr, "slint-bridge: MMZ release failed (%d); TDE recreation disabled\n", result);
+        }
+    }
     if (e->opened) e->api.FY_TDE2_Close();
     if (e->library) dlclose(e->library);
     free(e);
-    __sync_lock_release(&in_use);
+    /* MmzFree can partially unmap/free before failing. Never retry an address
+     * or allocate another engine that could accumulate uncertain allocations.
+     * DMA is already known complete, so closing TDE/SDK references remains safe. */
+    if (!release_failed) __sync_lock_release(&in_use);
 }
 
 Engine *bridge_tde_create(uint32_t width, uint32_t height, int *error) {

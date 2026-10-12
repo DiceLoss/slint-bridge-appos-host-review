@@ -75,9 +75,11 @@ flowchart LR
 
 ## Framebuffer 软件路径
 
-软件渲染使用 Slint `SoftwareRenderer` 的 `ReusedBuffer` 模式。纯软件 feature 保留一份 RGB 图像；`nx5-tde` 保留预乘 RGBA 图像，通过 `TargetPixelBuffer` 对符合条件的纹理操作提交 TDE，其余由软件绘制。显示输出限定 packed true-color：RGB565，或 RGB 三通道各 8 位的 32 位布局，可含 8 位 alpha。通道位置由 framebuffer 位域解析；重叠位域、非标准格式、错误 stride、硬件旋转和不足两页的布局均拒绝。
+软件渲染使用 Slint `SoftwareRenderer` 的 `ReusedBuffer` 模式。纯软件和 `nx5-tde` 均保留一份预乘 RGBA 图像（4 字节/像素）；后者通过 `TargetPixelBuffer` 对符合条件的纹理操作提交 TDE，其余由软件绘制。显示输出限定 packed true-color：RGB565，或 RGB 三通道各 8 位的 32 位布局，可含 8 位 alpha。通道位置由 framebuffer 位域解析；重叠位域、非标准格式、错误 stride、硬件旋转和不足两页的布局均拒绝。
 
-纯软件路径在 RGB 图像中完成透明混合；`nx5-tde` 路径在预乘 RGBA 图像中完成软件或 TDE 混合。写入 framebuffer 时输出 alpha 位固定为不透明，符合当前独占 UI framebuffer、无视频叠加的范围。位域转换按主机原生字节序写入，保留行尾 padding。
+两条路径均在预乘 RGBA 画布中混合。写入含 8 位 alpha 的 framebuffer 时，RGB 精确反预乘为 straight RGB，保留原 alpha；alpha=0 写零，alpha=255 直接复制通道，其余使用共享倒数表，结果等于 `min(255, (channel × 255 + alpha / 2) / alpha)` 的整数除法。NX5 的 BGRA 位域路径只在目标页交换红蓝，不修改源画布；不透明 16 像素块保留 NEON 快速转换。RGB565 或无 alpha 的 RGB888 输出保留预乘 RGB，相当于黑底合成，不能透出下层视频。位域转换按主机原生字节序写入，保留行尾 padding。
+
+应用需要透明区域时，在 `.slint` 根窗口设置 `background: transparent;`，并避免用不透明全屏背景覆盖开口；局部颜色 alpha 也会保留。该支持建立了 UI 像素输出契约，尚未接入下层视频或验证 VO 最终混合。视频接入方式未定，当前 SDK/VO 独占所有权、初始化和关闭流程保持原有约束。实际集成还须确认逐像素 alpha 的图层配置、straight-alpha 混合公式及共用会话生命周期，见 [历史经验与透明输出验证](slint-nx5-lessons.md#6-通道顺序预乘和显示-alpha-是三个不同契约)。
 
 两页首次使用时写入完整的软件图像；随后逐行合并本帧与前一已提交帧的实际脏区，跳过不相交区域之间的空隙，修复交替显示页中遗漏的变化。空脏区不触发提交。只写不可见页，提交契约成功返回后才改变前后页身份。若提交结果不确定，缓冲区进入禁止写入状态，后续重绘返回错误。
 
@@ -93,7 +95,7 @@ SDK 按无版本库名 `libVideoDec.so` 交给系统动态加载器查找，可�
 
 完成提交的回调及内存显示替身均为 crate 私有，应用不能注入回调、构造“已验证”标记或选择公开的无检查显示路径。内存替身用于测试像素、页生命周期和完整事件循环，不能证明物理屏幕行为。
 
-NX5 打开 `Config::framebuffer` 指定的设备，通过 `FBIOGET_FSCREENINFO` / `FBIOGET_VSCREENINFO` 获取实际分辨率、stride、像素位域、虚拟尺寸和显存容量，使用前述通用布局校验，不限定 1024×600 或固定 stride。尺寸由设备当前模式决定，要求至少两页完整容量；两页偏移为 `0` 与实际 `yres`。初始化布局传给提交线程；每次 PAN 前核对尺寸、stride 和像素格式，读回后再次核对尺寸/格式与目标页，布局变化或无效偏移会终止提交。提交线程调用阻塞 `FBIOPAN_DISPLAY`，成功并读回目标页后才复用旧页；不提供单缓冲或忽略错误的回退。页号读回用于错误检测，不作为硬件退休证明。其他设备仍须提供与驱动匹配的实现和验证。TDE 不再以 1024×600 限制画布大小，仍检查尺寸溢出、SDK 对齐及作业完成状态；SDK 不支持或无法分配时使用既有软件回退。TDE 绘制范围由 [tde/mod.rs](../src/backends/nx5/tde/mod.rs) 与 [native.c](../src/backends/nx5/tde/native.c) 实现，说明及历史像素比较见 [TDE 报告](nx5-tde.md)。
+NX5 打开 `Config::framebuffer` 指定的设备，通过 `FBIOGET_FSCREENINFO` / `FBIOGET_VSCREENINFO` 获取实际分辨率、stride、像素位域、虚拟尺寸和显存容量，使用前述通用布局校验，不限定 1024×600 或固定 stride。尺寸由设备当前模式决定，要求至少两页完整容量；两页偏移为 `0` 与实际 `yres`。初始化布局传给提交线程；每次 PAN 前核对尺寸、stride 和像素格式，读回后再次核对尺寸/格式与目标页，布局变化或无效偏移会终止提交。提交线程调用阻塞 `FBIOPAN_DISPLAY`，成功并读回目标页后才复用旧页；不提供单缓冲或忽略错误的回退。页号读回用于错误检测，不作为硬件退休证明。其他设备仍须提供与驱动匹配的实现和验证。TDE 不再以 1024×600 限制画布大小，仍检查尺寸溢出、SDK 对齐及作业完成状态；SDK 不支持或无法分配时使用既有软件回退。TDE 绘制范围由 [tde/mod.rs](../src/backends/nx5/tde/mod.rs) 与 [native.c](../src/backends/nx5/tde/native.c) 实现，说明及历史像素比较见 [TDE 报告](nx5-tde.md)。已知 DMA 完成后的 MMZ 释放失败会永久关闭进程内 TDE 创建门闩，后续使用软件路径；同一地址不重复释放，避免部分释放后重复分配累积资源。未知 DMA 仍保持原有整帧失败与会话隔离。
 
 ## 构建依赖
 
