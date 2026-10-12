@@ -78,7 +78,7 @@ headers = [
  ('pages','物理显示页 A / B','两张 framebuffer',BLUE,'#eff6ff'),
  ('worker','后台提交线程','presentation.rs · fb-present',PURPLE,'#faf5ff'),
  ('nx5','NX5 完成回调','backends/nx5/mod.rs',ORANGE,'#fff7ed'),
- ('driver','fyfb 驱动','/dev/fb0 · 固件 #233',ORANGE,'#fff7ed'),
+ ('driver','fyfb 驱动','/dev/fb0 · 阻塞 PAN',ORANGE,'#fff7ed'),
 ]
 for ident, title, sub, color, fill in headers:
     cx = X[ident]

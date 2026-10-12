@@ -1,4 +1,4 @@
-//! Current NX5 firmware profile, accepted for blocking double-buffered operation.
+//! NX5 SDK and framebuffer integration for blocking double-buffered operation.
 //! Blocking PAN is the presentation path. Readback detects errors; it is not itself a
 //! hardware retirement fence or proof of every physical LCD frame.
 #[cfg(feature = "nx5-tde")]
@@ -9,34 +9,20 @@ use crate::{
     backends::PresentationContract,
     framebuffer::{FixedInfo, VariableInfo},
 };
-use sha2::{Digest, Sha256};
 use std::{
     fs::{self, File, OpenOptions},
-    io::{self, Read},
+    io,
     os::fd::{AsRawFd, BorrowedFd},
     path::Path,
     time::{Duration, Instant},
 };
 
-// The admitted #233 kernel reports 10 ms hrtimer resolution. Other firmware
-// must be validated separately; this is not a framebuffer completion fence.
+// The measured #233 kernel reports 10 ms hrtimer resolution. This scheduling
+// parameter is not a framebuffer completion fence or a firmware version check.
 pub(crate) const TIMER_QUANTUM: Duration = Duration::from_millis(10);
 
-const LIBRARY: &str = "/system/app/clib/libVideoDec-1.6.6.so";
-const FILES: [(&str, &str); 3] = [
-    (
-        LIBRARY,
-        "cb50026662c2c59955c775a96f567333e62a8dbc2f60fb21a01c0b5d11385092",
-    ),
-    (
-        "/system/ko/fyfb.ko",
-        "0e31745ff56eef1a4dbc009ce3caf85e0093ec47e189d9430eb83849a4697ba6",
-    ),
-    (
-        "/system/ko/vou.ko",
-        "0dacc9ce6e893d86fc261c52c29bb11955b28130643b7f8a0c678619768449fb",
-    ),
-];
+// Resolve the SDK through the system loader (including LD_LIBRARY_PATH).
+const LIBRARY: &str = "libVideoDec.so";
 
 fn rejected(reason: &'static str) -> Error {
     Error::DisplayNotAdmitted {
@@ -45,42 +31,10 @@ fn rejected(reason: &'static str) -> Error {
     }
 }
 
-fn verify_profile(path: &Path) -> Result<(), Error> {
+fn verify_target(path: &Path) -> Result<(), Error> {
     if !cfg!(all(target_arch = "arm", target_pointer_width = "32")) || path != Path::new("/dev/fb0")
     {
         return Err(rejected("NX5 requires ARM32 and /dev/fb0"));
-    }
-    for (path, expected) in [
-        ("/proc/sys/kernel/osrelease", "4.9.138"),
-        (
-            "/proc/sys/kernel/version",
-            "#233 SMP Thu Mar 14 15:37:26 CST 2024",
-        ),
-        ("/sys/class/graphics/fb0/name", "fyfb"),
-    ] {
-        let actual = fs::read_to_string(path).map_err(|e| Error::io("read NX5 identity", e))?;
-        if actual.trim() != expected {
-            return Err(rejected("unrecognized NX5 kernel or framebuffer driver"));
-        }
-    }
-    for (path, expected) in FILES {
-        let mut file = File::open(path).map_err(|e| Error::io("open NX5 firmware", e))?;
-        let mut hash = Sha256::new();
-        let mut buffer = [0; 8192];
-        loop {
-            let length = file
-                .read(&mut buffer)
-                .map_err(|e| Error::io("hash NX5 firmware", e))?;
-            if length == 0 {
-                break;
-            }
-            hash.update(&buffer[..length]);
-        }
-        if format!("{:x}", hash.finalize()) != expected {
-            return Err(rejected(
-                "NX5 SDK or driver differs from the supported firmware",
-            ));
-        }
     }
     Ok(())
 }
@@ -95,7 +49,7 @@ pub(crate) fn validate_layout(f: &FixedInfo, v: &VariableInfo) -> Result<(), Err
         || [v.red.length, v.green.length, v.blue.length, v.alpha.length] != [8, 8, 8, 8]
     {
         return Err(Error::UnsupportedFramebuffer(
-            "NX5 profile requires 1024x600 ARGB8888, stride 4096 and two pages",
+            "NX5 requires 1024x600 ARGB8888, stride 4096 and two pages",
         ));
     }
     Ok(())
@@ -117,7 +71,7 @@ impl Drop for Session {
 }
 
 pub(crate) fn open(path: &Path) -> Result<PresentationContract, Error> {
-    verify_profile(path)?;
+    verify_target(path)?;
     let lock = OpenOptions::new()
         .read(true)
         .write(true)
@@ -149,8 +103,9 @@ pub(crate) fn open(path: &Path) -> Result<PresentationContract, Error> {
             "NX5 VO is already enabled; release its current owner before init",
         ));
     }
-    // SAFETY: the exact firmware library was verified above; signatures are from
-    // NX5 codec/vd/VoApi.h. VO_Enable/Disable return 1 for success, 0 for failure.
+    // SAFETY: NX5 integration requires the SDK ABI from codec/vd/VoApi.h.
+    // VO_Enable/Disable return 1 for success, 0 for failure. Library loading and
+    // symbol lookup report errors; they cannot verify ABI compatibility.
     let session = unsafe {
         let library = libloading::Library::new(LIBRARY)
             .map_err(|e| Error::io("load NX5 SDK", io::Error::other(e)))?;
@@ -176,7 +131,7 @@ pub(crate) fn open(path: &Path) -> Result<PresentationContract, Error> {
     let mut count = 0u64;
     let mut batch = Instant::now();
     let mut blocking_us = 0u128;
-    eprintln!("slint-bridge: NX5 #233 VO enabled; blocking PAN, two pages");
+    eprintln!("slint-bridge: NX5 VO enabled; blocking PAN, two pages");
     Ok(PresentationContract {
         validate_layout,
         complete: Box::new(move |fd, yoffset| {
@@ -213,9 +168,9 @@ fn present(fd: BorrowedFd<'_>, yoffset: u32) -> io::Result<()> {
             return Err(io::Error::other("NX5 display geometry changed"));
         }
         requested.yoffset = yoffset;
-        // Current #233 fyfb's pan callback updates the address and blocks on its
-        // completion semaphore. Change only the page offset, preserving mode
-        // flags and avoiding a per-frame modeset via FBIOPUT_VSCREENINFO.
+        // NX5 integration requires PAN to wait for completion, as measured on
+        // #233 fyfb. Change only the page offset, preserving mode flags and
+        // avoiding a per-frame modeset via FBIOPUT_VSCREENINFO.
         if libc::ioctl(fd.as_raw_fd(), 0x4606, &requested) < 0
             || libc::ioctl(fd.as_raw_fd(), 0x4600, &mut actual) < 0
         {

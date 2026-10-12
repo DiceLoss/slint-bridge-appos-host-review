@@ -14,13 +14,12 @@ description = "Slint platform support for embedded Linux with explicit display a
 [features]
 default = []
 fbdev = []
-nx5 = ["dep:libloading", "dep:sha2"]
+nx5 = ["dep:libloading"]
 nx5-tde = ["nx5", "dep:i-slint-renderer-software", "dep:cc"]
 
 [dependencies]
 libc = "0.2.190"
 libloading = { version = "0.8.9", optional = true }
-sha2 = { version = "0.10.9", optional = true }
 # Match Slint's fontique and enable optional runtime loading instead of linking
 # build-host fontconfig into ARM binaries. Missing system fonts can be registered
 # explicitly by the application via SLINT_DEFAULT_FONT or .slint font imports.

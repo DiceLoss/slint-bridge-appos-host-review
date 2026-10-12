@@ -44,7 +44,7 @@ pub const fn selected_backend() -> Backend {
 /// Configuration shared by all board implementations.
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// Defaults to `/dev/fb0`; the admitted NX5 profile requires this exact path.
+    /// Defaults to `/dev/fb0`; the NX5 backend requires this exact path.
     pub framebuffer: PathBuf,
     /// Empty by default; at most one touchscreen and one mapped-key device.
     pub inputs: Vec<InputDevice>,
@@ -127,9 +127,10 @@ impl std::error::Error for Error {
 /// Install the platform on the UI thread, before constructing a Slint component.
 /// Then create the component and call its usual `run()` method.
 ///
-/// NX5 checks the firmware profile before enabling VO and opening the display.
-/// Profile mismatches and generic fbdev return [`Error::DisplayNotAdmitted`];
-/// identity/firmware read failures return [`Error::Io`]. Frame timing and input
+/// NX5 requires ARM32, `/dev/fb0`, exclusive display ownership and a compatible
+/// SDK/driver ABI. It does not check kernel versions, driver names or file hashes.
+/// Target/ownership mismatches and generic fbdev return [`Error::DisplayNotAdmitted`];
+/// SDK loading and device I/O failures return [`Error::Io`]. Frame timing and input
 /// counts are validated before board initialization. Errors during the later
 /// component event loop are returned through Slint's `PlatformError`.
 pub fn init(config: Config) -> Result<(), Error> {

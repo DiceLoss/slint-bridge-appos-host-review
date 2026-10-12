@@ -11,7 +11,7 @@ type CompletePresentation = dyn FnMut(BorrowedFd<'_>, u32) -> io::Result<()> + S
 
 /// Private seam for a board's blocking presentation implementation. Success
 /// transfers the previous scanout page back to the renderer. NX5 uses the
-/// explicitly accepted, firmware-specific blocking PAN implementation.
+/// board's blocking PAN completion contract.
 /// No public API can create this value or supply a callback.
 pub(crate) struct PresentationContract {
     pub(crate) complete: Box<CompletePresentation>,

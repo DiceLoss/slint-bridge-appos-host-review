@@ -113,7 +113,7 @@
   <g id="node-nx5" data-graph-role="node" data-node-id="nx5" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1040,280,1440,350">
   <rect x="1040.0" y="280.0" width="400.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fdba74" stroke-width="1.8"/>
   <text data-text-role="title" data-full-text="mod.rs" data-text-max-width="376.0" x="1240.0" y="315.0" text-anchor="middle" class="node-title" font-size="18">mod.rs</text>
-  <text data-text-role="subtitle" data-full-text="固件准入 · SYS/VO · 阻塞 PAN" data-text-max-width="376.0" x="1240.0" y="337.0" text-anchor="middle" class="node-sub" font-size="12">固件准入 · SYS/VO · 阻塞 PAN</text>
+  <text data-text-role="subtitle" data-full-text="设备检查 · SYS/VO · 阻塞 PAN" data-text-max-width="376.0" x="1240.0" y="337.0" text-anchor="middle" class="node-sub" font-size="12">设备检查 · SYS/VO · 阻塞 PAN</text>
   </g>
   <g id="node-tde" data-graph-role="node" data-node-id="tde" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1040,390,1440,460">
   <rect x="1040.0" y="390.0" width="400.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fdba74" stroke-width="1.8"/>

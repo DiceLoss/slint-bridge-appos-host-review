@@ -21,7 +21,26 @@ static FY_S32 flush(FY_U32 p,FY_VOID *v,FY_U32 n) {
 }
 static FY_S32 free_mmz(FY_U32 p,FY_VOID *v) { (void)p; ++frees; free(v); return 0; }
 static void close_tde(void) { ++closes; }
-int main(void) {
+static void test_sdk_loading(void) {
+    int error;
+    /* A visible SDK must not be loaded by TDE before the display owns it. */
+    assert(!bridge_tde_create(4, 4, &error) && error == -1);
+    void *owner = dlopen("libVideoDec.so", RTLD_NOW | RTLD_LOCAL);
+    if (!owner) { fprintf(stderr, "%s\n", dlerror()); abort(); }
+    int *constructors = dlsym(owner, "sdk_constructors");
+    assert(constructors && *constructors == 1);
+    /* The stub's Open result proves the production loader reused that SDK. */
+    assert(!bridge_tde_create(4, 4, &error) && error == -177);
+    assert(*constructors == 1);
+    assert(!dlclose(owner));
+    assert(!dlopen("libVideoDec.so", RTLD_NOW | RTLD_NOLOAD));
+    puts("PASS SDK search path, unversioned alias, NOLOAD and reference cleanup");
+}
+int main(int argc, char **argv) {
+    if (argc == 2 && !strcmp(argv[1], "--sdk-loading")) {
+        test_sdk_loading();
+        return 0;
+    }
     for (unsigned count = 0; count <= 65; ++count) {
         for (unsigned shift = 0; shift < 4; ++shift) {
             uint8_t source[65*4+8], actual[65*4+8], expected[65*4+8];

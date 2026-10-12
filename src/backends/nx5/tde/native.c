@@ -78,7 +78,7 @@ Engine *bridge_tde_create(uint32_t width, uint32_t height, int *error) {
     Engine *e = calloc(1, sizeof(*e));
     if (!e) { __sync_lock_release(&in_use); return NULL; }
     /* NOLOAD is essential: this SDK has a SYS/VO-resetting constructor. */
-    e->library = dlopen("/system/app/clib/libVideoDec-1.6.6.so", RTLD_NOW | RTLD_NOLOAD);
+    e->library = dlopen("libVideoDec.so", RTLD_NOW | RTLD_NOLOAD);
     if (!e->library) goto fail;
 #define RESOLVE(name) do { *(void **)(&e->api.name) = dlsym(e->library, #name); if (!e->api.name) goto fail; } while (0);
     API_FUNCTIONS(RESOLVE)

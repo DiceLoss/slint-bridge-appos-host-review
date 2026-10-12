@@ -111,7 +111,7 @@
       "width": 400,
       "height": 70,
       "label": "mod.rs",
-      "sublabel": "固件准入 · SYS/VO · 阻塞 PAN",
+      "sublabel": "设备检查 · SYS/VO · 阻塞 PAN",
       "fill": "#fff7ed",
       "stroke": "#fdba74",
       "flat": true

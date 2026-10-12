@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | 触摸设备 | `--touch=/dev/input/event0`，默认不开启输入设备 |
 | Slint MCP | 构建加 `slint/mcp`，并按 [MCP 指南](../docs/slint-mcp.md) 设置环境变量 |
 
-必须选择一个板级 feature；`fbdev` 和 `nx5` 互斥。当前只有已匹配固件的 NX5 获得真实显示准入，`fbdev` 在真实设备运行时仍会拒绝未验证的提交契约。测试工程不绕过这个检查。
+必须选择一个板级 feature；`fbdev` 和 `nx5` 互斥。NX5 使用板级阻塞翻页契约，不比对固定内核版本、驱动名称或文件摘要；`fbdev` 在真实设备运行时仍会拒绝未验证的提交契约。测试工程不绕过这个检查。
 
 ## 用例与预期
 

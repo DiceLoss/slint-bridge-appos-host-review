@@ -1,6 +1,6 @@
 # Rust 公共平台层
 
-本文描述当前源码的接口与运行行为。NX5 #233 使用已接受的固件专用阻塞翻页双页实现；`fbdev` 尚无真实显示准入。固件身份不匹配返回 `DisplayNotAdmitted`，读取身份或摘要失败返回 `Io`。约 29 FPS、有限 WBC 样本等实机结果属于对应阶段的观测，不代表所有物理帧的无撕裂认证。
+本文描述当前源码的接口与运行行为。NX5 使用板级阻塞翻页双页实现，不按固定固件版本或文件摘要准入；`fbdev` 尚无真实显示准入。目标或显示所有权不符合要求返回 `DisplayNotAdmitted`，SDK 加载和设备 I/O 失败返回 `Io`。约 29 FPS、有限 WBC 样本等实机结果属于对应阶段的观测，不代表所有物理帧的无撕裂认证。
 
 日常构建和运行见 [测试工程](../test-app/README.md) 与 [NX5 设备说明](../test-app/devices/nx5/README.md)。各轮硬件测量由 [文档索引](README.md) 导航；历史报告中的测试数量、PID 和性能数据不定义当前接口。
 
@@ -10,7 +10,7 @@
 
 | `Config` 字段 | 默认值 | 当前约束 |
 | --- | --- | --- |
-| `framebuffer` | `/dev/fb0` | NX5 固件准入只接受此路径 |
+| `framebuffer` | `/dev/fb0` | NX5 后端只接受此路径 |
 | `inputs` | 空列表 | 至多一个 `Touchscreen` 和一个 `Keys` |
 | `rotation` | `Rotation::None` | 固定为不旋转或顺时针 90、180、270 度；90/270 度交换逻辑宽高 |
 | `frame_interval` | 16667 微秒 | 非零且可加到单调时钟；约束两次渲染启动的最小间隔 |
@@ -37,7 +37,7 @@ UI 线程通过 [event_wait.rs](../src/event_wait.rs) 使用 `ppoll` 等待 evde
 
 提交 `949ceb9` 的 [启动实机回归](nx5-startup.md) 已验证首次显示失败清理、同一组件重试及任务/定时器延迟创建窗口，每个用例运行两轮；十次退出均无 TDE MMZ 泄漏回收，成功呈现的十帧全幅像素检查通过。正常 WBC 与纹理运行也通过。三项 ignored TDE/翻页测试已于 2026-10-12 [独立补齐并通过](nx5-hardware.md)。输入 EIO 的历史结果仍见 [177c18a 报告](nx5-tde-exit.md)，未在这次补测中重跑。未知 DMA 完成状态仍按原生 TDE 安全策略保留资源。
 
-当前 NX5 #233 通过板级准入提供 10 ms 定时器精度参数。通用等待模块据此先阻塞、再在最后一个节拍内检查期限与事件，以减少粗粒度睡眠造成的迟到；参数为零的默认策略仍只阻塞等待。精确检查会增加 CPU 用量，不参与页面退休判断，见 [调度测量](nx5-scheduling.md)。
+NX5 后端提供 10 ms 定时器精度参数，依据 #233 内核的实测分辨率；该参数不是内核版本检查。通用等待模块据此先阻塞、再在最后一个节拍内检查期限与事件，以减少粗粒度睡眠造成的迟到；参数为零的默认策略仍只阻塞等待。精确检查会增加 CPU 用量，不参与页面退休判断，见 [调度测量](nx5-scheduling.md)。
 
 每轮更新 Slint 定时器与动画、执行有界数量的业务任务、处理输入并检查窗口约束，再按最小帧间隔绘制。没有动画、重绘请求或定时器时无限等待事件；有动画时按帧期限唤醒，不能仅依赖 Slint 的定时器期限。退出或出错会关闭任务接收并清理未执行任务；后续投递返回 `EventLoopTerminated`。同一组件重新运行循环时会重新开放队列。
 
@@ -73,7 +73,9 @@ CPU fence 不等于 DMA 缓存一致性。设备专有实现仍须负责缓存�
 
 ## 准入边界
 
-[src/backends/mod.rs](../src/backends/mod.rs) 将 NX5 分派给 [src/backends/nx5/mod.rs](../src/backends/nx5/mod.rs)。检查 ARM32、`/dev/fb0`、内核版本、fyfb 名称及 SDK/fyfb/vou 文件 SHA256，再获取进程锁、检查 VO 未被占用并加载厂商库。库加载本身具有 SYS/VO 初始化副作用，不能与其他 SDK 进程并用。[current-target.json](../test-app/devices/nx5/current-target.json) 仅保存带时间戳的环境观测，不控制代码准入，也不实时更新设备状态。
+[src/backends/mod.rs](../src/backends/mod.rs) 将 NX5 分派给 [src/backends/nx5/mod.rs](../src/backends/nx5/mod.rs)。检查 ARM32 和 `/dev/fb0`，再获取进程锁、检查 VO 未被占用并加载厂商库。不读取内核版本、构建时间或 framebuffer 驱动名称，也不计算 SDK、fyfb、vou 文件的 SHA256；兼容重编译不再因这些元数据变化被拒绝。库加载本身具有 SYS/VO 初始化副作用，不能与其他 SDK 进程并用。[current-target.json](../test-app/devices/nx5/current-target.json) 仅保存带时间戳的环境观测，不控制代码准入，也不实时更新设备状态。
+
+SDK 按无版本库名 `libVideoDec.so` 交给系统动态加载器查找，可在启动进程时用 `LD_LIBRARY_PATH=/任意/SDK目录` 指定位置；代码不再要求 `/system/app/clib`。若 SDK 文件自带版本后缀，在该目录提供 `libVideoDec.so` 链接即可，后端不限制实际文件的版本名称。VO 检查必需符号与调用结果，TDE 以同一库名及 `RTLD_NOLOAD` 复用会话，不会另行初始化 SDK。调用者仍需提供兼容 `codec/vd/VoApi.h`、TDE 头文件和阻塞 PAN 完成语义的 SDK/驱动；符号存在和布局通过并不能自动证明 ABI 或完成语义兼容。
 
 完成提交的回调及内存显示替身均为 crate 私有，应用不能注入回调、构造“已验证”标记或选择公开的无检查显示路径。内存替身用于测试像素、页生命周期和完整事件循环，不能证明物理屏幕行为。
 
@@ -103,9 +105,11 @@ Cargo.lock 不固定外部 path 依赖的 Git 提交，构建环境需同时保�
 - 安装真实 Slint 平台并运行组件，在正常退出、首次显示失败和 PTY 实际 `read()` 返回 EIO 后检查 UI 线程退出确实触发 TDE/SDK 析构；不是手动销毁平台替代应用生命周期。
 - 首次显示失败后重试同一组件；延迟创建首个窗口时处理任务积压和定时器，并验证实际呈现的像素。
 
+原生 [check-native.sh](../test-app/tools/nx5/tde/check-native.sh) 用主机替身 SDK 验证无版本库名在不同目录下的搜索、`RTLD_NOLOAD` 会话复用及引用释放，同时检查 TDE 故障处理与像素转换边界；不代表新源码已部署或通过实机验证。
+
 [test-app/tools/check-feature-matrix.py](../test-app/tools/check-feature-matrix.py) 对三个 feature 分别执行 workspace 测试，确认未选板级、冲突组合编译失败，并检查库的 `fbdev` 普通依赖树没有桌面或 GPU 后端。脚本将结果输出到标准输出，不自动写入 `evidence/`。
 
-2026-10-11 核对当前源码的测试分布如下；计数随测试增减，以执行结果为准：
+2026-10-12 核对当前源码的测试分布如下；计数随测试增减，以执行结果为准：
 
 | Feature | 库内主机测试 | 独立工程公共接口测试 | WBC 生命周期测试 | 默认忽略的实机测试 |
 | --- | ---: | ---: | ---: | ---: |

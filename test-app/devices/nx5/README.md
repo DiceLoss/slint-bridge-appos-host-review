@@ -4,7 +4,7 @@
 
 三项此前未重跑的 ignored TDE/翻页测试已在 [2026-10-12 实机回归](../../../docs/nx5-hardware.md) 中逐项补齐，全部通过。测试二进制基于 `a9fd3c8` 构建，库实现与 `949ceb9` 一致；测试后恢复原显示程序和 MCP，常驻 PID 3351。每项退出均无新增 MMZ 泄漏回收。启动、WBC、EIO 等前几轮结果保留在各自报告，不计入本轮重测。
 
-当前板为 DPower Terminal 的 `/dev/ttyUSB1`，网络为 `192.168.1.151:5555`（ADB），内核 #233。库会核对固件摘要并要求独占显示。详细环境及 SDK 使用约束见 [当前环境](../../../docs/current-environment.md)。
+当前板为 DPower Terminal 的 `/dev/ttyUSB1`，网络为 `192.168.1.151:5555`（ADB），内核 #233。库要求独占显示；当前源码不再比对内核版本、驱动名称或固件摘要，SDK 加载规则见 [平台说明](../../../docs/software-platform.md#准入边界)。上述设备快照和实测仍对应变更前的程序。详细环境及 SDK 使用约束见 [当前环境](../../../docs/current-environment.md)。
 
 以下命令从仓库根执行：
 
@@ -21,7 +21,7 @@ cargo --config .cargo/nx5.toml build --locked --offline --release \
   --target arm-unknown-linux-gnueabi --bin display
 ```
 
-程序输出为 `target/arm-unknown-linux-gnueabi/release/display`。需要时使用当前 ARM 工具链的 `strip -o` 产生部署副本；以下运行命令约定将其部署为 `/run/slint-bridge-test/display`，并赋予执行权限。字体需另行部署到下方路径，SDK 使用设备固件原有文件。`/run` 中的程序和字体在重启后需重新部署。确认旧显示实例已经退出后，再通过 USB1 root 会话运行：
+程序输出为 `target/arm-unknown-linux-gnueabi/release/display`。需要时使用当前 ARM 工具链的 `strip -o` 产生部署副本；以下运行命令约定将其部署为 `/run/slint-bridge-test/display`，并赋予执行权限。字体需另行部署到下方路径。以下示例使用设备原有 SDK 目录；SDK 可以放在其他目录，只需在启动前将 `LD_LIBRARY_PATH` 改为对应位置，并提供无版本库名 `libVideoDec.so`（可链接到实际 SDK 文件）。`/run` 中的程序和字体在重启后需重新部署。确认旧显示实例已经退出后，再通过 USB1 root 会话运行：
 
 ```sh
 SLINT_MCP_PORT=9315 \
@@ -42,7 +42,7 @@ NX5 工具集中在 [tools/nx5/](../../tools/nx5/README.md)。WBC 必须在显�
 
 已启动的观察线程在正常退出和事件循环出错时都会被等待，先完成插件清理再结束应用。应用错误与观察线程 panic 的处理及主机回归入口见 [测试工程说明](../../README.md)。
 
-使用 `--observe=N` 前，先在主机构建插件：
+使用 `--observe=N` 前，先在主机构建插件。`NX5_SDK_LIBRARY` 可指向任意位置的兼容 SDK 文件；必须与显示进程加载的 SDK 为同一份库，并确保该库的 SONAME 与 `libVideoDec.so` 解析到同一文件，以复用会话：
 
 ```sh
 NX5_SDK_INCLUDE=/home/dpower/data/GitLab/LGUI3/c_library/third_party/include/NX5/codec \

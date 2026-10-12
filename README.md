@@ -55,10 +55,10 @@ slint_bridge::init(Config {
 | Feature | 行为 |
 | --- | --- |
 | `fbdev` | 通用 framebuffer 软件组合；真实设备仍需已验证的板级完成契约 |
-| `nx5` | 当前匹配固件的 VO 初始化、软件渲染与双页显示 |
+| `nx5` | NX5 VO 初始化、软件渲染与双页显示 |
 | `nx5-tde` | 包含 `nx5`，加速大块 RGBA 复制和透明混合，其他操作软件回退 |
 
-必须选择一个板级 feature；`fbdev` 与 `nx5` 互斥。当前真实设备准入仅包含匹配的 NX5 #233 固件，未知固件和通用 fbdev 返回 `DisplayNotAdmitted`。
+必须选择一个板级 feature；`fbdev` 与 `nx5` 互斥。NX5 按 SDK/驱动接口和双页布局运行，不比对内核版本、驱动名称或文件摘要；通用 `fbdev` 尚无板级完成契约，仍返回 `DisplayNotAdmitted`。SDK 目录由系统动态库搜索路径决定，见 [平台说明](docs/software-platform.md#准入边界)。
 
 `Config::frame_interval` 是最小渲染启动间隔，默认 16667 微秒；没有 NX5 专用 30 FPS 钳制。当前驱动的实际提交上限约为 29 FPS，原因及尚未实现的单周期改动见 [驱动调查](docs/nx5-single-cycle.md)。
 

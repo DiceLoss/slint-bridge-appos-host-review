@@ -7,7 +7,7 @@
 | 目录 | 用途 | 对应记录 |
 | --- | --- | --- |
 | `display/` | 进程内 WBC 采样、混色负对照、输入 EIO/TDE 退出、窗口启动回归与日志检查 | [最新实机回归](../../../docs/nx5-startup.md) |
-| `tde/` | 原生故障注入及 TDE 输出结果重放 | [TDE 验证](../../../docs/nx5-tde.md) · [三项实机补测](../../../docs/nx5-hardware.md) |
+| `tde/` | SDK 搜索路径/会话复用、原生故障注入及 TDE 输出结果重放 | [TDE 验证](../../../docs/nx5-tde.md) · [三项实机补测](../../../docs/nx5-hardware.md) |
 | `present/` | 早期板级准入调查与原始观测判读 | [早期准入记录](../../../docs/nx5-present-validation.md) |
 | `flip/` | 阻塞 PAN 周期与实际刷新时序分析 | [翻页分析](../../../docs/nx5-flip.md) |
 | `single-cycle/` | 队列、待锁存与当前页状态诊断 | [单周期调查](../../../docs/nx5-single-cycle.md) |
@@ -34,3 +34,5 @@ python3 test-app/tools/nx5/single-cycle/analyze.py evidence/nx5-single-cycle/sta
 ```sh
 python3 test-app/tools/nx5/single-cycle/analyze.py evidence/nx5-single-cycle/stages.log --min-fps 55
 ```
+
+`NX5_SDK_INCLUDE=<codec头文件目录> sh test-app/tools/nx5/tde/check-native.sh` 在主机运行原生故障注入和像素转换边界检查，并用替身 SDK 验证：从两个临时目录（含空格路径）加载无版本库名 `libVideoDec.so`，TDE 在显示会话加载前拒绝自行加载、加载后复用同一会话，构造函数只运行一次，引用正确释放。该检查不加载真实 SDK，也不访问设备。
