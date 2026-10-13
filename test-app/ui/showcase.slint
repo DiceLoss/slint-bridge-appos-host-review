@@ -34,7 +34,7 @@ export component Showcase inherits Window {
     in-out property <bool> running: true;
     in-out property <float> speed: 1;
     in property <bool> expanded;
-    in property <image> texture;
+    in property <image> wallpaper: @image-url("assets/coastal-background.png");
     in property <image> overlay;
     in-out property <float> alpha: 75;
     in property <bool> cutout;
@@ -63,7 +63,9 @@ export component Showcase inherits Window {
     callback dragged();
     callback clear-journal();
 
-    if !(root.page == 4 && root.cutout): Rectangle { background: #f1f5f8; }
+    if !(root.page == 4 && root.cutout): wallpaper-image := Image {
+        source: root.wallpaper; width: 100%; height: 100%; image-fit: cover;
+    }
     sidebar := Rectangle {
         x: 0; y: 0; width: 174px; height: 100%; background: #112a3b;
         VerticalLayout {
@@ -104,11 +106,15 @@ export component Showcase inherits Window {
         if root.page == 0: Overview { event-count: root.event-count; ticks: root.ticks; samples: root.samples; navigate(p) => { root.navigate(p); } }
         if root.page == 1: Controls { station-name <=> root.station-name; level <=> root.level; power <=> root.power; notifications <=> root.notifications; mode <=> root.mode; saved-summary: root.saved-summary; apply => { root.apply-profile(); } keyboard => { root.open-dialog(3); } reset => { root.open-dialog(1); } }
         if root.page == 2: Devices { rows: root.devices; query <=> root.query; online-only <=> root.online-only; selected-name: root.selected-name; filter => { root.filter(); } keyboard => { root.open-dialog(4); } select(id) => { root.select-device(id); } }
-        if root.page == 3: Motion { phase: root.phase; ticks: root.ticks; running <=> root.running; speed <=> root.speed; expanded: root.expanded; toggle => { root.toggle-motion(); } replay => { root.replay(); } }
-        if root.page == 4: Media { texture: root.texture; overlay: root.overlay; alpha <=> root.alpha; cutout: root.cutout; toggle-cutout => { root.toggle-cutout(); } blend-changed => { root.blend-changed(); } }
+        if root.page == 3: Motion { wallpaper: root.wallpaper; phase: root.phase; ticks: root.ticks; running <=> root.running; speed <=> root.speed; expanded: root.expanded; toggle => { root.toggle-motion(); } replay => { root.replay(); } }
+        if root.page == 4: Media { overlay: root.overlay; alpha <=> root.alpha; cutout: root.cutout; toggle-cutout => { root.toggle-cutout(); } blend-changed => { root.blend-changed(); } }
         if root.page == 5: Lab { events: root.events; exercised: root.exercised; completed: root.completed; taps: root.taps; drag-count: root.drag-count; drag-x <=> root.drag-x; drag-y <=> root.drag-y; tap(i) => { root.tap(i); } dragged => { root.dragged(); } clear => { root.clear-journal(); } }
     }
-    footer := Caption { x: 198px; y: parent.height - 29px; width: parent.width - 222px; height: 20px; text: round(root.width / 1px) + " × " + round(root.height / 1px) + "   /   Slint software renderer                                            Demo data · Session state"; font-size: 10px; }
+    footer := Rectangle {
+        x: 198px; y: parent.height - 29px; width: parent.width - 222px; height: 22px;
+        background: #102a3bb3; border-radius: 4px;
+        Caption { x: 8px; width: parent.width - 16px; height: 100%; text: round(root.width / 1px) + " × " + round(root.height / 1px) + "   /   Slint software renderer                                            Demo data · Session state"; font-size: 10px; color: #eaf7ff; }
+    }
     if root.toast != "": Rectangle {
         x: parent.width - 425px; y: parent.height - 68px; width: 400px; height: 43px; background: #153f4b; border-radius: 8px;
         Text { text: root.toast; color: white; font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
@@ -123,6 +129,7 @@ export component Showcase inherits Window {
             return accept;
         }
         dialog-card := Card {
+            background: white;
             width: root.dialog >= 3 ? 620px : 440px;
             height: root.dialog >= 3 ? 410px : 250px;
             x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;

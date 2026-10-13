@@ -29,7 +29,7 @@ export component Devices inherits VerticalLayout {
                 VerticalLayout {
                     spacing: 6px;
                     for device in root.rows: row := Rectangle {
-                        height: 66px; border-radius: 8px; background: touch.pressed ? #ccece7 : #f2f6f8;
+                        height: 66px; border-radius: 8px; background: touch.pressed ? #ccece7e6 : #f2f6f8aa;
                         accessible-role: button; accessible-label: device.name;
                         accessible-action-default => { root.select(device.id); }
                         HorizontalLayout {
@@ -47,5 +47,8 @@ export component Devices inherits VerticalLayout {
             }
         }
     }
-    Caption { text: "Selected: " + root.selected-name + "   /   All device values are simulated."; }
+    Rectangle {
+        height: 24px; background: #102a3bb3; border-radius: 4px;
+        Caption { x: 10px; width: parent.width - 20px; height: 100%; color: #eaf7ff; text: "Selected: " + root.selected-name + "   /   All device values are simulated."; }
+    }
 }

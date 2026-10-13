@@ -80,24 +80,7 @@ fn filter_devices(app: &Showcase) {
     )));
 }
 
-fn textures(app: &Showcase) {
-    let mut image = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::new(640, 240);
-    for (i, p) in image.make_mut_slice().iter_mut().enumerate() {
-        let x = i % 640;
-        let y = i / 640;
-        let ridge = 135.0 + 35.0 * (x as f32 / 75.0).sin();
-        let (r, g, b) = if y as f32 > ridge {
-            (15 + y / 15, 83 + x / 12, 99 + y / 8)
-        } else {
-            (26 + x / 5, 74 + y / 3, 137 + x / 10)
-        };
-        *p = slint::Rgba8Pixel {
-            r: r as u8,
-            g: g as u8,
-            b: b as u8,
-            a: 255,
-        };
-    }
+fn configure_overlay(app: &Showcase) {
     let mut overlay = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::new(192, 192);
     for (i, p) in overlay.make_mut_slice().iter_mut().enumerate() {
         let x = (i % 192) as f32 - 96.0;
@@ -110,7 +93,6 @@ fn textures(app: &Showcase) {
             a: ((1.0 - radius / 96.0).clamp(0.0, 1.0) * 255.0) as u8,
         };
     }
-    app.set_texture(slint::Image::from_rgba8(image));
     app.set_overlay(slint::Image::from_rgba8(overlay));
 }
 
@@ -126,7 +108,7 @@ pub fn configure(app: &Showcase) -> slint::Timer {
     app.set_events(session.borrow().events.clone().into());
     app.set_exercised(ModelRc::new(VecModel::from(vec![false; 6])));
     filter_devices(app);
-    textures(app);
+    configure_overlay(app);
     session.borrow_mut().log(app, "Session started");
 
     let (weak, state) = (app.as_weak(), session.clone());
@@ -274,7 +256,7 @@ pub fn configure(app: &Showcase) -> slint::Timer {
                 if app.get_cutout() {
                     "Opened transparent area"
                 } else {
-                    "Restored test image"
+                    "Restored image background"
                 },
             );
         }

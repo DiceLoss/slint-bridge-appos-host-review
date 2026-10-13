@@ -75,6 +75,41 @@ fn showcase_state_forms_filtering_and_transparency() {
     );
     app.invoke_open_dialog(0);
 
+    // The real embedded bitmap must decode, and changing it must affect the
+    // scrolling/animation content, not just the gutters around opaque cards.
+    let size = app.get_wallpaper().size();
+    assert_eq!((size.width, size.height), (1638, 960));
+    let photograph = app.get_wallpaper();
+    let mut swatch = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::new(1, 1);
+    swatch.make_mut_slice()[0] = slint::Rgba8Pixel {
+        r: 220,
+        g: 30,
+        b: 20,
+        a: 255,
+    };
+    let red = slint::Image::from_rgba8(swatch.clone());
+    swatch.make_mut_slice()[0] = slint::Rgba8Pixel {
+        r: 20,
+        g: 30,
+        b: 220,
+        a: 255,
+    };
+    let blue = slint::Image::from_rgba8(swatch);
+    for (page, x, y) in [(2, 700, 285), (3, 450, 280), (4, 240, 310)] {
+        app.invoke_navigate(page);
+        app.set_wallpaper(red.clone());
+        let red_frame = app.window().take_snapshot().unwrap();
+        app.set_wallpaper(blue.clone());
+        let blue_frame = app.window().take_snapshot().unwrap();
+        let at = y * 1024 + x;
+        assert_ne!(
+            red_frame.as_slice()[at],
+            blue_frame.as_slice()[at],
+            "page {page} hides the bitmap"
+        );
+    }
+    app.set_wallpaper(photograph);
+
     app.invoke_navigate(4);
     app.invoke_toggle_cutout();
     app.set_alpha(0.0);
