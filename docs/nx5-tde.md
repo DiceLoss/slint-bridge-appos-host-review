@@ -40,13 +40,13 @@
 
 ## 缓冲与错误处理
 
-当前 ARM 实现由 CPU 和 TDE 共用一块 cached MMZ 保留画布，两个 MMZ 源槽位继续缓存纹理。SDK 分配同时返回物理地址与 CPU 虚拟映射，无需再次 mmap；软件绘制与同步硬件作业按缓存所有权交替访问。成功后直接从该画布进行像素转换并写入可用的 framebuffer 后台页，不再经过堆内存回拷；没有使用 TDE 直接写扫描页。所有权、错误处理及新实测见 [共享 MMZ 画布报告](nx5-shared-canvas.md)。下方初次接入性能表仍属于旧的独立暂存目标实现。
+当前 ARM 实现在 TDE 初始化成功时，由 CPU 和 TDE 共用一块 cached MMZ 保留画布，两个 MMZ 源槽位继续缓存纹理。SDK 分配同时返回物理地址与 CPU 虚拟映射，无需再次 mmap；软件绘制与同步硬件作业按缓存所有权交替访问。成功后直接从该画布进行像素转换并写入可用的 framebuffer 后台页，不再经过堆内存回拷；没有使用 TDE 直接写扫描页。所有权、错误处理及新实测见 [共享 MMZ 画布报告](nx5-shared-canvas.md)。上方初次接入性能表仍属于旧的独立暂存目标实现。
 
-源缓存使用本地 Slint 扩展 `TextureCacheKey` 保留不可变图像身份，包含源视图。缓存键同时保留源图像存储，写时复制会产生新身份。两个源槽位按最近使用次序替换，命中时也刷新替换位置，避免新前景驱逐刚使用过的固定背景；缓存不比较大块像素内容。新回归的上传量计数与范围见 [历史经验吸收](slint-nx5-lessons.md#7-已吸收的效率改进命中时刷新两槽替换次序)。
+源缓存使用本地 Slint 扩展 `TextureCacheKey` 保留不可变图像身份，包含源视图。实际槽位键还包含整体透明度；`TextureCacheKey` 保留源图像存储，写时复制会产生新身份。两个源槽位按最近使用次序替换，命中时也刷新替换位置，避免新前景驱逐刚使用过的固定背景；缓存不比较大块像素内容。新回归的上传量计数与范围见 [历史经验吸收](slint-nx5-lessons.md#7-已吸收的效率改进命中时刷新两槽替换次序)。
 
 1024×600 时，TDE 的三个 MMZ 块合计 7200 KiB，加上原显示/VPPU 的 4900 KiB，正常总量为 12100 KiB。共享画布不再另占约 2400 KiB 的堆内存，仅增加一行错误隔离区（1024 像素时 4 KiB）。创建失败会记录原因并使用软件绘制。当前 SDK 会在首次加载时初始化 SYS/VO，因此 C 接口只允许 `RTLD_NOLOAD` 复用 `nx5` 已初始化的库，不能单独加载或关闭 SYS/VO。
 
-已知尚未提交或已经完成的错误，不会提交部分硬件结果；后续禁用 TDE，并在同一映射上全量软件重绘整帧。提交后的等待失败、取消失败等不确定状态返回 `AccelerationFailed`，整帧不显示，保留 MMZ、TDE 句柄与库引用。实现不调用全局 Reset，也不会在 `EndJob` 之后尝试 Cancel。
+已知尚未提交或已经完成的错误，不会提交部分硬件结果；立即禁用 TDE，并在同一映射上全量软件重绘整帧。提交后的等待失败、取消失败等不确定状态返回 `AccelerationFailed`，整帧不显示，保留 MMZ、TDE 句柄与库引用。实现不调用全局 Reset，也不会在 `EndJob` 之后尝试 Cancel。
 
 DMA 已知结束后的 MMZ 清理逐块执行；任一释放失败均不重试该地址，并禁止进程内再次创建 TDE，后续使用软件路径，防止部分释放失败造成分配反复累积。其余块继续释放，已无在途 DMA，因此正常关闭 TDE 和库引用；这与未知 DMA 的完整保留策略不同。主机及 ARM CPU 替身验证“不释放即报错”和“释放后仍报错”，未人为触发真实 SDK 释放失败，详见 [清理失败保护](slint-nx5-lessons.md#5-已补充保护mmz-释放失败后禁止反复分配)。
 
@@ -83,7 +83,7 @@ SLINT_BRIDGE_TRACE=1 LD_LIBRARY_PATH=/system/app/clib \
 
 上述设备命令约定已将构建输出 `target/arm-unknown-linux-gnueabi/release/display` 部署并命名为 `display-tde`。`SLINT_BRIDGE_TRACE` 只要被设置就启用统计：每 150 次完成提交报告 FPS，每 150 次绘制报告 TDE 纹理复制、混合、软件纹理回调、缓存命中、错误及填充计数；`software` 不是全部软件绘制操作的数量。禁用 TDE 时构建 `--features nx5` 即可。日常统一部署路径见 [NX5 设备说明](../test-app/devices/nx5/README.md)，UI 截图使用 [Slint MCP](slint-mcp.md)。
 
-实机回归是忽略测试，需先退出显示所有者，并逐项单独运行：
+下列回归均默认忽略。除 CPU-only NEON 边界项外，SDK/显示用例须先退出显示所有者，并逐项独占运行；NEON 边界项不加载 SDK，可保持已有显示程序运行。ARM NEON 项需要下方的板级预设：
 
 ```sh
 NX5_SDK_INCLUDE=/home/dpower/data/GitLab/LGUI3/c_library/third_party/include/NX5/codec \

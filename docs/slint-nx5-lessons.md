@@ -47,7 +47,7 @@
 
 这项原则值得保留，但旧恢复循环没有上界，调用 Reset 还会影响共享 TDE 状态；同一旧文件 `:239–243` 在绘图构建失败时忽略 CancelJob 返回值。旧测试的 CancelJob 替身始终成功，不能覆盖这一缺口（`f0e9311decc0c98db0099bc6cbed2496596b4504`，`crates/slint-nx5-core/tests/tde_lifetime.c:16–25`）。不能因为替身 PASS 就认为真实 SDK 的所有失败路径已证明安全。
 
-当前策略更严格：[native.c](../src/backends/nx5/tde/native.c) 让 DMA 只操作私有 MMZ，成功等待且完成 cache 同步后才复制到权威 CPU 画布；构建错误且取消成功为安全错误，取消失败或 EndJob 失败标记未知 DMA。未知状态保留 MMZ/库/TDE 句柄，Rust [拒绝提交该帧](../src/backends/nx5/tde/mod.rs)，并[保留板级会话和锁](../src/presentation.rs)。[故障回退回归](../src/backends/nx5/tde/tests.rs)区分安全错误与未知完成状态。
+本轮 `287da8c` 阶段采用私有 MMZ 暂存目标，成功等待且完成 cache 同步后才拷回 CPU 画布。后续 `d34f436` 已改为 [CPU/TDE 共享 MMZ](nx5-shared-canvas.md)：成功后不再回拷；已知完成的错误立即禁用 TDE，将剩余回调导向隔离行，再全量软件重绘画布。取消失败或 EndJob 失败仍标记未知 DMA，保留 MMZ/库/TDE 句柄，Rust [拒绝访问画布及提交该帧](../src/backends/nx5/tde/mod.rs)，并[保留板级会话和锁](../src/presentation.rs)。[故障回退回归](../src/backends/nx5/tde/tests.rs)区分安全错误与未知完成状态；后续验证不计入本文原始成绩。
 
 提高效率不能删除 CPU 提交前的同步、把未知状态转成成功的软件帧，或直接引入旧版无限等待/全局 Reset。
 

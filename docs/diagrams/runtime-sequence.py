@@ -74,7 +74,7 @@ text(980,196,'fb-present 的调用栈：同步调用 NX5 回调，再进入驱�
 X = {'ui':200,'canvas':480,'pages':780,'worker':1080,'nx5':1370,'driver':1660}
 headers = [
  ('ui','UI 渲染线程','runtime / framebuffer',BLUE,'#eff6ff'),
- ('canvas','保留画布 retained','NX5：CPU/TDE 共用 MMZ',BLUE,'#eff6ff'),
+ ('canvas','保留画布 retained','TDE 就绪：共享 MMZ',BLUE,'#eff6ff'),
  ('pages','物理显示页 A / B','NX5：straight RGB / A≤128',BLUE,'#eff6ff'),
  ('worker','后台提交线程','presentation.rs · fb-present',PURPLE,'#faf5ff'),
  ('nx5','NX5 完成回调','backends/nx5/mod.rs',ORANGE,'#fff7ed'),
@@ -102,7 +102,7 @@ for ident,y,h,color,fill in [
     rect(X[ident]-6,y,12,h,fill,color,radius=2)
 
 msg('render-n','ui','canvas',410,'① render(N) → 画布',size=18)
-text(498,440,'CPU / 同步 TDE · 共享映射',17,MUTED)
+text(498,440,'CPU 绘制 / 可选同步 TDE',17,MUTED)
 text(212,517,'首次整页；随后合并两帧脏区；编码 alpha；源画布不变',16,MUTED)
 msg('copy-b','ui','pages',495,'② present()：反预乘 + 位域转换 → B（脏区）')
 msg('submit-b','ui','worker',565,'③ submit(H)：入队即返回；pending = true','async')
@@ -137,7 +137,7 @@ msg('submit-a','ui','worker',1425,'⑩ submit(0)：提交 N+1；随后可预渲�
 
 rect(60,1490,1720,44,'#f0fdf4')
 text(80,1520,'循环：A 提交后两页再次冻结；UI 在保留画布渲染 N+2，后台等待 A 的翻页完成。',19,GREEN,500)
-note('capacity',60,1565,540,143,'并行与容量',['最多 1 次提交进行中 + 1 帧等待提交','MMZ 画布不是第三张物理 framebuffer','渲染可并行；复制显示页须先确认完成'],BLUE,'#eff6ff')
+note('capacity',60,1565,540,143,'并行与容量',['最多 1 次提交进行中 + 1 帧等待提交','保留画布不是第三张物理 framebuffer','渲染可并行；复制显示页须先确认完成'],BLUE,'#eff6ff')
 note('generic-contract',640,1565,540,143,'通用层负责',['事件 / 帧期限、脏区复制、前后台角色','提交线程、完成队列、eventfd 与错误传播','通过私有 PresentationContract 调用板级实现'],PURPLE,'#faf5ff')
 note('board-contract',1220,1565,560,143,'NX5 适配负责',['布局、SYS/VO、MMZ 与缓存同步','阻塞 PAN 的完成语义及 yoffset 校验','读回或定时器精度均不能单独证明页面已释放'],ORANGE,'#fff7ed')
 

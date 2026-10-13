@@ -23,7 +23,7 @@
 
 `InputDevice::touchscreen(path)` 使用当前 NX5 触摸协议 `ABS_X/ABS_Y + BTN_TOUCH`。轴范围由 ioctl 查询，先归一化到物理屏幕，再逆变换为未旋转的 Slint 逻辑坐标。触摸按下、移动和释放只在 `SYN_REPORT` 后发送，避免把接触事件与尚未收齐的坐标组合。收到 `SYN_DROPPED` 后忽略事件直到报告边界，再用 `EVIOCG*` 查询状态，修复按键及接触状态；依据 [Linux evdev 规范](https://docs.kernel.org/input/event-codes.html#ev-syn)。
 
-`InputDevice::keys(path)` 提供方向、确认、返回等导航键。产品可通过 `InputDevice::Keys { path, bindings }` 和 `KeyBinding::new(code, text)` 指定 Linux 键码到 Slint 特殊键或字符的映射。它处理按下、自动重复和释放，不提供键盘布局或输入法。输入掉线会终止事件循环并返回错误，避免持续轮询失效描述符。
+`InputDevice::keys(path)` 提供方向、确认、返回等导航键。产品可通过 `InputDevice::Keys { path, bindings }` 和 `KeyBinding::new(code, text)` 指定 Linux 键码到 Slint 特殊键或字符的映射。它处理按下、自动重复和释放，不提供键盘布局或输入法。自定义按键映射要求 Linux key code 小于 768、彼此不重复，且映射文本非空；不满足时返回 `InvalidConfig`。输入掉线会终止事件循环并返回错误，避免持续轮询失效描述符。
 
 每轮对每个输入设备最多进行 8 次非阻塞读取，每次缓冲最多 32 条原始 evdev 记录；这不是 Slint 事件数量或采样频率上限。仍有数据时，描述符保持可读，后续轮次继续处理。该批次限制与业务任务的 2 ms 预算分别执行，避免把输入或任务积压一次性处理到底。
 
@@ -101,7 +101,7 @@ NX5 打开 `Config::framebuffer` 指定的设备，通过 `FBIOGET_FSCREENINFO` 
 
 `SLINT_BRIDGE_TDE_FILL=1` 在 `nx5-tde` 构建中显式开启 QuickFill 对照路径：纯色窗口背景和无圆角/边框的不透明整数矩形可进入硬件，至少 32768 像素、至多 16 个裁剪区域；背景清除可保留预乘 alpha。其他值或未设置时使用 CPU 批量填充，因为共享 MMZ 后重新测量的 22 组面积/形状/颜色对照仍均为 CPU 更快；全屏 CPU 写 MMZ 约 1.69 ms，TDE 含提交和同步约 2.86 ms。硬件填充直接写共享画布，同样遵守完成确认、失败回退及未知 DMA 隔离，不增加 MMZ 块。`SLINT_BRIDGE_TRACE` 的 TDE 行末新增 `fill` 次数；`software` 仍只计未加速的纹理回调。初次接入记录见 [填充与整体透明度实测](nx5-fill-blend.md)，共享画布复测见 [MMZ 实测](nx5-shared-canvas.md)。
 
-共享画布上的已知完成错误可能留下部分硬件结果：当帧剩余软件回调写入一行预分配弃用区，随后禁用 TDE，以 `NewBuffer` 全量软件重绘同一 MMZ 画布，再恢复原 repaint 模式并提交完整脏区。画布持有 SDK/MMZ 所有权，禁用加速不会提前释放它。未知 DMA 完成时，后续回调同样不能访问画布，整帧返回错误，不写物理页；保留原有 MMZ、SDK 会话及显示锁隔离。该策略不分配整帧备份。
+共享画布上的已知完成错误可能留下部分硬件结果：立即禁用 TDE，将当帧剩余软件回调导向一行预分配隔离区；本次 renderer 调用返回后，以 `NewBuffer` 全量软件重绘同一 MMZ 画布，再恢复原 repaint 模式并提交完整脏区。画布持有 SDK/MMZ 所有权，禁用加速不会提前释放它。未知 DMA 完成时，后续回调同样不能访问画布，整帧返回错误，不写物理页；保留原有 MMZ、SDK 会话及显示锁隔离。该策略不分配整帧备份。
 
 已知 DMA 完成后的 MMZ 释放失败会永久关闭进程内 TDE 创建门闩，后续使用软件路径；同一地址不重复释放，避免部分释放后重复分配累积资源。未知 DMA 仍保持原有整帧失败与会话隔离。
 
@@ -157,7 +157,7 @@ cargo clippy --locked --offline --workspace --features nx5-tde,slint/mcp --all-t
 cargo doc --locked --offline --workspace --features nx5-tde --no-deps
 ```
 
-公共接口测试在 [test-app/tests/public_api.rs](../test-app/tests/public_api.rs)；私有回归在 [src/tests/](../src/tests/)、显示/等待模块内及 [TDE 测试](../src/backends/nx5/tde/tests.rs)。实机测试覆盖阻塞翻页、TDE 像素/回退与调用链、实际演示的双页像素，以及填充面积/形状耗时；需单独部署并独占设备，不能把主机的 ignored 计为通过。执行命令见 [TDE 报告的构建与接入](nx5-tde.md#构建与接入)。
+公共接口测试在 [test-app/tests/public_api.rs](../test-app/tests/public_api.rs)；私有回归在 [src/tests/](../src/tests/)、显示/等待模块内及 [TDE 测试](../src/backends/nx5/tde/tests.rs)。SDK/显示专用测试覆盖阻塞翻页、TDE 像素/回退与调用链、演示组件的内存双页对照、填充面积/形状耗时，以及共享画布到真实 framebuffer 的转换写页；需单独部署并独占设备，不能把主机的 ignored 计为通过。另有仅在 ARM 编译的 `neon_writeback_boundaries` ignored 测试，只执行 CPU 转换、不加载 SDK，可在显示程序运行时单独执行。执行命令见 [TDE 报告的构建与接入](nx5-tde.md#构建与接入)。
 
 [Framebuffer 析构回归](../src/tests/framebuffer_lifecycle.rs) 使用内存文件、受控提交回调及 TDE 资源替身，不访问真实硬件。[WBC 生命周期回归](../test-app/src/nx5_observer.rs) 使用真实 Slint 应用/定时器、返回错误的平台及受控观察线程，验证错误退出等待和 panic 处理，并通过子进程与替身动态库确认 `LD_LIBRARY_PATH` 加载及配置路径传递；它不替代设备 WBC 采样。
 
@@ -169,4 +169,4 @@ UI 截图、元素检查及应用层输入交互使用 [Slint 原生 MCP](slint-
 
 独立测试工程另提供六页 `showcase`，用法与验证范围集中在 [应用说明](../test-app/README.md#六页展示应用-showcase)。其 `showcase-preview` feature 仅为应用提供同源 Slint headless 软件预览；正常设备运行仍调用本库 `init(Config)`。标准控件所需的 SVG 解码依赖由测试工程引入，不改变库的 features、默认值、提交契约或设备准入。
 
-当前 NX5 可使用显式的 `.cargo/nx5.toml` CPU 预设和 NEON RGBA→BGRA 写页路径；未使用该预设时仍有原有像素转换路径。整屏性能及当前驱动提交上限见 [帧率优化报告](nx5-fps.md)。
+当前 NX5 可使用显式的 `.cargo/nx5.toml` CPU 预设和 NEON RGBA→BGRA 写页路径；未使用该预设时仍有原有像素转换路径。生产写页没有使用 TDE：单次格式转换与 CPU 转换后 TDE 搬运只存在于独立诊断探针，所测正确路径更慢，见 [TDE 写页调查](nx5-tde-writeback.md)。整屏性能及当前驱动提交上限见 [帧率优化报告](nx5-fps.md)。
