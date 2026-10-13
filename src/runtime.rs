@@ -260,9 +260,20 @@ impl BridgePlatform {
                 window.dirty.set(false);
                 next_frame = now + self.frame_interval;
                 self.framebuffer.borrow_mut().render(&window.renderer)?;
+                // Rendering can occupy the UI thread for a full frame. Return
+                // to input before starting framebuffer conversion/writeback.
+                // The prepared frame prevents another render until submission.
+                continue;
             }
             if window.visible.get() && self.framebuffer.borrow().ready_to_present() {
-                self.framebuffer.borrow_mut().present()?;
+                self.framebuffer
+                    .borrow_mut()
+                    .present(Some(Duration::from_millis(1)))?;
+                if self.framebuffer.borrow().ready_to_present() {
+                    // A partially copied page is not submitted. Process input
+                    // before the next slice, without sleeping or re-rendering.
+                    continue;
+                }
             }
             let animating = window.visible.get() && window.window.has_active_animations();
             let redraw_pending = window.visible.get() && window.dirty.get();

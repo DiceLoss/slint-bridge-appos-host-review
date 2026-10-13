@@ -10,7 +10,7 @@ INK, MUTED = '#111827', '#475569'
 parts = [f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}"
  data-generator="fireworks-tech-graph" data-style-id="1" data-diagram-type="sequence" data-quality-profile="showcase">
 <title>Slint Bridge · 双 framebuffer 并行运行时序</title>
-<desc>依据 src/runtime.rs、framebuffer.rs、presentation.rs、backends/mod.rs、backends/nx5/mod.rs。仅展示成功路径；初始 A 为前台、B 为后台。UI 在独立保留画布渲染 N+1，可与后台提交 N 的阻塞 PAN 并行。完成成功后才允许复用旧前台页。NX5 回调与通用提交器属于同一个后台线程。</desc>
+<desc>依据 src/runtime.rs、framebuffer.rs、presentation.rs、backends/mod.rs、backends/nx5/mod.rs。仅展示成功路径；初始 A 为前台、B 为后台。渲染后及写页分段之间处理输入，写页期间冻结保留画布，整页完成后才提交。UI 预渲染 N+1 可与后台提交 N 的阻塞 PAN 并行。完成成功后才允许复用旧前台页。NX5 回调与通用提交器属于同一个后台线程。</desc>
 <style>text {{font-family:'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',sans-serif;}}</style>
 <defs>''']
 for name, color in [('call', BLUE), ('async', PURPLE), ('return', GREEN), ('driver', ORANGE)]:
@@ -103,8 +103,9 @@ for ident,y,h,color,fill in [
 
 msg('render-n','ui','canvas',410,'① render(N) → 画布',size=18)
 text(498,440,'CPU 绘制 / 可选同步 TDE',17,MUTED)
+text(212,453,'渲染后先处理输入',17,BLUE)
 text(212,517,'首次整页；随后合并两帧脏区；编码 alpha；源画布不变',16,MUTED)
-msg('copy-b','ui','pages',495,'② present()：反预乘 + 位域转换 → B（脏区）')
+msg('copy-b','ui','pages',495,'② 分段反预乘 / 写 B；段间处理输入')
 msg('submit-b','ui','worker',565,'③ submit(H)：入队即返回；pending = true','async')
 msg('contract-b','worker','nx5',625,'④ complete(fd, H, layout)',size=17)
 msg('pan-b','nx5','driver',680,'⑤ FBIOPAN_DISPLAY','driver',18)
@@ -132,12 +133,12 @@ msg('contract-done','nx5','worker',1165,'⑦ Ok：旧前台可复用','return',1
 msg('wake-ui','worker','ui',1220,'⑧ completion.send(Ok) + eventfd 唤醒','async')
 note('poll-success',94,1262,500,58,'poll_present() 成功 → 更新 front = B',[],BLUE,'#eff6ff')
 note('released-page',642,1262,276,58,'B 为前台；A 可写',[],GREEN,'#f0fdf4')
-msg('copy-a','ui','pages',1360,'⑨ present()：N+1 画布 → 已释放的 A')
+msg('copy-a','ui','pages',1360,'⑨ 分段写 A；段间处理输入，画布保持不变')
 msg('submit-a','ui','worker',1425,'⑩ submit(0)：提交 N+1；随后可预渲染 N+2','async')
 
 rect(60,1490,1720,44,'#f0fdf4')
 text(80,1520,'循环：A 提交后两页再次冻结；UI 在保留画布渲染 N+2，后台等待 A 的翻页完成。',19,GREEN,500)
-note('capacity',60,1565,540,143,'并行与容量',['最多 1 次提交进行中 + 1 帧等待提交','保留画布不是第三张物理 framebuffer','渲染可并行；复制显示页须先确认完成'],BLUE,'#eff6ff')
+note('capacity',60,1565,540,143,'并行与容量',['最多 1 次提交进行中 + 1 帧等待提交','保留画布不是第三张物理 framebuffer','写页约 1 ms 让出；画布冻结至整页提交'],BLUE,'#eff6ff')
 note('generic-contract',640,1565,540,143,'通用层负责',['事件 / 帧期限、脏区复制、前后台角色','提交线程、完成队列、eventfd 与错误传播','通过私有 PresentationContract 调用板级实现'],PURPLE,'#faf5ff')
 note('board-contract',1220,1565,560,143,'NX5 适配负责',['布局、SYS/VO、MMZ 与缓存同步','阻塞 PAN 的完成语义及 yoffset 校验','读回或定时器精度均不能单独证明页面已释放'],ORANGE,'#fff7ed')
 

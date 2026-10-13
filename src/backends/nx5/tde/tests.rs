@@ -8,6 +8,36 @@ use slint::{
 };
 use std::{rc::Rc, time::Instant};
 
+pub(crate) fn buffer_with_fill_observer(
+    width: u32,
+    height: u32,
+    on_fill: impl FnMut() + 'static,
+) -> Buffer {
+    struct Probe<F>(F);
+    impl<F: FnMut()> Accelerator for Probe<F> {
+        fn fill(
+            &mut self,
+            _: &mut [PremultipliedRgbaColor],
+            _: PremultipliedRgbaColor,
+            _: &[Rect],
+        ) -> Result<bool, Failure> {
+            (self.0)();
+            Ok(false)
+        }
+        fn draw(
+            &mut self,
+            _: &mut [PremultipliedRgbaColor],
+            _: &Texture<'_>,
+        ) -> Result<Outcome, Failure> {
+            Ok(Outcome::Unsupported)
+        }
+    }
+    let mut buffer = Buffer::software(width, height).unwrap();
+    buffer.engine = Some(Box::new(Probe(on_fill)));
+    buffer.fill_enabled = true;
+    buffer
+}
+
 pub(crate) fn buffer_with_drop_observer(
     width: u32,
     height: u32,
@@ -779,7 +809,10 @@ fn nx5_demo_pages_match_full_frames() {
         slint::platform::update_timers_and_animations();
         window.draw_if_needed(|renderer| {
             assert!(framebuffer.render(renderer).unwrap());
-            assert!(framebuffer.present().unwrap());
+            while !framebuffer
+                .present(Some(std::time::Duration::from_millis(1)))
+                .unwrap()
+            {}
         });
     }
     framebuffer.wait_for_present().unwrap();

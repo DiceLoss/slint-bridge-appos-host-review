@@ -40,7 +40,7 @@
   <main id="stage" tabindex="0" aria-label="Interactive diagram. Drag to pan; use plus and minus to zoom.">
     <div id="canvas"><svg xmlns="http://www.w3.org/2000/svg" width="1840" height="1840" viewBox="0 0 1840 1840" data-generator="fireworks-tech-graph" data-style-id="1" data-diagram-type="sequence" data-quality-profile="showcase" role="img" focusable="false">
 <title>Slint Bridge · 双 framebuffer 并行运行时序</title>
-<desc>依据 src/runtime.rs、framebuffer.rs、presentation.rs、backends/mod.rs、backends/nx5/mod.rs。仅展示成功路径；初始 A 为前台、B 为后台。UI 在独立保留画布渲染 N+1，可与后台提交 N 的阻塞 PAN 并行。完成成功后才允许复用旧前台页。NX5 回调与通用提交器属于同一个后台线程。</desc>
+<desc>依据 src/runtime.rs、framebuffer.rs、presentation.rs、backends/mod.rs、backends/nx5/mod.rs。仅展示成功路径；初始 A 为前台、B 为后台。渲染后及写页分段之间处理输入，写页期间冻结保留画布，整页完成后才提交。UI 预渲染 N+1 可与后台提交 N 的阻塞 PAN 并行。完成成功后才允许复用旧前台页。NX5 回调与通用提交器属于同一个后台线程。</desc>
 <style>text {font-family:'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',sans-serif;}</style>
 <defs>
 <marker id="arrow-call" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="#2563eb" /></marker>
@@ -100,15 +100,16 @@
 <line id="render-n" data-graph-role="edge" data-edge-id="render-n" data-source="ui" data-target="canvas" x1="200" y1="410" x2="480" y2="410" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)" />
 <text id="text-21" data-graph-role="label" data-owner="render-n" data-graph-bounds="257.45,377,422.55,399" x="340.0" y="395" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">① render(N) → 画布</text>
 <text id="text-22" data-graph-role="label" data-graph-bounds="498.00,423,687.67,444" x="498" y="440" text-anchor="start" font-size="17" font-weight="400" fill="#475569">CPU 绘制 / 可选同步 TDE</text>
-<text id="text-23" data-graph-role="label" data-graph-bounds="212.00,501,609.80,521" x="212" y="517" text-anchor="start" font-size="16" font-weight="400" fill="#475569">首次整页；随后合并两帧脏区；编码 alpha；源画布不变</text>
+<text id="text-23" data-graph-role="label" data-graph-bounds="212.00,436,348.00,457" x="212" y="453" text-anchor="start" font-size="17" font-weight="400" fill="#2563eb">渲染后先处理输入</text>
+<text id="text-24" data-graph-role="label" data-graph-bounds="212.00,501,609.80,521" x="212" y="517" text-anchor="start" font-size="16" font-weight="400" fill="#475569">首次整页；随后合并两帧脏区；编码 alpha；源画布不变</text>
 <line id="copy-b" data-graph-role="edge" data-edge-id="copy-b" data-source="ui" data-target="pages" x1="200" y1="495" x2="780" y2="495" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)" />
-<text id="text-24" data-graph-role="label" data-owner="copy-b" data-graph-bounds="304.91,462,675.09,484" x="490.0" y="480" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">② present()：反预乘 + 位域转换 → B（脏区）</text>
+<text id="text-25" data-graph-role="label" data-owner="copy-b" data-graph-bounds="346.49,462,633.51,484" x="490.0" y="480" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">② 分段反预乘 / 写 B；段间处理输入</text>
 <line id="submit-b" data-graph-role="edge" data-edge-id="submit-b" data-source="ui" data-target="worker" x1="200" y1="565" x2="1080" y2="565" stroke="#7c3aed" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-async)" />
-<text id="text-25" data-graph-role="label" data-owner="submit-b" data-graph-bounds="462.88,532,817.12,554" x="640.0" y="550" text-anchor="middle" font-size="18" font-weight="500" fill="#7c3aed">③ submit(H)：入队即返回；pending = true</text>
+<text id="text-26" data-graph-role="label" data-owner="submit-b" data-graph-bounds="462.88,532,817.12,554" x="640.0" y="550" text-anchor="middle" font-size="18" font-weight="500" fill="#7c3aed">③ submit(H)：入队即返回；pending = true</text>
 <line id="contract-b" data-graph-role="edge" data-edge-id="contract-b" data-source="worker" data-target="nx5" x1="1080" y1="625" x2="1370" y2="625" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)" />
-<text id="text-26" data-graph-role="label" data-owner="contract-b" data-graph-bounds="1123.83,593,1326.17,614" x="1225.0" y="610" text-anchor="middle" font-size="17" font-weight="500" fill="#2563eb">④ complete(fd, H, layout)</text>
+<text id="text-27" data-graph-role="label" data-owner="contract-b" data-graph-bounds="1123.83,593,1326.17,614" x="1225.0" y="610" text-anchor="middle" font-size="17" font-weight="500" fill="#2563eb">④ complete(fd, H, layout)</text>
 <line id="pan-b" data-graph-role="edge" data-edge-id="pan-b" data-source="nx5" data-target="driver" x1="1370" y1="680" x2="1660" y2="680" stroke="#c2410c" stroke-width="2.3" marker-end="url(#arrow-driver)" />
-<text id="text-27" data-graph-role="label" data-owner="pan-b" data-graph-bounds="1426.66,647,1603.34,669" x="1515.0" y="665" text-anchor="middle" font-size="18" font-weight="500" fill="#c2410c">⑤ FBIOPAN_DISPLAY</text>
+<text id="text-28" data-graph-role="label" data-owner="pan-b" data-graph-bounds="1426.66,647,1603.34,669" x="1515.0" y="665" text-anchor="middle" font-size="18" font-weight="500" fill="#c2410c">⑤ FBIOPAN_DISPLAY</text>
 <rect data-graph-role="decoration" x="70" y="732" width="1710" height="234" rx="10" fill="#f0fdf4" stroke="#86efac" stroke-width="1.6" />
 <line data-graph-role="decoration" x1="200" y1="733" x2="200" y2="965" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
 <line data-graph-role="decoration" x1="480" y1="733" x2="480" y2="965" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
@@ -123,64 +124,64 @@
 <rect data-graph-role="decoration" x="1364" y="733" width="12" height="232" rx="2" fill="#ffedd5" stroke="#c2410c" stroke-width="1.6" />
 <rect data-graph-role="decoration" x="1654" y="733" width="12" height="232" rx="2" fill="#ffedd5" stroke="#c2410c" stroke-width="1.6" />
 <rect data-graph-role="decoration" x="82" y="774" width="73" height="32" rx="9" fill="#dcfce7" stroke="#86efac" stroke-width="1.6" />
-<text id="text-28" data-graph-role="content" x="118" y="796" text-anchor="middle" font-size="18" font-weight="700" fill="#15803d">PAR</text>
+<text id="text-29" data-graph-role="content" x="118" y="796" text-anchor="middle" font-size="18" font-weight="700" fill="#15803d">PAR</text>
 <line id="render-next" data-graph-role="edge" data-edge-id="render-next" data-source="ui" data-target="canvas" x1="200" y1="790" x2="480" y2="790" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)" />
-<text id="text-29" data-graph-role="label" data-owner="render-next" data-graph-bounds="258.48,757,421.52,779" x="340.0" y="775" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">render(N+1) → 画布</text>
+<text id="text-30" data-graph-role="label" data-owner="render-next" data-graph-bounds="258.48,757,421.52,779" x="340.0" y="775" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">render(N+1) → 画布</text>
 <rect id="ui-work" data-graph-bounds="96,857,594,934" data-graph-role="reserved" x="96" y="857" width="498" height="77" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" />
-<text id="text-30" data-graph-role="content" x="345.0" y="885" text-anchor="middle" font-size="19" font-weight="600" fill="#2563eb">最多预渲染一帧，然后暂停后续绘制</text>
-<text id="text-31" data-graph-role="content" x="345.0" y="914" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">任务每批约 2 ms / 最多 128 个；继续处理输入</text>
+<text id="text-31" data-graph-role="content" x="345.0" y="885" text-anchor="middle" font-size="19" font-weight="600" fill="#2563eb">最多预渲染一帧，然后暂停后续绘制</text>
+<text id="text-32" data-graph-role="content" x="345.0" y="914" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">任务每批约 2 ms / 最多 128 个；继续处理输入</text>
 <rect id="frozen-pages" data-graph-bounds="638,766,922,933" data-graph-role="reserved" x="638" y="766" width="284" height="167" rx="9" fill="#ffffff" stroke="#15803d" stroke-width="1.6" />
-<text id="text-32" data-graph-role="content" x="780.0" y="794" text-anchor="middle" font-size="19" font-weight="600" fill="#15803d">pending 期间两页均不可写</text>
-<text id="text-33" data-graph-role="content" x="780.0" y="823" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">A：旧前台，等待释放</text>
-<text id="text-34" data-graph-role="content" x="780.0" y="851" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">B：提交中，禁止修改</text>
-<text id="text-35" data-graph-role="content" x="780.0" y="879" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">此时仅允许写保留画布</text>
+<text id="text-33" data-graph-role="content" x="780.0" y="794" text-anchor="middle" font-size="19" font-weight="600" fill="#15803d">pending 期间两页均不可写</text>
+<text id="text-34" data-graph-role="content" x="780.0" y="823" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">A：旧前台，等待释放</text>
+<text id="text-35" data-graph-role="content" x="780.0" y="851" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">B：提交中，禁止修改</text>
+<text id="text-36" data-graph-role="content" x="780.0" y="879" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">此时仅允许写保留画布</text>
 <rect id="blocked-worker" data-graph-bounds="990,801,1725,907" data-graph-role="reserved" x="990" y="801" width="735" height="106" rx="9" fill="#fff7ed" stroke="#c2410c" stroke-width="1.6" />
-<text id="text-36" data-graph-role="content" x="1357.5" y="829" text-anchor="middle" font-size="19" font-weight="600" fill="#c2410c">后台线程阻塞于 complete → NX5 PAN</text>
-<text id="text-37" data-graph-role="content" x="1357.5" y="858" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">等待驱动完成；通用层没有发起第二次页面提交</text>
+<text id="text-37" data-graph-role="content" x="1357.5" y="829" text-anchor="middle" font-size="19" font-weight="600" fill="#c2410c">后台线程阻塞于 complete → NX5 PAN</text>
+<text id="text-38" data-graph-role="content" x="1357.5" y="858" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">等待驱动完成；通用层没有发起第二次页面提交</text>
 <line id="pan-done" data-graph-role="edge" data-edge-id="pan-done" data-source="driver" data-target="nx5" x1="1660" y1="1010" x2="1370" y2="1010" stroke="#15803d" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-return)" />
-<text id="text-38" data-graph-role="label" data-owner="pan-done" data-graph-bounds="1448.80,977,1581.20,999" x="1515.0" y="995" text-anchor="middle" font-size="18" font-weight="500" fill="#15803d">⑥ PAN 成功返回</text>
+<text id="text-39" data-graph-role="label" data-owner="pan-done" data-graph-bounds="1448.80,977,1581.20,999" x="1515.0" y="995" text-anchor="middle" font-size="18" font-weight="500" fill="#15803d">⑥ PAN 成功返回</text>
 <line id="get-offset" data-graph-role="edge" data-edge-id="get-offset" data-source="nx5" data-target="driver" x1="1370" y1="1065" x2="1660" y2="1065" stroke="#c2410c" stroke-width="2.3" marker-end="url(#arrow-driver)" />
-<text id="text-39" data-graph-role="label" data-owner="get-offset" data-graph-bounds="1427.52,1032,1602.48,1054" x="1515.0" y="1050" text-anchor="middle" font-size="18" font-weight="500" fill="#c2410c">GET + 校验布局 / 页号</text>
+<text id="text-40" data-graph-role="label" data-owner="get-offset" data-graph-bounds="1427.52,1032,1602.48,1054" x="1515.0" y="1050" text-anchor="middle" font-size="18" font-weight="500" fill="#c2410c">GET + 校验布局 / 页号</text>
 <line id="checked-offset" data-graph-role="edge" data-edge-id="checked-offset" data-source="driver" data-target="nx5" x1="1660" y1="1110" x2="1370" y2="1110" stroke="#15803d" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-return)" />
-<text id="text-40" data-graph-role="label" data-owner="checked-offset" data-graph-bounds="1434.00,1077,1596.00,1099" x="1515.0" y="1095" text-anchor="middle" font-size="18" font-weight="500" fill="#15803d">一致：仅作错误检查</text>
+<text id="text-41" data-graph-role="label" data-owner="checked-offset" data-graph-bounds="1434.00,1077,1596.00,1099" x="1515.0" y="1095" text-anchor="middle" font-size="18" font-weight="500" fill="#15803d">一致：仅作错误检查</text>
 <line id="contract-done" data-graph-role="edge" data-edge-id="contract-done" data-source="nx5" data-target="worker" x1="1370" y1="1165" x2="1080" y2="1165" stroke="#15803d" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-return)" />
-<text id="text-41" data-graph-role="label" data-owner="contract-done" data-graph-bounds="1139.34,1132,1310.66,1154" x="1225.0" y="1150" text-anchor="middle" font-size="18" font-weight="500" fill="#15803d">⑦ Ok：旧前台可复用</text>
+<text id="text-42" data-graph-role="label" data-owner="contract-done" data-graph-bounds="1139.34,1132,1310.66,1154" x="1225.0" y="1150" text-anchor="middle" font-size="18" font-weight="500" fill="#15803d">⑦ Ok：旧前台可复用</text>
 <line id="wake-ui" data-graph-role="edge" data-edge-id="wake-ui" data-source="worker" data-target="ui" x1="1080" y1="1220" x2="200" y2="1220" stroke="#7c3aed" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-async)" />
-<text id="text-42" data-graph-role="label" data-owner="wake-ui" data-graph-bounds="479.52,1187,800.48,1209" x="640.0" y="1205" text-anchor="middle" font-size="18" font-weight="500" fill="#7c3aed">⑧ completion.send(Ok) + eventfd 唤醒</text>
+<text id="text-43" data-graph-role="label" data-owner="wake-ui" data-graph-bounds="479.52,1187,800.48,1209" x="640.0" y="1205" text-anchor="middle" font-size="18" font-weight="500" fill="#7c3aed">⑧ completion.send(Ok) + eventfd 唤醒</text>
 <rect id="poll-success" data-graph-bounds="94,1262,594,1320" data-graph-role="reserved" x="94" y="1262" width="500" height="58" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" />
-<text id="text-43" data-graph-role="content" x="344.0" y="1290" text-anchor="middle" font-size="19" font-weight="600" fill="#2563eb">poll_present() 成功 → 更新 front = B</text>
+<text id="text-44" data-graph-role="content" x="344.0" y="1290" text-anchor="middle" font-size="19" font-weight="600" fill="#2563eb">poll_present() 成功 → 更新 front = B</text>
 <rect id="released-page" data-graph-bounds="642,1262,918,1320" data-graph-role="reserved" x="642" y="1262" width="276" height="58" rx="9" fill="#f0fdf4" stroke="#15803d" stroke-width="1.6" />
-<text id="text-44" data-graph-role="content" x="780.0" y="1290" text-anchor="middle" font-size="19" font-weight="600" fill="#15803d">B 为前台；A 可写</text>
+<text id="text-45" data-graph-role="content" x="780.0" y="1290" text-anchor="middle" font-size="19" font-weight="600" fill="#15803d">B 为前台；A 可写</text>
 <line id="copy-a" data-graph-role="edge" data-edge-id="copy-a" data-source="ui" data-target="pages" x1="200" y1="1360" x2="780" y2="1360" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)" />
-<text id="text-45" data-graph-role="label" data-owner="copy-a" data-graph-bounds="338.85,1327,641.15,1349" x="490.0" y="1345" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">⑨ present()：N+1 画布 → 已释放的 A</text>
+<text id="text-46" data-graph-role="label" data-owner="copy-a" data-graph-bounds="318.50,1327,661.50,1349" x="490.0" y="1345" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">⑨ 分段写 A；段间处理输入，画布保持不变</text>
 <line id="submit-a" data-graph-role="edge" data-edge-id="submit-a" data-source="ui" data-target="worker" x1="200" y1="1425" x2="1080" y2="1425" stroke="#7c3aed" stroke-width="2.3" stroke-dasharray="8 5" marker-end="url(#arrow-async)" />
-<text id="text-46" data-graph-role="label" data-owner="submit-a" data-graph-bounds="461.46,1392,818.54,1414" x="640.0" y="1410" text-anchor="middle" font-size="18" font-weight="500" fill="#7c3aed">⑩ submit(0)：提交 N+1；随后可预渲染 N+2</text>
+<text id="text-47" data-graph-role="label" data-owner="submit-a" data-graph-bounds="461.46,1392,818.54,1414" x="640.0" y="1410" text-anchor="middle" font-size="18" font-weight="500" fill="#7c3aed">⑩ submit(0)：提交 N+1；随后可预渲染 N+2</text>
 <rect data-graph-role="decoration" x="60" y="1490" width="1720" height="44" rx="9" fill="#f0fdf4" stroke="none" stroke-width="1.6" />
-<text id="text-47" data-graph-role="label" data-graph-bounds="80.00,1501,767.44,1524" x="80" y="1520" text-anchor="start" font-size="19" font-weight="500" fill="#15803d">循环：A 提交后两页再次冻结；UI 在保留画布渲染 N+2，后台等待 A 的翻页完成。</text>
+<text id="text-48" data-graph-role="label" data-graph-bounds="80.00,1501,767.44,1524" x="80" y="1520" text-anchor="start" font-size="19" font-weight="500" fill="#15803d">循环：A 提交后两页再次冻结；UI 在保留画布渲染 N+2，后台等待 A 的翻页完成。</text>
 <rect id="capacity" data-graph-bounds="60,1565,600,1708" data-graph-role="reserved" x="60" y="1565" width="540" height="143" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" />
-<text id="text-48" data-graph-role="content" x="330.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#2563eb">并行与容量</text>
-<text id="text-49" data-graph-role="content" x="330.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">最多 1 次提交进行中 + 1 帧等待提交</text>
-<text id="text-50" data-graph-role="content" x="330.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">保留画布不是第三张物理 framebuffer</text>
-<text id="text-51" data-graph-role="content" x="330.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">渲染可并行；复制显示页须先确认完成</text>
+<text id="text-49" data-graph-role="content" x="330.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#2563eb">并行与容量</text>
+<text id="text-50" data-graph-role="content" x="330.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">最多 1 次提交进行中 + 1 帧等待提交</text>
+<text id="text-51" data-graph-role="content" x="330.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">保留画布不是第三张物理 framebuffer</text>
+<text id="text-52" data-graph-role="content" x="330.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">写页约 1 ms 让出；画布冻结至整页提交</text>
 <rect id="generic-contract" data-graph-bounds="640,1565,1180,1708" data-graph-role="reserved" x="640" y="1565" width="540" height="143" rx="9" fill="#faf5ff" stroke="#7c3aed" stroke-width="1.6" />
-<text id="text-52" data-graph-role="content" x="910.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#7c3aed">通用层负责</text>
-<text id="text-53" data-graph-role="content" x="910.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">事件 / 帧期限、脏区复制、前后台角色</text>
-<text id="text-54" data-graph-role="content" x="910.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">提交线程、完成队列、eventfd 与错误传播</text>
-<text id="text-55" data-graph-role="content" x="910.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">通过私有 PresentationContract 调用板级实现</text>
+<text id="text-53" data-graph-role="content" x="910.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#7c3aed">通用层负责</text>
+<text id="text-54" data-graph-role="content" x="910.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">事件 / 帧期限、脏区复制、前后台角色</text>
+<text id="text-55" data-graph-role="content" x="910.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">提交线程、完成队列、eventfd 与错误传播</text>
+<text id="text-56" data-graph-role="content" x="910.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">通过私有 PresentationContract 调用板级实现</text>
 <rect id="board-contract" data-graph-bounds="1220,1565,1780,1708" data-graph-role="reserved" x="1220" y="1565" width="560" height="143" rx="9" fill="#fff7ed" stroke="#c2410c" stroke-width="1.6" />
-<text id="text-56" data-graph-role="content" x="1500.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#c2410c">NX5 适配负责</text>
-<text id="text-57" data-graph-role="content" x="1500.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">布局、SYS/VO、MMZ 与缓存同步</text>
-<text id="text-58" data-graph-role="content" x="1500.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">阻塞 PAN 的完成语义及 yoffset 校验</text>
-<text id="text-59" data-graph-role="content" x="1500.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">读回或定时器精度均不能单独证明页面已释放</text>
+<text id="text-57" data-graph-role="content" x="1500.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#c2410c">NX5 适配负责</text>
+<text id="text-58" data-graph-role="content" x="1500.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">布局、SYS/VO、MMZ 与缓存同步</text>
+<text id="text-59" data-graph-role="content" x="1500.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">阻塞 PAN 的完成语义及 yoffset 校验</text>
+<text id="text-60" data-graph-role="content" x="1500.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">读回或定时器精度均不能单独证明页面已释放</text>
 <line data-graph-role="decoration" x1="70" y1="1748" x2="113" y2="1748" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)" />
-<text id="text-60" data-graph-role="label" data-graph-bounds="126.00,1737,263.33,1758" x="126" y="1754" text-anchor="start" font-size="17" font-weight="400" fill="#475569">同步调用 / UI 复制</text>
+<text id="text-61" data-graph-role="label" data-graph-bounds="126.00,1737,263.33,1758" x="126" y="1754" text-anchor="start" font-size="17" font-weight="400" fill="#475569">同步调用 / UI 复制</text>
 <line data-graph-role="decoration" x1="440" y1="1748" x2="483" y2="1748" stroke="#7c3aed" stroke-width="2.3" stroke-dasharray="7 4" marker-end="url(#arrow-async)" />
-<text id="text-61" data-graph-role="label" data-graph-bounds="496.00,1737,663.28,1758" x="496" y="1754" text-anchor="start" font-size="17" font-weight="400" fill="#475569">跨线程请求 / 完成通知</text>
+<text id="text-62" data-graph-role="label" data-graph-bounds="496.00,1737,663.28,1758" x="496" y="1754" text-anchor="start" font-size="17" font-weight="400" fill="#475569">跨线程请求 / 完成通知</text>
 <line data-graph-role="decoration" x1="900" y1="1748" x2="943" y2="1748" stroke="#15803d" stroke-width="2.3" stroke-dasharray="7 4" marker-end="url(#arrow-return)" />
-<text id="text-62" data-graph-role="label" data-graph-bounds="956.00,1737,1024.00,1758" x="956" y="1754" text-anchor="start" font-size="17" font-weight="400" fill="#475569">成功返回</text>
+<text id="text-63" data-graph-role="label" data-graph-bounds="956.00,1737,1024.00,1758" x="956" y="1754" text-anchor="start" font-size="17" font-weight="400" fill="#475569">成功返回</text>
 <line data-graph-role="decoration" x1="1215" y1="1748" x2="1258" y2="1748" stroke="#c2410c" stroke-width="2.3" marker-end="url(#arrow-driver)" />
-<text id="text-63" data-graph-role="label" data-graph-bounds="1271.00,1737,1374.28,1758" x="1271" y="1754" text-anchor="start" font-size="17" font-weight="400" fill="#475569">NX5 驱动调用</text>
-<text id="text-64" data-graph-role="label" data-graph-bounds="60.00,1777,858.83,1798" x="60" y="1794" text-anchor="start" font-size="17" font-weight="400" fill="#475569">失败时不复用页面；退出时等待提交完成并 join，再释放映射和板级资源。此图展示当前实现的成功路径。</text>
+<text id="text-64" data-graph-role="label" data-graph-bounds="1271.00,1737,1374.28,1758" x="1271" y="1754" text-anchor="start" font-size="17" font-weight="400" fill="#475569">NX5 驱动调用</text>
+<text id="text-65" data-graph-role="label" data-graph-bounds="60.00,1777,858.83,1798" x="60" y="1794" text-anchor="start" font-size="17" font-weight="400" fill="#475569">失败时不复用页面；退出时等待提交完成并 join，再释放映射和板级资源。此图展示当前实现的成功路径。</text>
 </svg></div>
     <p class="sr-only">Keyboard shortcuts: plus and minus zoom, zero resets, T toggles theme, S exports.</p>
   </main>

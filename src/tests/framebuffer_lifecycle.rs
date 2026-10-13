@@ -15,6 +15,133 @@ struct DropEvent {
 
 type Events = Arc<Mutex<Vec<DropEvent>>>;
 
+#[cfg(feature = "nx5-tde")]
+#[test]
+fn touch_arriving_during_render_is_dispatched_before_framebuffer_write() {
+    use std::{cell::Cell, io::Write, os::unix::fs::FileExt, rc::Rc};
+    const NAME: &str = "framebuffer::lifecycle_tests::touch_arriving_during_render_is_dispatched_before_framebuffer_write";
+    if std::env::var("SLINT_BRIDGE_TEST_CHILD").as_deref() != Ok(NAME) {
+        let run = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", NAME, "--nocapture"])
+            .env("SLINT_BRIDGE_TEST_CHILD", NAME)
+            .output()
+            .unwrap();
+        assert!(
+            run.status.success(),
+            "{}{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        return;
+    }
+    slint::slint! {
+        export component TouchScene inherits Window {
+            background: red;
+            callback touched();
+            TouchArea { clicked => { root.touched(); } }
+        }
+    }
+    let fd = unsafe {
+        libc::syscall(
+            libc::SYS_memfd_create,
+            c"input-stage-test".as_ptr(),
+            libc::MFD_CLOEXEC,
+        )
+    } as i32;
+    assert!(fd >= 0);
+    let file = unsafe { File::from_raw_fd(fd) };
+    let (fixed, variable) = crate::tests::info(512, 384, 32);
+    file.set_len(u64::from(fixed.smem_len)).unwrap();
+    let observer = file.try_clone().unwrap();
+    let layout = Layout::new(&fixed, &variable).unwrap();
+    let mut fb = Framebuffer::from_file(
+        file,
+        layout,
+        PresentationContract {
+            validate_layout: Layout::new,
+            complete: Box::new(|_, _, _| Ok(())),
+        },
+    )
+    .unwrap();
+    let mut fds = [-1; 2];
+    assert_eq!(
+        unsafe { libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC | libc::O_NONBLOCK) },
+        0
+    );
+    let reader = unsafe { File::from_raw_fd(fds[0]) };
+    let mut writer = unsafe { File::from_raw_fd(fds[1]) };
+    let mut sent = false;
+    fb.retained =
+        crate::backends::nx5::tde::tests::buffer_with_fill_observer(512, 384, move || {
+            if sent {
+                return;
+            }
+            sent = true;
+            // This is called inside the actual Slint renderer, after layout. Input
+            // is now ready while rendering still owns the UI thread.
+            for (kind, code, value) in [
+                (3, 0, 256),
+                (3, 1, 192),
+                (1, 330, 1),
+                (0, 0, 0),
+                (1, 330, 0),
+                (0, 0, 0),
+            ] {
+                let mut event: libc::input_event = unsafe { std::mem::zeroed() };
+                event.type_ = kind;
+                event.code = code;
+                event.value = value;
+                let bytes = unsafe {
+                    std::slice::from_raw_parts(
+                        (&event as *const libc::input_event).cast(),
+                        size_of::<libc::input_event>(),
+                    )
+                };
+                writer.write_all(bytes).unwrap();
+            }
+        });
+    let axis = |max| crate::input::Axis {
+        min: 0,
+        max,
+        value: 0,
+    };
+    let input = crate::input::Evdev {
+        file: reader,
+        decoder: crate::input::Decoder::new(
+            layout.size,
+            crate::Rotation::None,
+            Some((axis(512), axis(384))),
+            &[],
+        )
+        .unwrap(),
+    };
+    let platform = crate::runtime::BridgePlatform::with_inputs(
+        crate::Config::default(),
+        fb,
+        vec![input],
+        Vec::new(),
+    );
+    slint::platform::set_platform(Box::new(platform)).unwrap();
+    let ui = TouchScene::new().unwrap();
+    let observed = Rc::new(Cell::new(None));
+    let captured = observed.clone();
+    ui.on_touched(move || {
+        let mut pixel = [0; 4];
+        observer
+            .read_exact_at(&mut pixel, layout.page_bytes as u64)
+            .unwrap();
+        captured.set(Some(pixel));
+        slint::quit_event_loop().unwrap();
+    });
+    slint::Timer::single_shot(Duration::from_secs(3), || slint::quit_event_loop().unwrap());
+    ui.run().unwrap();
+    assert_eq!(
+        observed.get(),
+        Some([0; 4]),
+        "touch was delayed until after framebuffer write; observed first back-page pixel"
+    );
+}
+
 fn mapping_exists(inode: u64) -> bool {
     std::fs::read_to_string("/proc/self/maps")
         .unwrap()
@@ -322,7 +449,7 @@ fn framebuffer_drop_drains_submission_before_releasing_resources() {
                 x1: 8,
                 y1: 6,
             }]);
-            framebuffer.present().unwrap();
+            framebuffer.present(None).unwrap();
             started.recv_timeout(Duration::from_secs(3)).unwrap();
             dropping.send(inode).unwrap();
             drop(framebuffer);

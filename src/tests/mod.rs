@@ -186,7 +186,7 @@ impl Platform for RenderPlatform {
 
 fn draw(window: &MinimalSoftwareWindow, fb: &mut Framebuffer) -> Result<bool, Error> {
     let changed = prepare(window, fb)?;
-    fb.present()?;
+    fb.present(None)?;
     fb.wait_for_present()?;
     Ok(changed)
 }

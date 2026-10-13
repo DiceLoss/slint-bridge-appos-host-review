@@ -1,6 +1,103 @@
 use super::*;
 
 #[test]
+fn budgeted_writeback_yields_without_submitting_partial_pages() {
+    budgeted_writeback(false);
+}
+
+#[test]
+fn cancelled_writeback_repairs_both_pages_on_later_frames() {
+    budgeted_writeback(true);
+}
+
+fn budgeted_writeback(cancel: bool) {
+    let _serial = SLINT_TEST.lock().unwrap();
+    let mut target = surface(512, 48, 32);
+    let window = MinimalSoftwareWindow::new(RepaintBufferType::ReusedBuffer);
+    slint::platform::set_platform(Box::new(RenderPlatform(window.clone()))).unwrap();
+    let ui = Pixels::new().unwrap();
+    ui.show().unwrap();
+    window.set_size(PhysicalSize::new(512, 48));
+    draw(&window, &mut target.fb).unwrap();
+    ui.set_left_color(slint::Color::from_rgb_u8(0, 255, 0));
+    draw(&window, &mut target.fb).unwrap(); // Both pages now have known history.
+    let mut before = vec![0; target.fb.layout.page_bytes * 2];
+    target.file.read_exact_at(&mut before, 0).unwrap();
+    ui.set_right_color(slint::Color::from_rgb_u8(255, 255, 255));
+    prepare(&window, &mut target.fb).unwrap();
+    assert!(
+        !target.fb.present(Some(Duration::ZERO)).unwrap(),
+        "a write budget must yield before copying and submitting the whole page"
+    );
+    assert!(
+        !target.fb.can_render(),
+        "freeze the source canvas during writeback"
+    );
+    assert!(target.fb.ready_to_present());
+    assert_eq!(target.commits.lock().unwrap().len(), 2);
+    let mut partial = before.clone();
+    target.file.read_exact_at(&mut partial, 0).unwrap();
+    let page = target.fb.layout.page_bytes;
+    assert_eq!(&partial[..page], &before[..page], "front page changed");
+    assert_ne!(
+        &partial[page..page + 4],
+        &before[page..page + 4],
+        "no write progress"
+    );
+    let last = page + 47 * target.fb.layout.stride;
+    assert_eq!(
+        &partial[last..last + 4],
+        &before[last..last + 4],
+        "write did not yield"
+    );
+
+    // Model an input callback that updates the UI between copy slices.
+    ui.set_left_color(slint::Color::from_rgb_u8(0, 0, 0));
+    if cancel {
+        assert!(target.fb.discard_prepared());
+        assert!(target.fb.can_render());
+        assert!(!target.fb.ready_to_present());
+        prepare(&window, &mut target.fb).unwrap();
+    }
+    let mut slices = 1;
+    while !target.fb.present(Some(Duration::ZERO)).unwrap() {
+        slices += 1;
+        assert!(slices < 48, "writeback stopped making progress");
+        assert!(!target.fb.can_render());
+        assert!(target.fb.ready_to_present());
+        assert_eq!(target.commits.lock().unwrap().len(), 2);
+        let mut front = vec![0; page];
+        target.file.read_exact_at(&mut front, 0).unwrap();
+        assert_eq!(front, before[..page]);
+    }
+    target.fb.wait_for_present().unwrap();
+    assert!(target.fb.can_render());
+    let stride = target.fb.layout.stride;
+    let check = |left: [u8; 4]| {
+        let frames = target.commits.lock().unwrap();
+        let frame = frames.last().unwrap();
+        for y in 0..48 {
+            let row = y * stride;
+            for x in 0..512 {
+                let expected = if x < 256 { left } else { [255; 4] };
+                assert_eq!(&frame[row + x * 4..row + x * 4 + 4], expected);
+            }
+            assert!(frame[row + 2048..row + stride].iter().all(|&b| b == 0xa5));
+        }
+    };
+    check(if cancel {
+        [0, 0, 0, 255]
+    } else {
+        [0, 255, 0, 255]
+    });
+    // Only the left half changes now. The other page must still receive the
+    // right-half damage from the interrupted or completed preparation.
+    ui.set_left_color(slint::Color::from_rgb_u8(255, 255, 0));
+    draw(&window, &mut target.fb).unwrap();
+    check([0, 255, 255, 255]);
+}
+
+#[test]
 fn transparent_ui_preserves_alpha_and_clears_moving_content_on_both_pages() {
     let _serial = SLINT_TEST.lock().unwrap();
     slint::slint! {
@@ -101,7 +198,7 @@ fn render_ahead_preserves_both_pages_until_completion_and_repairs_history() {
     ui.show().unwrap();
     window.set_size(PhysicalSize::new(8, 6));
     assert!(prepare(&window, &mut target.fb).unwrap());
-    assert!(target.fb.present().unwrap());
+    assert!(target.fb.present(None).unwrap());
     assert_eq!(started.recv_timeout(Duration::from_secs(3)).unwrap(), 6);
 
     // Real Slint rendering finishes while the first driver call is blocked.
@@ -119,7 +216,7 @@ fn render_ahead_preserves_both_pages_until_completion_and_repairs_history() {
     release.send(()).unwrap();
     target.fb.wait_for_present().unwrap();
     assert!(target.fb.ready_to_present());
-    assert!(target.fb.present().unwrap());
+    assert!(target.fb.present(None).unwrap());
     assert_eq!(started.recv_timeout(Duration::from_secs(3)).unwrap(), 0);
 
     // Prepare the third frame before the second page is acknowledged. Its
@@ -128,7 +225,7 @@ fn render_ahead_preserves_both_pages_until_completion_and_repairs_history() {
     assert!(prepare(&window, &mut target.fb).unwrap());
     release.send(()).unwrap();
     target.fb.wait_for_present().unwrap();
-    assert!(target.fb.present().unwrap());
+    assert!(target.fb.present(None).unwrap());
     assert_eq!(started.recv_timeout(Duration::from_secs(3)).unwrap(), 6);
     release.send(()).unwrap();
     target.fb.wait_for_present().unwrap();
@@ -160,7 +257,7 @@ fn failed_pending_submission_wakes_poll_and_quarantines_the_prepared_frame() {
     ui.show().unwrap();
     window.set_size(PhysicalSize::new(8, 6));
     prepare(&window, &mut target.fb).unwrap();
-    target.fb.present().unwrap();
+    target.fb.present(None).unwrap();
     started.recv_timeout(Duration::from_secs(3)).unwrap();
     ui.set_left_color(slint::Color::from_rgb_u8(0, 255, 0));
     assert!(prepare(&window, &mut target.fb).unwrap());
@@ -178,7 +275,7 @@ fn failed_pending_submission_wakes_poll_and_quarantines_the_prepared_frame() {
         Err(Error::PresentationFailed(_))
     ));
     assert!(matches!(
-        target.fb.present(),
+        target.fb.present(None),
         Err(Error::PresentationFailed(_))
     ));
     assert!(matches!(

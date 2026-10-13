@@ -45,6 +45,18 @@ class EvidenceChecks(unittest.TestCase):
             analysis.touch("event kernel_us=1 read_us=1 type=0 code=3 value=0\n" + raw,
                            dict(events=events))
 
+    def test_touch_starts_with_observed_axes_when_coordinates_do_not_change(self):
+        raw = ("ready name=gsl1686 axis_x=450 axis_y=350\n"
+               "event kernel_us=1000000 read_us=1000100 type=1 code=330 value=1\n"
+               "event kernel_us=1000100 read_us=1000100 type=0 code=0 value=0\n"
+               "event kernel_us=2000000 read_us=2000100 type=1 code=330 value=0\n"
+               "event kernel_us=2000100 read_us=2000100 type=0 code=0 value=0\n")
+        events = [dict(event={kind: dict(position=dict(x=450, y=350))}, timestampMs=str(stamp))
+                  for kind, stamp in [("pointerPressed", 1002), ("pointerReleased", 2003)]]
+        self.assertEqual(analysis.touch(raw, dict(events=events))["contacts"], 1)
+        with self.assertRaises(ValueError):
+            analysis.touch(raw.replace("axis_y=350", "axis_y=0"), dict(events=events))
+
 
 if __name__ == "__main__":
     unittest.main()

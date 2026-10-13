@@ -40,7 +40,8 @@ def touch(raw, recording):
     if int(recording.get("droppedCount", 0)) or int(recording.get("unknownEventCount", 0)):
         raise ValueError("MCP recording is incomplete")
     held = pending = False
-    x = y = 0
+    axes = re.search(r"^ready .*\baxis_x=(-?\d+) axis_y=(-?\d+)", raw, re.MULTILINE)
+    x, y = map(int, axes.groups()) if axes else (0, 0)
     edges = []
     for line in raw.splitlines():
         match = re.fullmatch(r"event kernel_us=(\d+) read_us=(\d+) type=(\d+) code=(\d+) value=(-?\d+)", line)

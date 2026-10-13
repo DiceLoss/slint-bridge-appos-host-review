@@ -77,7 +77,7 @@ sh -n test-app/tools/nx5/deploy-control.sh
 
 `display/profile-showcase.py` 通过 Slint **原生 MCP** 驱动已启动的六页应用，依次测静态页、动画、列表往返滑动、两种透明混合状态和结束静态页。动态页预热约 8 秒、测量约 60 秒，测量期间不截图、不录制 MCP 事件。它使用已有 `SLINT_BRIDGE_TRACE` 的每 150 次成功提交日志，丢弃跨阶段开始边界的首批，不修改运行时或应用；MCP 手势节奏包含在测量负载中。
 
-只读 `display/observe-performance.c` 同时按约 1 秒间隔记录指定进程的 RSS/VmHWM、CPU ticks、系统可用内存，并读取真实 evdev 时间戳；不独占或注入输入、不访问 framebuffer、不加载 SDK。它仅为自身 evdev 句柄设置 `CLOCK_REALTIME`，便于与原生 MCP 毫秒时间戳配对。
+只读 `display/observe-performance.c` 同时按约 1 秒间隔记录指定进程的 RSS/VmHWM、CPU ticks、系统可用内存，并读取真实 evdev 时间戳；不独占或注入输入、不访问 framebuffer、不加载 SDK。它仅为自身 evdev 句柄设置 `CLOCK_REALTIME`，便于与原生 MCP 毫秒时间戳配对。就绪行保存 ioctl 查询到的初始 X/Y 轴值，分析器用其恢复未变化、因而没有再次上报的坐标；旧日志仍按原有零初值解析并进行完整性检查。
 
 ```sh
 # 构建观察器，不需要厂商 SDK。
@@ -166,6 +166,8 @@ sh test-app/tools/nx5/display/build-alpha-observer.sh
 按设备说明交叉构建 `--bin alpha-regression`，分别使用 `nx5` 和 `nx5-tde` 验证软件/TDE feature 的输出。部署插件和程序、确认原显示所有者退出后，设置同一个 SDK/字体环境和插件搜索路径，运行 `alpha-regression OUTPUT_DIRECTORY [--framebuffer=PATH] [--touch=PATH]`；输出目录必须已存在。可用 `run-alpha.sh BINARY_DIRECTORY tde|software` 保存资源和内核快照；目录内分别放置 `alpha-tde`、`alpha-software` 及插件，同一结果目录拒绝覆盖。成功返回 0，日志应有五个 `passed=true` 阶段、每帧 `bad=0`，保存五份 WBC CSV；在主机运行 `python3 test-app/tools/nx5/display/check-alpha.py <结果目录>` 核对实际页、样本完整性、误差和退出资源。此测试只接受对应 8×6 色块网格可整除的诊断尺寸，不限制库支持的面板大小。
 
 共享 MMZ 画布的面积、NEON 边界和真实写页回归入口见 [TDE 报告](../../../docs/nx5-tde.md#构建与接入)。真实写页测试使用生产像素转换与完成契约，交替呈现 210 帧色块；需独占显示，测完恢复常驻程序。NEON 边界项仅执行 CPU 转换，不加载 SDK。
+
+分段写页另有 ignored 测试 `framebuffer::nx5_writeback::budgeted_shared_mmz_writeback_preserves_pixels`：在实际双页逐段写入六帧 alpha 0/127/255 色块，检查前台页及源画布不变、整页提交后的像素完全一致。按同一 TDE 测试构建流程运行，要求独占 NX5；它与上方 210 帧历史性能基准分开记录。输入分派、取消部分写入和后续两页修复的回归属于默认主机测试，见 [输入延迟报告](../../../docs/nx5-input-latency.md)。
 
 ## TDE 转换与物理写页探针
 

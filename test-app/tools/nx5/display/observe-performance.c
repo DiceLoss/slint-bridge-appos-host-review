@@ -80,8 +80,13 @@ int main(int argc, char **argv) {
     if (ioctl(fd, EVIOCSCLOCKID, &clock)) { perror("EVIOCSCLOCKID"); return 2; }
     char name[128] = {0};
     if (ioctl(fd, EVIOCGNAME(sizeof name), name) < 0) { perror("EVIOCGNAME"); return 2; }
+    struct input_absinfo x, y;
+    if (ioctl(fd, EVIOCGABS(ABS_X), &x) < 0 || ioctl(fd, EVIOCGABS(ABS_Y), &y) < 0) {
+        perror("EVIOCGABS"); close(fd); return 2;
+    }
     setvbuf(stdout, NULL, _IOLBF, 0);
-    printf("ready name=%s clock=realtime pid=%d ticks_per_second=%ld\n", name, pid, sysconf(_SC_CLK_TCK));
+    printf("ready name=%s clock=realtime pid=%d ticks_per_second=%ld axis_x=%d axis_y=%d\n",
+        name, pid, sysconf(_SC_CLK_TCK), x.value, y.value);
     int64_t end = us(CLOCK_MONOTONIC) + seconds * INT64_C(1000000);
     int64_t next = 0;
     unsigned count = 0;

@@ -13,6 +13,7 @@ use std::{
         Arc,
         atomic::{Ordering, fence},
     },
+    time::{Duration, Instant},
 };
 
 // Rounded straight-alpha output without per-channel division. The native
@@ -504,7 +505,16 @@ pub(crate) struct Framebuffer {
     previous_damage: Vec<Rect>,
     pending_damage: Option<Vec<Rect>>,
     prepared_damage: Option<Vec<Rect>>,
+    writeback: Option<Writeback>,
     unsubmitted_damage: Vec<Rect>,
+}
+
+struct Writeback {
+    damage: Vec<Rect>,
+    areas: Vec<Rect>,
+    next_row: usize,
+    bottom: usize,
+    spans: Vec<(usize, usize)>,
 }
 
 impl Framebuffer {
@@ -568,6 +578,7 @@ impl Framebuffer {
             previous_damage: Vec::new(),
             pending_damage: None,
             prepared_damage: None,
+            writeback: None,
             unsubmitted_damage: Vec::new(),
         })
     }
@@ -600,10 +611,18 @@ impl Framebuffer {
     }
 
     pub(crate) fn can_render(&self) -> bool {
-        self.prepared_damage.is_none()
+        self.prepared_damage.is_none() && self.writeback.is_none()
     }
 
     pub(crate) fn discard_prepared(&mut self) -> bool {
+        if let Some(writeback) = self.writeback.take() {
+            fence(Ordering::SeqCst);
+            // The unsubmitted back page contains only part of this frame.
+            // Reinitialize it on the next write and carry damage to the other page.
+            self.initialized[1 - self.front] = false;
+            self.unsubmitted_damage.extend(writeback.damage);
+            return true;
+        }
         if let Some(damage) = self.prepared_damage.take() {
             // The retained image and Slint's ReusedBuffer already include these
             // changes. Carry them into the next rendered/committed damage set.
@@ -615,7 +634,7 @@ impl Framebuffer {
     }
 
     pub(crate) fn ready_to_present(&self) -> bool {
-        self.prepared_damage.is_some() && !self.presentation.pending()
+        (self.prepared_damage.is_some() || self.writeback.is_some()) && !self.presentation.pending()
     }
 
     pub(crate) fn wake(&self) -> Arc<WakeQueue> {
@@ -639,45 +658,56 @@ impl Framebuffer {
         Ok(())
     }
 
-    pub(crate) fn present(&mut self) -> Result<bool, Error> {
+    pub(crate) fn present(&mut self, budget: Option<Duration>) -> Result<bool, Error> {
         // Drawing touches only the retained canvas. Both physical pages stay
         // untouched until the preceding blocking submission has completed.
         self.wait_for_present()?;
-        let Some(current) = self.prepared_damage.take() else {
-            return Ok(false);
-        };
-        if current.is_empty() {
-            return Ok(false);
-        }
+        let deadline = budget.map(|budget| Instant::now() + budget);
         let back = 1 - self.front;
-        let areas = if !self.initialized[back] {
-            vec![Rect {
-                x0: 0,
-                y0: 0,
-                x1: self.layout.size.width as usize,
-                y1: self.layout.size.height as usize,
-            }]
-        } else {
-            current
-                .iter()
-                .chain(&self.previous_damage)
-                .copied()
-                .collect()
-        };
+        if self.writeback.is_none() {
+            let Some(current) = self.prepared_damage.take() else {
+                return Ok(false);
+            };
+            if current.is_empty() {
+                return Ok(false);
+            }
+            let areas: Vec<_> = if !self.initialized[back] {
+                vec![Rect {
+                    x0: 0,
+                    y0: 0,
+                    x1: self.layout.size.width as usize,
+                    y1: self.layout.size.height as usize,
+                }]
+            } else {
+                current
+                    .iter()
+                    .chain(&self.previous_damage)
+                    .copied()
+                    .collect()
+            };
+            self.writeback = Some(Writeback {
+                damage: current,
+                next_row: areas.iter().map(|r| r.y0).min().unwrap(),
+                bottom: areas.iter().map(|r| r.y1).max().unwrap(),
+                spans: Vec::with_capacity(areas.len()),
+                areas,
+            });
+        }
         let layout = self.layout;
         #[cfg(not(feature = "nx5-tde"))]
         let pixels = &self.retained;
         #[cfg(feature = "nx5-tde")]
         let pixels = self.retained.pixels();
         let mapped = self.mapping.bytes_mut();
-        let top = areas.iter().map(|r| r.y0).min().unwrap();
-        let bottom = areas.iter().map(|r| r.y1).max().unwrap();
-        let mut spans = Vec::with_capacity(areas.len());
-        for y in top..bottom {
+        let writeback = self.writeback.as_mut().unwrap();
+        // Amortize clock reads across about 8K pixels, but always finish a row.
+        let check_rows = (8192 / layout.size.width as usize).max(1);
+        while writeback.next_row < writeback.bottom {
+            let y = writeback.next_row;
             // Repair the union of current/previous damage without expanding the
             // gaps between unrelated widgets or copying an overlap twice.
-            row_spans(&areas, y, &mut spans);
-            for &(start, end) in &spans {
+            row_spans(&writeback.areas, y, &mut writeback.spans);
+            for &(start, end) in &writeback.spans {
                 let offset =
                     back * layout.page_bytes + y * layout.stride + start * layout.bytes_per_pixel;
                 let row = y * layout.size.width as usize;
@@ -686,12 +716,19 @@ impl Framebuffer {
                     &mut mapped[offset..offset + (end - start) * layout.bytes_per_pixel],
                 );
             }
+            writeback.next_row += 1;
+            if writeback.next_row < writeback.bottom
+                && writeback.next_row.is_multiple_of(check_rows)
+                && deadline.is_some_and(|deadline| Instant::now() >= deadline)
+            {
+                return Ok(false);
+            }
         }
         // The device-specific contract must also perform any required DMA cache
         // maintenance. This fence alone does not make a cached mapping coherent.
         fence(Ordering::SeqCst);
         self.presentation.submit(back as u32 * layout.size.height)?;
-        self.pending_damage = Some(current);
+        self.pending_damage = Some(self.writeback.take().unwrap().damage);
         Ok(true)
     }
 }
@@ -701,6 +738,9 @@ impl Drop for Framebuffer {
         // Join before dropping the mapping or TDE resources. The presentation
         // owner then keeps the SDK alive until the retained renderer is dropped.
         self.presentation.shutdown();
+        if self.writeback.is_some() {
+            fence(Ordering::SeqCst);
+        }
         #[cfg(feature = "nx5-tde")]
         if self.retained.has_unknown_dma() {
             self.presentation.quarantine_session();
