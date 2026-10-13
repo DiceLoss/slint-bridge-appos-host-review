@@ -45,6 +45,78 @@ fn showcase_state_forms_filtering_and_transparency() {
     assert_eq!(app.get_level(), 68.0);
     assert_eq!(app.get_station_name(), "NX5 Studio");
 
+    // The ring must visualize the configured percentage, including when muted.
+    for (power, color) in [(true, [0, 139, 131]), (false, [181, 194, 205])] {
+        app.set_power(power);
+        app.set_level(100.0);
+        let full = app.window().take_snapshot().unwrap();
+        let colored = |image: &slint::SharedPixelBuffer<slint::Rgba8Pixel>| {
+            (150..270)
+                .flat_map(|y| (700..1000).map(move |x| (x, y)))
+                .filter(|&(x, y)| {
+                    let p = image.as_slice()[y * 1024 + x];
+                    [p.r, p.g, p.b] == color && p.a == 255
+                })
+                .collect::<Vec<_>>()
+        };
+        let ring = colored(&full);
+        assert!(ring.len() > 1000, "full ring must be visible");
+        let center_x =
+            (ring.iter().map(|p| p.0).min().unwrap() + ring.iter().map(|p| p.0).max().unwrap()) / 2;
+        let center_y =
+            (ring.iter().map(|p| p.1).min().unwrap() + ring.iter().map(|p| p.1).max().unwrap()) / 2;
+        let mut references = Vec::new();
+        for level in [0, 25, 50, 75, 100] {
+            app.set_level(level as f32);
+            let frame = app.window().take_snapshot().unwrap();
+            let fraction = colored(&frame).len() as f32 / ring.len() as f32;
+            assert!(
+                (fraction - level as f32 / 100.0).abs() < 0.04,
+                "ring coverage {fraction} at {level}%, power={power}"
+            );
+            for (quarter, (dx, dy)) in [(21, -21), (21, 21), (-21, 21), (-21, -21)]
+                .into_iter()
+                .enumerate()
+            {
+                let x = (center_x as i32 + dx) as usize;
+                let y = (center_y as i32 + dy) as usize;
+                let p = frame.as_slice()[y * 1024 + x];
+                assert_eq!(
+                    [p.r, p.g, p.b] == color,
+                    level >= (quarter + 1) * 25,
+                    "ring must advance clockwise from the top"
+                );
+            }
+            references.push((level, frame));
+        }
+        let mut retained =
+            vec![slint::platform::software_renderer::PremultipliedRgbaColor::default(); 1024 * 600];
+        // Keep the tested renderer's cache intact while progress shrinks and grows.
+        for level in [100, 75, 25, 0, 50, 100] {
+            app.set_level(level as f32);
+            slint::platform::update_timers_and_animations();
+            window.request_redraw();
+            window.draw_if_needed(|renderer| {
+                renderer.render(&mut retained, 1024);
+            });
+            let reference = &references.iter().find(|r| r.0 == level).unwrap().1;
+            for y in center_y - 36..center_y + 36 {
+                for x in center_x - 36..center_x + 36 {
+                    let at = y * 1024 + x;
+                    let a = retained[at];
+                    let b = reference.as_slice()[at];
+                    assert_eq!(
+                        [a.red, a.green, a.blue, a.alpha],
+                        [b.r, b.g, b.b, b.a],
+                        "retained ring at {level}%, power={power}, ({x}, {y})"
+                    );
+                }
+            }
+        }
+    }
+    app.set_power(true);
+    app.set_level(68.0);
+
     // Keyboard cancellation is isolated from the form and backspace handles Unicode.
     app.set_station_name("é".into());
     app.invoke_open_dialog(3);

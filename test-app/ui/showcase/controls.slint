@@ -54,8 +54,31 @@ export component Controls inherits HorizontalLayout {
             Rectangle {
                 height: 114px; border-radius: 12px;
                 background: root.power ? #e1f5ef : #edf0f3;
-                Rectangle { width: 68px; height: 68px; x: (parent.width - self.width) / 2; y: 23px; border-radius: 34px; border-width: 9px; border-color: root.power ? Palette.teal : #b5c2cd;
-                    Label { text: round(root.level) + "%"; horizontal-alignment: center; }
+                output-ring := Rectangle {
+                    width: 68px; height: 68px; x: (parent.width - self.width) / 2; y: 23px;
+                    Rectangle { width: 100%; height: 100%; border-radius: 34px; border-width: 9px; border-color: Palette.line; }
+                    if root.level >= 100: Rectangle {
+                        width: 100%; height: 100%; border-radius: 34px; border-width: 9px;
+                        border-color: root.power ? Palette.teal : #b5c2cd;
+                    }
+                    if root.level > 0 && root.level < 100: Path {
+                        width: 100%; height: 100%; viewbox-width: 68; viewbox-height: 68;
+                        fill: root.power ? Palette.teal : #b5c2cd;
+                        MoveTo { x: 34; y: 0; }
+                        LineTo { x: 34; y: 9; }
+                        ArcTo {
+                            radius-x: 25; radius-y: 25;
+                            x: 34 + 25 * sin(root.level * 3.6deg);
+                            y: 34 - 25 * cos(root.level * 3.6deg);
+                            sweep: true; large-arc: root.level > 50;
+                        }
+                        LineTo {
+                            x: 34 + 34 * sin(root.level * 3.6deg);
+                            y: 34 - 34 * cos(root.level * 3.6deg);
+                        }
+                        ArcTo { radius-x: 34; radius-y: 34; x: 34; y: 0; sweep: false; large-arc: root.level > 50; }
+                    }
+                    Label { width: 100%; height: 100%; text: round(root.level) + "%"; horizontal-alignment: center; }
                 }
             }
             Heading { text: root.station-name == "" ? "Unnamed station" : root.station-name; }
