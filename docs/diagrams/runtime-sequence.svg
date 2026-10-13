@@ -26,7 +26,7 @@
 <line data-graph-role="decoration" x1="200" y1="367" x2="200" y2="1460" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7"/>
 <rect id="canvas" data-graph-bounds="360,230,600,302" data-node-id="canvas" data-graph-role="node" x="360" y="230" width="240" height="72" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6"/>
 <text id="text-9" data-graph-role="content" x="480" y="259" text-anchor="middle" font-size="20" font-weight="600" fill="#2563eb">保留画布 retained</text>
-<text id="text-10" data-graph-role="content" x="480" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">预乘 RGBA · UI 所有</text>
+<text id="text-10" data-graph-role="content" x="480" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">NX5：CPU/TDE 共用 MMZ</text>
 <line data-graph-role="decoration" x1="480" y1="367" x2="480" y2="1460" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7"/>
 <rect id="pages" data-graph-bounds="660,230,900,302" data-node-id="pages" data-graph-role="node" x="660" y="230" width="240" height="72" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6"/>
 <text id="text-11" data-graph-role="content" x="780" y="259" text-anchor="middle" font-size="20" font-weight="600" fill="#2563eb">物理显示页 A / B</text>
@@ -60,7 +60,7 @@
 <rect data-graph-role="decoration" x="1654" y="1065" width="12" height="45" rx="2" fill="#ffedd5" stroke="#c2410c" stroke-width="1.6"/>
 <line id="render-n" data-graph-role="edge" data-edge-id="render-n" data-source="ui" data-target="canvas" x1="200" y1="410" x2="480" y2="410" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)"/>
 <text id="text-21" data-graph-role="label" data-owner="render-n" data-graph-bounds="257.45,377,422.55,399" x="340.0" y="395" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">① render(N) → 画布</text>
-<text id="text-22" data-graph-role="label" data-graph-bounds="498.00,423,650.00,444" x="498" y="440" text-anchor="start" font-size="17" font-weight="400" fill="#475569">软件渲染 / 可选 TDE</text>
+<text id="text-22" data-graph-role="label" data-graph-bounds="498.00,423,708.48,444" x="498" y="440" text-anchor="start" font-size="17" font-weight="400" fill="#475569">CPU / 同步 TDE · 共享映射</text>
 <text id="text-23" data-graph-role="label" data-graph-bounds="212.00,501,609.80,521" x="212" y="517" text-anchor="start" font-size="16" font-weight="400" fill="#475569">首次整页；随后合并两帧脏区；编码 alpha；源画布不变</text>
 <line id="copy-b" data-graph-role="edge" data-edge-id="copy-b" data-source="ui" data-target="pages" x1="200" y1="495" x2="780" y2="495" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)"/>
 <text id="text-24" data-graph-role="label" data-owner="copy-b" data-graph-bounds="304.91,462,675.09,484" x="490.0" y="480" text-anchor="middle" font-size="18" font-weight="500" fill="#2563eb">② present()：反预乘 + 位域转换 → B（脏区）</text>
@@ -121,7 +121,7 @@
 <rect id="capacity" data-graph-bounds="60,1565,600,1708" data-graph-role="reserved" x="60" y="1565" width="540" height="143" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6"/>
 <text id="text-48" data-graph-role="content" x="330.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#2563eb">并行与容量</text>
 <text id="text-49" data-graph-role="content" x="330.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">最多 1 次提交进行中 + 1 帧等待提交</text>
-<text id="text-50" data-graph-role="content" x="330.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">保留画布不是第三张物理 framebuffer</text>
+<text id="text-50" data-graph-role="content" x="330.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">MMZ 画布不是第三张物理 framebuffer</text>
 <text id="text-51" data-graph-role="content" x="330.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">渲染可并行；复制显示页须先确认完成</text>
 <rect id="generic-contract" data-graph-bounds="640,1565,1180,1708" data-graph-role="reserved" x="640" y="1565" width="540" height="143" rx="9" fill="#faf5ff" stroke="#7c3aed" stroke-width="1.6"/>
 <text id="text-52" data-graph-role="content" x="910.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#7c3aed">通用层负责</text>
@@ -130,7 +130,7 @@
 <text id="text-55" data-graph-role="content" x="910.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">通过私有 PresentationContract 调用板级实现</text>
 <rect id="board-contract" data-graph-bounds="1220,1565,1780,1708" data-graph-role="reserved" x="1220" y="1565" width="560" height="143" rx="9" fill="#fff7ed" stroke="#c2410c" stroke-width="1.6"/>
 <text id="text-56" data-graph-role="content" x="1500.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#c2410c">NX5 适配负责</text>
-<text id="text-57" data-graph-role="content" x="1500.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">实际布局检查、SYS/VO 会话与资源</text>
+<text id="text-57" data-graph-role="content" x="1500.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">布局、SYS/VO、MMZ 与缓存同步</text>
 <text id="text-58" data-graph-role="content" x="1500.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">阻塞 PAN 的完成语义及 yoffset 校验</text>
 <text id="text-59" data-graph-role="content" x="1500.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">读回或定时器精度均不能单独证明页面已释放</text>
 <line data-graph-role="decoration" x1="70" y1="1748" x2="113" y2="1748" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)"/>

@@ -124,7 +124,7 @@
       "width": 400,
       "height": 70,
       "label": "tde/mod.rs",
-      "sublabel": "填充 / 纹理 · 缓存 · 软件回退",
+      "sublabel": "CPU/TDE 共享画布 · 缓存 · 回退",
       "fill": "#fff7ed",
       "stroke": "#fdba74",
       "flat": true
@@ -137,7 +137,7 @@
       "width": 400,
       "height": 70,
       "label": "tde/native.c",
-      "sublabel": "SDK 调用 · MMZ · TDE 作业 · NEON",
+      "sublabel": "SDK · MMZ 映射 · 同步 TDE · NEON",
       "fill": "#fff7ed",
       "stroke": "#fdba74",
       "flat": true

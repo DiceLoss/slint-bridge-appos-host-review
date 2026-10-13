@@ -1,8 +1,9 @@
-//! Optional fill and texture offload. CPU pixels are authoritative; MMZ is private scratch.
+//! NX5 cached MMZ canvas shared by synchronous CPU and TDE drawing.
 use crate::Error;
 use i_slint_renderer_software::{
     DrawRectangleArgs, DrawTextureArgs, PhysicalRegion, PremultipliedRgbaColor, RenderingRotation,
-    SoftwareRenderer, TargetPixel, TargetPixelBuffer, TextureCacheKey, TexturePixelFormat,
+    RepaintBufferType, SoftwareRenderer, TargetPixel, TargetPixelBuffer, TextureCacheKey,
+    TexturePixelFormat,
 };
 use slint::Brush;
 
@@ -171,8 +172,40 @@ pub(crate) struct Stats {
     pub errors: u64,
 }
 
+enum Pixels {
+    Heap(Vec<PremultipliedRgbaColor>),
+    #[cfg(target_arch = "arm")]
+    Mmz(native::Canvas),
+}
+impl Pixels {
+    // Buffer guards both accessors while a frame is invalid or DMA is unknown.
+    fn cpu(&self) -> &[PremultipliedRgbaColor] {
+        match self {
+            Self::Heap(pixels) => pixels,
+            #[cfg(target_arch = "arm")]
+            Self::Mmz(canvas) => canvas.pixels(),
+        }
+    }
+    fn cpu_mut(&mut self) -> &mut [PremultipliedRgbaColor] {
+        match self {
+            Self::Heap(pixels) => pixels,
+            #[cfg(target_arch = "arm")]
+            Self::Mmz(canvas) => canvas.pixels_mut(),
+        }
+    }
+    fn accelerator_buffer(&mut self) -> &mut [PremultipliedRgbaColor] {
+        match self {
+            Self::Heap(pixels) => pixels,
+            // Do not create a Rust slice aliasing an in-place DMA destination.
+            // Native uses its owned mapping; heap-backed test doubles use pixels.
+            #[cfg(target_arch = "arm")]
+            Self::Mmz(_) => &mut [],
+        }
+    }
+}
+
 pub(crate) struct Buffer {
-    pixels: Vec<PremultipliedRgbaColor>,
+    pixels: Pixels,
     width: u32,
     height: u32,
     engine: Option<Box<dyn Accelerator>>,
@@ -183,25 +216,30 @@ pub(crate) struct Buffer {
     frames: u64,
     trace: bool,
     fill_enabled: bool,
+    replay_full: bool,
+    discarded_row: Vec<PremultipliedRgbaColor>,
 }
 
 impl Buffer {
     pub fn new(width: u32, height: u32) -> Result<Self, Error> {
-        let mut buffer = Self::software(width, height)?;
         #[cfg(target_arch = "arm")]
-        match native::Native::new(width, height) {
-            Ok(engine) => {
-                buffer.engine = Some(Box::new(engine));
-                eprintln!(
-                    "slint-bridge: TDE enabled; private MMZ target + two source slots; CPU fallback"
-                );
+        let result = match native::Native::new(width, height) {
+            Ok((engine, canvas)) => {
+                let pixels = Pixels::Mmz(canvas);
+                eprintln!("slint-bridge: TDE enabled; shared cached MMZ canvas + two source slots");
+                Self::with_pixels(width, height, pixels, Some(Box::new(engine)))
             }
-            Err(code) => eprintln!("slint-bridge: TDE unavailable ({code}); software rendering"),
-        }
+            Err(code) => {
+                eprintln!("slint-bridge: TDE unavailable ({code}); software rendering");
+                Self::software(width, height)
+            }
+        };
+        #[cfg(not(target_arch = "arm"))]
+        let result = Self::software(width, height);
+        let mut buffer = result?;
         // Host builds keep the identical callback/fallback path without the SDK.
         buffer.trace = std::env::var_os("SLINT_BRIDGE_TRACE").is_some();
-        // On this board, solid CPU fill is faster than DMA plus readback.
-        // Keep QuickFill available for explicit hardware comparisons.
+        // Keep the explicit override while comparing fill on the shared canvas.
         buffer.fill_enabled = std::env::var("SLINT_BRIDGE_TDE_FILL").as_deref() == Ok("1");
         Ok(buffer)
     }
@@ -214,11 +252,24 @@ impl Buffer {
             .try_reserve_exact(count)
             .map_err(|_| Error::UnsupportedFramebuffer("TDE canvas allocation failed"))?;
         pixels.resize(count, PremultipliedRgbaColor::default());
+        Self::with_pixels(width, height, Pixels::Heap(pixels), None)
+    }
+    fn with_pixels(
+        width: u32,
+        height: u32,
+        pixels: Pixels,
+        engine: Option<Box<dyn Accelerator>>,
+    ) -> Result<Self, Error> {
+        let mut discarded_row = Vec::new();
+        discarded_row
+            .try_reserve_exact(width as usize)
+            .map_err(|_| Error::UnsupportedFramebuffer("TDE discard row allocation failed"))?;
+        discarded_row.resize(width as usize, PremultipliedRgbaColor::default());
         Ok(Self {
             pixels,
             width,
             height,
-            engine: None,
+            engine,
             keys: [None, None],
             next_slot: 0,
             fatal: None,
@@ -226,10 +277,16 @@ impl Buffer {
             frames: 0,
             trace: false,
             fill_enabled: false,
+            replay_full: false,
+            discarded_row,
         })
     }
     pub fn pixels(&self) -> &[PremultipliedRgbaColor] {
-        &self.pixels
+        assert!(
+            self.fatal.is_none() && !self.replay_full,
+            "canvas is not CPU-owned"
+        );
+        self.pixels.cpu()
     }
     pub(crate) fn has_unknown_dma(&self) -> bool {
         self.fatal.is_some()
@@ -241,12 +298,20 @@ impl Buffer {
                 error.code
             )));
         }
-        let region = renderer.render_into_buffer(self);
+        let mut region = renderer.render_into_buffer(self);
         if let Some(error) = self.fatal {
             return Err(Error::AccelerationFailed(format!(
                 "SDK code {}; MMZ quarantined",
                 error.code
             )));
+        }
+        if std::mem::take(&mut self.replay_full) {
+            // A retired failed job may have changed any part of its destination.
+            // Discard this frame and reconstruct the entire canvas in software.
+            let mode = renderer.repaint_buffer_type();
+            renderer.set_repaint_buffer_type(RepaintBufferType::NewBuffer);
+            region = renderer.render_into_buffer(self);
+            renderer.set_repaint_buffer_type(mode);
         }
         self.frames += 1;
         if self.trace && self.frames.is_multiple_of(150) {
@@ -272,8 +337,11 @@ impl Buffer {
         );
         if error.unknown {
             self.fatal = Some(error);
+        } else {
+            self.replay_full = true;
         }
-        // Native Drop retains MMZ/library/fd if completion is unknown.
+        // The canvas retains MMZ ownership after acceleration is disabled.
+        // Native context destruction also retains unknown DMA allocations.
         self.engine = None;
         self.keys = [None, None];
     }
@@ -292,7 +360,7 @@ impl Buffer {
         if area < 32768 || rects.len() > 16 {
             return false;
         }
-        match engine.fill(&mut self.pixels, color, rects) {
+        match engine.fill(self.pixels.accelerator_buffer(), color, rects) {
             Ok(done) => {
                 self.stats.filled += u64::from(done);
                 done
@@ -399,7 +467,7 @@ impl Buffer {
             .engine
             .as_mut()
             .unwrap()
-            .draw(&mut self.pixels, &texture)
+            .draw(self.pixels.accelerator_buffer(), &texture)
         {
             Ok(Outcome::Unsupported) => false,
             Ok(outcome) => {
@@ -426,7 +494,13 @@ impl TargetPixelBuffer for Buffer {
     }
     fn line_slice(&mut self, line: usize) -> &mut [Self::TargetPixel] {
         let offset = line * self.width as usize;
-        let row = &mut self.pixels[offset..offset + self.width as usize];
+        let row = if self.fatal.is_some() || self.replay_full {
+            // Slint's callback is infallible. Let it finish on a disposable row
+            // without exposing or writing the shared canvas after an error.
+            &mut self.discarded_row[..]
+        } else {
+            &mut self.pixels.cpu_mut()[offset..offset + self.width as usize]
+        };
         // SAFETY: repr(transparent) preserves layout and alignment; the returned
         // mutable slice has the same lifetime and exclusive access as this row.
         unsafe { std::slice::from_raw_parts_mut(row.as_mut_ptr().cast(), row.len()) }
@@ -492,13 +566,13 @@ impl TargetPixelBuffer for Buffer {
 #[cfg(target_arch = "arm")]
 mod native {
     use super::*;
-    use std::{ffi::c_void, ptr::NonNull};
+    use std::{ffi::c_void, ptr::NonNull, rc::Rc};
     unsafe extern "C" {
         fn bridge_tde_create(width: u32, height: u32, error: *mut i32) -> *mut c_void;
         fn bridge_tde_destroy(context: *mut c_void);
+        fn bridge_tde_pixels(context: *mut c_void) -> *mut u8;
         fn bridge_tde_fill(
             context: *mut c_void,
-            pixels: *mut u8,
             color: u32,
             rects: *const Rect,
             count: u32,
@@ -506,7 +580,6 @@ mod native {
         ) -> i32;
         fn bridge_tde_draw(
             context: *mut c_void,
-            pixels: *mut u8,
             data: *const u8,
             width: u32,
             height: u32,
@@ -520,31 +593,59 @@ mod native {
             error: *mut i32,
         ) -> i32;
     }
-    pub(super) struct Native(NonNull<c_void>);
+    struct Context {
+        raw: NonNull<c_void>,
+        pixels: NonNull<PremultipliedRgbaColor>,
+        count: usize,
+    }
+    pub(super) struct Canvas(Rc<Context>);
+    impl Canvas {
+        pub fn pixels(&self) -> &[PremultipliedRgbaColor] {
+            // SAFETY: creation zero-initializes count pixels. Buffer only lends
+            // CPU slices outside synchronous DMA and after successful retirement.
+            unsafe { std::slice::from_raw_parts(self.0.pixels.as_ptr(), self.0.count) }
+        }
+        pub fn pixels_mut(&mut self) -> &mut [PremultipliedRgbaColor] {
+            // SAFETY: Canvas has a single owner; Native's Rc only keeps the SDK
+            // context alive. Buffer never lends these pixels during a DMA call.
+            unsafe { std::slice::from_raw_parts_mut(self.0.pixels.as_ptr(), self.0.count) }
+        }
+    }
+    pub(super) struct Native(Rc<Context>);
     impl Native {
-        pub fn new(width: u32, height: u32) -> Result<Self, i32> {
+        pub fn new(width: u32, height: u32) -> Result<(Self, Canvas), i32> {
+            let count = (width as usize)
+                .checked_mul(height as usize)
+                .filter(|count| {
+                    *count <= isize::MAX as usize / std::mem::size_of::<PremultipliedRgbaColor>()
+                })
+                .ok_or(-1)?;
             let mut error = 0;
             // SAFETY: bounded dimensions checked by C; NOLOAD cannot initialize VO.
-            NonNull::new(unsafe { bridge_tde_create(width, height, &mut error) })
-                .map(Self)
-                .ok_or(error)
+            let raw = NonNull::new(unsafe { bridge_tde_create(width, height, &mut error) })
+                .ok_or(error)?;
+            // SAFETY: a successfully created engine owns a non-null, initialized
+            // MMZ mapping. C never relocates it, including after drawing errors.
+            let pixels = unsafe { NonNull::new_unchecked(bridge_tde_pixels(raw.as_ptr()).cast()) };
+            let context = Rc::new(Context { raw, pixels, count });
+            Ok((Self(context.clone()), Canvas(context)))
         }
     }
     impl Accelerator for Native {
         fn fill(
             &mut self,
-            pixels: &mut [PremultipliedRgbaColor],
+            _pixels: &mut [PremultipliedRgbaColor],
             color: PremultipliedRgbaColor,
             rects: &[Rect],
         ) -> Result<bool, Failure> {
             let mut code = 0;
             let packed = u32::from_le_bytes([color.red, color.green, color.blue, color.alpha]);
             // SAFETY: canvas and rectangles remain valid during this synchronous
-            // call. C validates geometry and only commits completed scratch DMA.
+            // call. C validates geometry and hands the shared canvas back only
+            // after DMA retirement and cache synchronization.
             let result = unsafe {
                 bridge_tde_fill(
-                    self.0.as_ptr(),
-                    pixels.as_mut_ptr().cast(),
+                    self.0.raw.as_ptr(),
                     packed,
                     rects.as_ptr(),
                     rects.len() as u32,
@@ -563,17 +664,16 @@ mod native {
 
         fn draw(
             &mut self,
-            pixels: &mut [PremultipliedRgbaColor],
+            _pixels: &mut [PremultipliedRgbaColor],
             t: &Texture<'_>,
         ) -> Result<Outcome, Failure> {
             let mut code = 0;
             // SAFETY: CPU buffers and rects are valid for this synchronous call.
-            // Rust validated source length; C rechecks all geometry. DMA targets
-            // private MMZ, never these CPU pointers. Commit is after completion.
+            // Rust validated source length; C rechecks all geometry. There is no
+            // Rust slice aliasing the destination during this in-place DMA job.
             let result = unsafe {
                 bridge_tde_draw(
-                    self.0.as_ptr(),
-                    pixels.as_mut_ptr().cast(),
+                    self.0.raw.as_ptr(),
                     t.data.as_ptr(),
                     t.width,
                     t.height,
@@ -598,11 +698,11 @@ mod native {
             }
         }
     }
-    impl Drop for Native {
+    impl Drop for Context {
         fn drop(&mut self) {
             // SAFETY: owns the context; C deliberately retains uncertain jobs.
             unsafe {
-                bridge_tde_destroy(self.0.as_ptr());
+                bridge_tde_destroy(self.raw.as_ptr());
             }
         }
     }

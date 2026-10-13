@@ -75,9 +75,9 @@ flowchart LR
 
 ## Framebuffer 软件路径
 
-软件渲染使用 Slint `SoftwareRenderer` 的 `ReusedBuffer` 模式。纯软件和 `nx5-tde` 均保留一份预乘 RGBA 图像（4 字节/像素）；后者通过 `TargetPixelBuffer` 对符合条件的纹理操作提交 TDE，其余由软件绘制。显示输出限定 packed true-color：RGB565，或 RGB 三通道各 8 位的 32 位布局，可含 8 位 alpha。通道位置由 framebuffer 位域解析；重叠位域、非标准格式、错误 stride、硬件旋转和不足两页的布局均拒绝。
+软件渲染使用 Slint `SoftwareRenderer` 的 `ReusedBuffer` 模式。纯软件在堆中保留一份预乘 RGBA 图像（4 字节/像素）；ARM `nx5-tde` 初始化成功时改用 SDK 分配的 cached MMZ 画布。`FY_MPI_SYS_MmzAlloc_Cached` 同时返回物理地址与 CPU 虚拟映射；Slint 软件绘制访问虚拟映射，TDE 使用同一块内存的物理地址，不再另存堆画布或在每次硬件操作后拷回。作业前同步 CPU 缓存，阻塞 `EndJob` 成功并完成作业后缓存同步后才恢复 CPU 访问。画布通过 `TargetPixelBuffer` 分派符合条件的硬件操作，其余由软件绘制；初始化不可用时仍使用堆画布。显示输出限定 packed true-color：RGB565，或 RGB 三通道各 8 位的 32 位布局，可含 8 位 alpha。通道位置由 framebuffer 位域解析；重叠位域、非标准格式、错误 stride、硬件旋转和不足两页的布局均拒绝。
 
-两条路径均在预乘 RGBA 画布中混合。写入含 8 位 alpha 的 framebuffer 时，RGB 精确反预乘为 straight RGB，通用格式保留原 alpha；alpha=0 写零，alpha=255 直接复制 RGB 通道，其余使用共享倒数表，结果等于 `min(255, (channel × 255 + alpha / 2) / alpha)` 的整数除法。NX5 当前板级显示契约使用 0–128 的逐像素 alpha 量程：写页时按 `round(alpha × 128 / 255)` 编码（等于 `(alpha + 1) / 2` 的整数除法），0 为全透明、128 为不透明。该量程来自实际 WBC 色块比较，不能从 8 位 alpha 位域推断；Slint 画布与 TDE 运算仍使用标准 0–255 alpha。NX5 的 BGRA 位域路径只在目标页交换红蓝并编码 alpha，不修改源画布；不透明 16 像素块保留 NEON 快速转换。RGB565 或无 alpha 的 RGB888 输出保留预乘 RGB，相当于黑底合成，不能透出下层视频。位域转换按主机原生字节序写入，保留行尾 padding。
+两条路径均在预乘 RGBA 画布中混合。写入含 8 位 alpha 的 framebuffer 时，RGB 精确反预乘为 straight RGB，通用格式保留原 alpha；alpha=0 写零，alpha=255 直接复制 RGB 通道，其余使用共享倒数表，结果等于 `min(255, (channel × 255 + alpha / 2) / alpha)` 的整数除法。NX5 当前板级显示契约使用 0–128 的逐像素 alpha 量程：写页时按 `round(alpha × 128 / 255)` 编码（等于 `(alpha + 1) / 2` 的整数除法），0 为全透明、128 为不透明。该量程来自实际 WBC 色块比较，不能从 8 位 alpha 位域推断；Slint 画布与 TDE 运算仍使用标准 0–255 alpha。NX5 的 BGRA 位域路径只在目标页交换红蓝并编码 alpha，不修改源画布；不透明 16 像素块保留 NEON 快速转换，全透明 16 像素块直接写零；混合 alpha 块保留精确反预乘。RGB565 或无 alpha 的 RGB888 输出保留预乘 RGB，相当于黑底合成，不能透出下层视频。位域转换按主机原生字节序写入，保留行尾 padding。
 
 应用需要透明区域时，在 `.slint` 根窗口设置 `background: transparent;`，并避免用不透明全屏背景覆盖开口；局部颜色 alpha 也会保留。透明 UI 通过独占设备的 `alpha-regression` 验证实际页与黑色 VO 底层上的 WBC 合成；视频解码和业务视频层尚未接入。视频接入方式未定，当前 SDK/VO 独占所有权、初始化和关闭流程保持原有约束。实际视频集成仍须验证非黑色视频底层、图层配置及共用会话生命周期；新增设备/固件还须重新核验 alpha 量程。历史背景见 [slint-nx5 经验](slint-nx5-lessons.md#6-通道顺序预乘和显示-alpha-是三个不同契约)。
 
@@ -99,7 +99,9 @@ NX5 打开 `Config::framebuffer` 指定的设备，通过 `FBIOGET_FSCREENINFO` 
 
 `nx5-tde` 的等尺寸 RGBA 纹理支持整体透明度。上传时按 Slint 顺序计算：straight RGBA 先合并逐像素/整体 alpha，再预乘 RGB；预乘 RGBA 直接缩放四个通道。Cortex-A7 预设使用 NEON；其余构建使用相同整数规则。准备后的缓存键包含透明度，透明度变化会重新上传，同一图像与透明度可复用。SDK 的全局 alpha 开关不符合该预乘语义，因此不使用；混合仍限定不透明目标和偶数矩形，单次 RGB 容差为 1/255。
 
-`SLINT_BRIDGE_TDE_FILL=1` 在 `nx5-tde` 构建中显式开启 QuickFill 对照路径：纯色窗口背景和无圆角/边框的不透明整数矩形可进入硬件，至少 32768 像素、至多 16 个裁剪区域；背景清除可保留预乘 alpha。其他值或未设置时使用 CPU 批量填充，因为本板从 16×16 到 1024×600 的 22 组面积/形状/颜色对照均为 CPU 更快；全屏 CPU 约 1.71 ms，TDE 含提交/同步/回拷约 9.34 ms。硬件填充复用现有私有 MMZ 目标，同样遵守完成确认、失败回退及未知 DMA 隔离，不增加 MMZ 块。`SLINT_BRIDGE_TRACE` 的 TDE 行末新增 `fill` 次数；`software` 仍只计未加速的纹理回调。完整条件和新测量见 [填充与整体透明度实测](nx5-fill-blend.md)。
+`SLINT_BRIDGE_TDE_FILL=1` 在 `nx5-tde` 构建中显式开启 QuickFill 对照路径：纯色窗口背景和无圆角/边框的不透明整数矩形可进入硬件，至少 32768 像素、至多 16 个裁剪区域；背景清除可保留预乘 alpha。其他值或未设置时使用 CPU 批量填充，因为共享 MMZ 后重新测量的 22 组面积/形状/颜色对照仍均为 CPU 更快；全屏 CPU 写 MMZ 约 1.69 ms，TDE 含提交和同步约 2.86 ms。硬件填充直接写共享画布，同样遵守完成确认、失败回退及未知 DMA 隔离，不增加 MMZ 块。`SLINT_BRIDGE_TRACE` 的 TDE 行末新增 `fill` 次数；`software` 仍只计未加速的纹理回调。初次接入记录见 [填充与整体透明度实测](nx5-fill-blend.md)，共享画布复测见 [MMZ 实测](nx5-shared-canvas.md)。
+
+共享画布上的已知完成错误可能留下部分硬件结果：当帧剩余软件回调写入一行预分配弃用区，随后禁用 TDE，以 `NewBuffer` 全量软件重绘同一 MMZ 画布，再恢复原 repaint 模式并提交完整脏区。画布持有 SDK/MMZ 所有权，禁用加速不会提前释放它。未知 DMA 完成时，后续回调同样不能访问画布，整帧返回错误，不写物理页；保留原有 MMZ、SDK 会话及显示锁隔离。该策略不分配整帧备份。
 
 已知 DMA 完成后的 MMZ 释放失败会永久关闭进程内 TDE 创建门闩，后续使用软件路径；同一地址不重复释放，避免部分释放后重复分配累积资源。未知 DMA 仍保持原有整帧失败与会话隔离。
 

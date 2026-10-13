@@ -164,3 +164,5 @@ sh test-app/tools/nx5/display/build-alpha-observer.sh
 ```
 
 按设备说明交叉构建 `--bin alpha-regression`，分别使用 `nx5` 和 `nx5-tde` 验证软件/TDE feature 的输出。部署插件和程序、确认原显示所有者退出后，设置同一个 SDK/字体环境和插件搜索路径，运行 `alpha-regression OUTPUT_DIRECTORY [--framebuffer=PATH] [--touch=PATH]`；输出目录必须已存在。可用 `run-alpha.sh BINARY_DIRECTORY tde|software` 保存资源和内核快照；目录内分别放置 `alpha-tde`、`alpha-software` 及插件，同一结果目录拒绝覆盖。成功返回 0，日志应有五个 `passed=true` 阶段、每帧 `bad=0`，保存五份 WBC CSV；在主机运行 `python3 test-app/tools/nx5/display/check-alpha.py <结果目录>` 核对实际页、样本完整性、误差和退出资源。此测试只接受对应 8×6 色块网格可整除的诊断尺寸，不限制库支持的面板大小。
+
+共享 MMZ 画布的面积、NEON 边界和真实写页回归入口见 [TDE 报告](../../../docs/nx5-tde.md#构建与接入)。真实写页测试使用生产像素转换与完成契约，交替呈现 210 帧色块；需独占显示，测完恢复常驻程序。NEON 边界项仅执行 CPU 转换，不加载 SDK。

@@ -192,14 +192,20 @@ int main(int argc, char **argv) {
         e->api.FY_TDE2_Close=close_tde; e->opened=1;
         e->width=4;e->height=4;e->bytes=64;
         e->target.ptr=calloc(1,64); e->source[0].ptr=calloc(1,64);
-        uint8_t pixels[64], source[64];memset(pixels,0xa5,64);memset(source,255,64);
+        uint8_t *pixels=bridge_tde_pixels(e), source[64];memset(pixels,0xa5,64);memset(source,255,64);
         if (operation == 1) for (unsigned i=3;i<64;i+=4) pixels[i]=255;
         uint8_t before[64];memcpy(before,pixels,64);
         BridgeRect rect={0,0,0,0,4,4}; int error;
-        int result=operation == 2 ? bridge_tde_fill(e,pixels,0x7f6b3917u,&rect,1,&error) :
-            bridge_tde_draw(e,pixels,source,4,4,16,0,operation == 1 ? 127 : 255,0,1,&rect,1,&error);
+        int result=operation == 2 ? bridge_tde_fill(e,0x7f6b3917u,&rect,1,&error) :
+            bridge_tde_draw(e,source,4,4,16,0,operation == 1 ? 127 : 255,0,1,&rect,1,&error);
         if(!fault) { assert(result==(operation == 1));for(unsigned i=0;i<64;++i) assert(pixels[i]==(operation == 1 && i%4 == 3 ? 255 : 0x37)); }
-        else { assert(result<0);assert(!memcmp(pixels,before,64)); }
+        else {
+            assert(result<0);
+            if (fault == 1) assert(!memcmp(pixels,before,64));
+            /* Every other fake job wrote part of the shared canvas. Recovery
+             * must repaint the frame, not blend again over this partial result. */
+            else for (unsigned i=0;i<64;++i) assert(pixels[i]==0x37);
+        }
         assert(cancels==(fault==2 || fault==3));
         assert(ends==(fault==0 || fault==4 || fault==5));
         if(fault==3 || fault==4) {

@@ -386,7 +386,7 @@ fn nx5_hardware_compare() {
     let color: PremultipliedRgbaColor = slint::Color::from_rgb_u8(213, 93, 37).into();
     assert!(hardware.fill(color, &[rect]));
     for y in 5..206 {
-        software.pixels[y * 512 + 3..y * 512 + 304].fill(color);
+        software.pixels.cpu_mut()[y * 512 + 3..y * 512 + 304].fill(color);
     }
     assert_eq!(difference(hardware.pixels(), software.pixels()), (0, 0));
     println!("correctness name=fill-odd-rectangle exact=true guards=true");
@@ -933,7 +933,7 @@ fn nx5_fill_area_crossover() {
     let _display = crate::backends::nx5::open().unwrap();
     let mut hardware = Buffer::new(1024, 600).unwrap();
     let mut software = Buffer::software(1024, 600).unwrap();
-    let engine = hardware.engine.as_mut().expect("TDE must be active");
+    assert!(hardware.engine.is_some(), "TDE must be active");
     let summarize = |mut samples: Vec<f64>| {
         let average = samples.iter().sum::<f64>() / samples.len() as f64;
         samples.sort_by(f64::total_cmp);
@@ -974,24 +974,31 @@ fn nx5_fill_area_crossover() {
             ("clear", PremultipliedRgbaColor::default()),
             ("opaque", slint::Color::from_rgb_u8(25, 55, 77).into()),
         ] {
-            let mut timings = [Vec::new(), Vec::new()];
+            let mut timings = [Vec::new(), Vec::new(), Vec::new()];
             for iteration in 0..70 {
-                // Alternate order and discard ten warm-up pairs. Both paths
-                // include the production output write, not just SDK enqueue.
-                for path in [iteration % 2, 1 - iteration % 2] {
+                // Rotate hardware, heap CPU and MMZ CPU order; discard ten
+                // warm-up rounds. TDE includes wait and cache ownership transfer.
+                for path in [iteration % 3, (iteration + 1) % 3, (iteration + 2) % 3] {
                     let started = Instant::now();
                     if path == 0 {
                         assert!(
-                            engine
+                            hardware
+                                .engine
+                                .as_mut()
+                                .unwrap()
                                 .fill(
-                                    black_box(&mut hardware.pixels),
+                                    black_box(hardware.pixels.accelerator_buffer()),
                                     black_box(color),
                                     black_box(&rects)
                                 )
                                 .unwrap()
                         );
                     } else {
-                        let pixels = black_box(&mut software.pixels);
+                        let pixels = black_box(if path == 1 {
+                            software.pixels.cpu_mut()
+                        } else {
+                            hardware.pixels.cpu_mut()
+                        });
                         for r in &rects {
                             for y in r.dy as usize..r.dy as usize + r.height as usize {
                                 let at = y * 1024 + r.dx as usize;
@@ -1004,14 +1011,34 @@ fn nx5_fill_area_crossover() {
                     }
                 }
             }
-            assert_eq!(difference(&hardware.pixels, &software.pixels), (0, 0));
+            // Check TDE alone after timing: a later CPU-MMZ fill must not hide
+            // a missed hardware write. The sentinel also checks outside guards.
+            let sentinel = PremultipliedRgbaColor::from_rgb(165, 165, 165);
+            hardware.pixels.cpu_mut().fill(sentinel);
+            software.pixels.cpu_mut().fill(sentinel);
+            assert!(
+                hardware
+                    .engine
+                    .as_mut()
+                    .unwrap()
+                    .fill(hardware.pixels.accelerator_buffer(), color, &rects)
+                    .unwrap()
+            );
+            for r in &rects {
+                for y in r.dy as usize..r.dy as usize + r.height as usize {
+                    let at = y * 1024 + r.dx as usize;
+                    software.pixels.cpu_mut()[at..at + r.width as usize].fill(color);
+                }
+            }
+            assert_eq!(difference(hardware.pixels(), software.pixels()), (0, 0));
             let (ha, hm, hp) = summarize(std::mem::take(&mut timings[0]));
             let (ca, cm, cp) = summarize(std::mem::take(&mut timings[1]));
+            let (ma, mm, mp) = summarize(std::mem::take(&mut timings[2]));
             let area = width * height * rects.len() as u32;
             println!(
-                "fill_area name={name} color={color_name} width={width} height={height} rects={} pixels={area} samples=60 hw_mean_us={ha:.3} hw_p50_us={hm:.3} hw_p95_us={hp:.3} cpu_mean_us={ca:.3} cpu_p50_us={cm:.3} cpu_p95_us={cp:.3} speedup={:.3} exact=true",
+                "fill_area name={name} color={color_name} width={width} height={height} rects={} pixels={area} samples=60 hw_mean_us={ha:.3} hw_p50_us={hm:.3} hw_p95_us={hp:.3} cpu_mean_us={ca:.3} cpu_p50_us={cm:.3} cpu_p95_us={cp:.3} mmz_cpu_mean_us={ma:.3} mmz_cpu_p50_us={mm:.3} mmz_cpu_p95_us={mp:.3} speedup={:.3} exact=true",
                 rects.len(),
-                ca / ha
+                ma / ha
             );
         }
     }
@@ -1122,4 +1149,160 @@ fn accepted_texture_is_not_drawn_again_by_software() {
     let mut reference = Buffer::software(512, 384).unwrap();
     draw(&window, &mut reference).unwrap();
     assert_eq!(difference(buffer.pixels(), reference.pixels()), (0, 0));
+}
+
+struct PartialWriteFailure(bool);
+impl Accelerator for PartialWriteFailure {
+    fn draw(
+        &mut self,
+        pixels: &mut [PremultipliedRgbaColor],
+        _: &Texture<'_>,
+    ) -> Result<Outcome, Failure> {
+        // Simulate a job that changed the shared canvas before an error.
+        pixels.fill(PremultipliedRgbaColor::from_rgb(165, 165, 165));
+        Err(Failure {
+            code: -79,
+            unknown: self.0,
+        })
+    }
+}
+
+#[test]
+fn partial_shared_canvas_failure_requires_full_software_repaint() {
+    let (window, scene) = setup();
+    scene.set_picture(image(512, 384, true, true));
+    scene.set_image_opacity(0.5);
+    let mut reference = Buffer::software(512, 384).unwrap();
+    draw(&window, &mut reference).unwrap();
+    let mut buffer = Buffer::software(512, 384).unwrap();
+    scene.set_image_opacity(1.);
+    window.request_redraw();
+    window.draw_if_needed(|r| r.set_repaint_buffer_type(RepaintBufferType::ReusedBuffer));
+    draw(&window, &mut buffer).unwrap();
+    scene.set_image_opacity(0.5);
+    buffer.engine = Some(Box::new(PartialWriteFailure(false)));
+    draw(&window, &mut buffer).unwrap();
+    assert_eq!(difference(buffer.pixels(), reference.pixels()), (0, 0));
+    window.request_redraw();
+    window.draw_if_needed(|r| assert_eq!(r.repaint_buffer_type(), RepaintBufferType::ReusedBuffer));
+    scene.set_image_opacity(0.75);
+    draw(&window, &mut buffer).unwrap();
+    window.request_redraw();
+    window.draw_if_needed(|r| r.set_repaint_buffer_type(RepaintBufferType::NewBuffer));
+    draw(&window, &mut reference).unwrap();
+    assert_eq!(difference(buffer.pixels(), reference.pixels()), (0, 0));
+}
+
+#[test]
+fn unknown_shared_dma_does_not_allow_following_software_writes() {
+    let (window, scene) = setup();
+    scene.set_picture(image(512, 384, true, true));
+    let mut buffer = Buffer::software(512, 384).unwrap();
+    buffer.engine = Some(Box::new(PartialWriteFailure(true)));
+    assert!(matches!(
+        draw(&window, &mut buffer),
+        Err(Error::AccelerationFailed(_))
+    ));
+    // This fake has no DMA. Inspecting its heap verifies that all remaining
+    // renderer callbacks were diverted away from the quarantined canvas.
+    assert!(
+        buffer
+            .pixels
+            .cpu()
+            .iter()
+            .all(|p| [p.red, p.green, p.blue, p.alpha] == [165, 165, 165, 255])
+    );
+}
+
+pub(crate) fn fill_shared_canvas(buffer: &mut Buffer, color: PremultipliedRgbaColor) {
+    #[cfg(target_arch = "arm")]
+    assert!(
+        matches!(buffer.pixels, Pixels::Mmz(_)),
+        "expected a mapped MMZ canvas"
+    );
+    let enabled = buffer.fill_enabled;
+    buffer.fill_enabled = true;
+    let rect = Rect {
+        sx: 0,
+        sy: 0,
+        dx: 0,
+        dy: 0,
+        width: buffer.width,
+        height: buffer.height,
+    };
+    let done = buffer.fill(color, &[rect]);
+    buffer.fill_enabled = enabled;
+    assert!(
+        done,
+        "hardware fill must complete before reading its shared output"
+    );
+}
+
+#[cfg(target_arch = "arm")]
+#[test]
+#[ignore = "CPU-only ARM NEON boundary test; build with the NX5 preset"]
+fn neon_writeback_boundaries() {
+    let convert = |source: &[u8], count: usize, shift: usize, alpha_max: u8| {
+        let original = source.to_vec();
+        let mut actual = vec![165u8; source.len()];
+        let mut expected = actual.clone();
+        for i in 0..count {
+            let at = shift + i * 4;
+            let alpha = u32::from(source[at + 3]);
+            for c in 0..3 {
+                let value = u32::from(source[at + 2 - c]);
+                expected[at + c] = if alpha == 0 {
+                    0
+                } else {
+                    ((value * 255 + alpha / 2) / alpha).min(255) as u8
+                };
+            }
+            expected[at + 3] = ((alpha * u32::from(alpha_max) + 127) / 255) as u8;
+        }
+        // SAFETY: separate buffers, each covering shift+count*4 bytes and guards.
+        assert!(unsafe {
+            rgba_to_bgra(
+                source.as_ptr().add(shift),
+                actual.as_mut_ptr().add(shift),
+                count,
+                alpha_max,
+            )
+        });
+        assert_eq!(
+            actual, expected,
+            "count={count} shift={shift} alpha_max={alpha_max}"
+        );
+        assert_eq!(source, original);
+    };
+    for alpha_max in [128, 255] {
+        for alpha in 0..=255 {
+            let mut source = vec![0; 256 * 4 + 8];
+            for channel in 0..256 {
+                source[channel * 4..channel * 4 + 3].fill(channel as u8);
+                source[channel * 4 + 3] = alpha;
+            }
+            convert(&source, 256, 0, alpha_max);
+        }
+        for count in 0..=65 {
+            for shift in 0..4 {
+                for mode in 0..3 {
+                    let mut source = vec![39; 65 * 4 + 8];
+                    for i in 0..count {
+                        for c in 0..3 {
+                            source[shift + i * 4 + c] = (i * 37 + c * 51) as u8;
+                        }
+                        source[shift + i * 4 + 3] = match mode {
+                            0 => 0,
+                            1 => 255,
+                            _ => (i * 73) as u8,
+                        };
+                    }
+                    convert(&source, count, shift, alpha_max);
+                }
+            }
+        }
+    }
+    println!(
+        "NEON output: all channel/alpha pairs, alpha_max=128/255, zero/opaque/mixed blocks, lengths=0..65, alignment=0..3 and guards exact"
+    );
 }

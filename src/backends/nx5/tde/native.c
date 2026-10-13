@@ -1,6 +1,6 @@
 /* SDK ABI stays in C, compiled with the board's matching external headers.
- * DMA only touches private MMZ scratch. CPU pixels commit after successful wait
- * and cache synchronization. This module never initializes or shuts down VO/SYS.
+ * The cached MMZ canvas is shared by CPU and TDE. Jobs are synchronous and
+ * transfer cache ownership before/after DMA. This module never owns VO/SYS.
  */
 #define _GNU_SOURCE
 #include <dlfcn.h>
@@ -99,6 +99,15 @@ void bridge_rgba_to_bgra(uint8_t *destination, const uint8_t *source, size_t cou
                 source += 64; destination += 64; count -= 16;
                 continue;
             }
+            /* Alpha zero always exports zero RGB, even for noncanonical input. */
+            alpha = vorr_u8(vget_low_u8(rgba.val[3]), vget_high_u8(rgba.val[3]));
+            if (vget_lane_u64(vreinterpret_u64_u8(alpha), 0) == 0) {
+                uint8x16x4_t bgra;
+                for (unsigned c = 0; c < 4; ++c) bgra.val[c] = vdupq_n_u8(0);
+                vst4q_u8(destination, bgra);
+                source += 64; destination += 64; count -= 16;
+                continue;
+            }
         }
 #endif
         for (size_t x = 0; x < block; ++x) {
@@ -177,6 +186,7 @@ Engine *bridge_tde_create(uint32_t width, uint32_t height, int *error) {
     e->opened = 1; e->width = width; e->height = height; e->bytes = width * height * 4;
     *error = e->api.FY_MPI_SYS_MmzAlloc_Cached(&e->target.phy, &e->target.ptr, "bridge_tde_target", NULL, e->bytes);
     if (*error || !e->target.ptr) goto fail;
+    memset(e->target.ptr, 0, e->bytes);
     for (unsigned i = 0; i < 2; ++i) {
         *error = e->api.FY_MPI_SYS_MmzAlloc_Cached(&e->source[i].phy, &e->source[i].ptr, "bridge_tde_source", NULL, e->bytes);
         if (*error || !e->source[i].ptr) goto fail;
@@ -189,6 +199,9 @@ fail:
     return NULL;
 }
 
+/* Borrowed CPU mapping. The Engine owns it; no access while DMA is unknown. */
+void *bridge_tde_pixels(Engine *e) { return e->target.ptr; }
+
 static TDE2_SURFACE_S surface(uint32_t phy, uint32_t width, uint32_t height) {
     TDE2_SURFACE_S s = {0};
     s.u32PhyAddr = phy; s.u32Width = width; s.u32Height = height;
@@ -200,28 +213,27 @@ static TDE2_SURFACE_S surface(uint32_t phy, uint32_t width, uint32_t height) {
     return s;
 }
 
-/* CPU output is committed only after completion and cache synchronization. */
-static int finish_job(Engine *e, TDE_HANDLE job, uint8_t *pixels,
+/* Return the shared canvas to CPU only after successful wait and cache sync. */
+static int finish_job(Engine *e, TDE_HANDLE job,
     const BridgeRect *rects, unsigned count, uint32_t first, uint32_t last,
     int opaque, int *error) {
     *error = e->api.FY_TDE2_EndJob(job, FY_TRUE, FY_TRUE, 100); /* 1 second */
     if (*error) { e->quarantined = 1; return -2; } /* Cancel is invalid after EndJob. */
     *error = e->api.FY_MPI_SYS_MmzFlushCache(e->target.phy + first, (uint8_t *)e->target.ptr + first, last - first);
-    if (*error) return -1; /* Job is retired; CPU output is still unchanged. */
-    for (unsigned i = 0; i < count; ++i) {
+    if (*error) return -1; /* Retired, but the whole frame must be repainted. */
+    uint8_t *pixels = e->target.ptr;
+    for (unsigned i = 0; opaque && i < count; ++i) {
         const BridgeRect *r = &rects[i];
         for (uint32_t y = 0; y < r->height; ++y) {
             size_t at = ((size_t)(r->dy + y) * e->width + r->dx) * 4;
-            memcpy(pixels + at, (uint8_t *)e->target.ptr + at, r->width * 4);
-            if (opaque)
-                for (uint32_t x = 0; x < r->width; ++x) pixels[at + x * 4 + 3] = 255;
+            for (uint32_t x = 0; x < r->width; ++x) pixels[at + x * 4 + 3] = 255;
         }
     }
     return 0;
 }
 
 /* Fill replaces pixels; blending translucent rectangles is a separate operation. */
-int bridge_tde_fill(Engine *e, uint8_t *pixels, uint32_t color,
+int bridge_tde_fill(Engine *e, uint32_t color,
     const BridgeRect *rects, unsigned count, int *error) {
     *error = 0;
     if (e->quarantined) return -2;
@@ -253,12 +265,12 @@ int bridge_tde_fill(Engine *e, uint8_t *pixels, uint32_t color,
             return -1;
         }
     }
-    return finish_job(e, job, pixels, rects, count, first, last, 0, error);
+    return finish_job(e, job, rects, count, first, last, 0, error);
 }
 
 /* 0 copied, 1 blended, 2 unsupported (untouched), -1 safe error, -2 unknown DMA.
- * Before any failure, output CPU pixels remain untouched. */
-int bridge_tde_draw(Engine *e, uint8_t *pixels, const uint8_t *data,
+ * Known failure requires a full software repaint; unknown DMA forbids access. */
+int bridge_tde_draw(Engine *e, const uint8_t *data,
     uint32_t width, uint32_t height, uint32_t stride, int premultiplied, uint8_t alpha,
     unsigned slot, int upload, const BridgeRect *rects, unsigned count, int *error) {
     *error = 0;
@@ -266,6 +278,7 @@ int bridge_tde_draw(Engine *e, uint8_t *pixels, const uint8_t *data,
     if (!width || !height || width > e->width || height > e->height || (width & 3u) ||
         (height & 1u) || stride < width * 4 || slot > 1 || !count || count > 16) return 2;
     Buffer *src = &e->source[slot];
+    const uint8_t *pixels = e->target.ptr;
     for (unsigned i = 0; i < count; ++i) {
         const BridgeRect *r = &rects[i];
         if (r->sx < 0 || r->sy < 0 || r->dx < 0 || r->dy < 0 || !r->width || !r->height ||
@@ -308,7 +321,6 @@ int bridge_tde_draw(Engine *e, uint8_t *pixels, const uint8_t *data,
                  * destinations use Slint's exact alpha compositing in software. */
                 for (uint32_t x = 0; x < r->width; ++x)
                     if (pixels[at + x * 4 + 3] != 255) return 2;
-                memcpy((uint8_t *)e->target.ptr + at, pixels + at, r->width * 4);
             }
     }
     uint32_t first = (top * e->width * 4) & ~4095u;
@@ -339,7 +351,7 @@ int bridge_tde_draw(Engine *e, uint8_t *pixels, const uint8_t *data,
             return -1;
         }
     }
-    int result = finish_job(e, job, pixels, rects, count, first, last, blend, error);
+    int result = finish_job(e, job, rects, count, first, last, blend, error);
     if (result < 0) return result;
     return blend ? 1 : 0;
 }

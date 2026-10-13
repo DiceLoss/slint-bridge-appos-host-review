@@ -711,3 +711,7 @@ impl Drop for Framebuffer {
 #[cfg(test)]
 #[path = "tests/framebuffer_lifecycle.rs"]
 mod lifecycle_tests;
+
+#[cfg(all(test, feature = "nx5-tde"))]
+#[path = "tests/nx5_writeback.rs"]
+mod nx5_writeback;
