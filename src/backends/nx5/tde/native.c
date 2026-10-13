@@ -23,6 +23,38 @@ int bridge_neon_available(void) {
 #endif
 }
 
+#ifdef __ARM_NEON
+/* Exact floor(x/255) for 0 <= x <= 255*255. */
+static uint8x8_t divide_255(uint16x8_t value) {
+    value = vaddq_u16(value, vaddq_u16(vdupq_n_u16(1), vshrq_n_u16(value, 8)));
+    return vshrn_n_u16(value, 8);
+}
+#endif
+
+/* Premultiplied source-over, matching Slint's RGB floor and alpha rounding.
+ * CPU-only: independent of TDE, MMZ, and DMA completion. Unaligned is allowed. */
+void bridge_blend_rgba(uint8_t *pixels, size_t count, const uint8_t *color) {
+    unsigned alpha = color[3], inverse = 255 - alpha;
+#ifdef __ARM_NEON
+    uint8x8_t a = vdup_n_u8(alpha), inv = vdup_n_u8(inverse);
+    uint8x8_t r = vdup_n_u8(color[0]), g = vdup_n_u8(color[1]), b = vdup_n_u8(color[2]);
+    while (count >= 8) {
+        uint8x8x4_t p = vld4_u8(pixels);
+        p.val[0] = vadd_u8(divide_255(vmull_u8(p.val[0], inv)), r);
+        p.val[1] = vadd_u8(divide_255(vmull_u8(p.val[1], inv)), g);
+        p.val[2] = vadd_u8(divide_255(vmull_u8(p.val[2], inv)), b);
+        p.val[3] = vsub_u8(vadd_u8(p.val[3], a), divide_255(vmull_u8(p.val[3], a)));
+        vst4_u8(pixels, p);
+        pixels += 32; count -= 8;
+    }
+#endif
+    for (size_t i = 0; i < count; ++i, pixels += 4) {
+        for (unsigned c = 0; c < 3; ++c)
+            pixels[c] = pixels[c] * inverse / 255 + color[c];
+        pixels[3] = pixels[3] + alpha - pixels[3] * alpha / 255;
+    }
+}
+
 static uint8_t straight_channel(uint8_t value, uint32_t factor) {
     uint32_t scaled = ((uint32_t)value * factor + 32768) >> 16;
     return scaled > 255 ? 255 : (uint8_t)scaled;

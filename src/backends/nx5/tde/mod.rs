@@ -2,8 +2,53 @@
 use crate::Error;
 use i_slint_renderer_software::{
     DrawTextureArgs, PhysicalRegion, PremultipliedRgbaColor, RenderingRotation, SoftwareRenderer,
-    TargetPixelBuffer, TextureCacheKey, TexturePixelFormat,
+    TargetPixel, TargetPixelBuffer, TextureCacheKey, TexturePixelFormat,
 };
+
+// Keep Slint's exact pixel semantics while accelerating long constant-color spans.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+pub(crate) struct Pixel(PremultipliedRgbaColor);
+
+impl TargetPixel for Pixel {
+    fn blend(&mut self, color: PremultipliedRgbaColor) {
+        self.0.blend(color);
+    }
+
+    fn blend_slice(slice: &mut [Self], color: PremultipliedRgbaColor) {
+        if color.alpha == 255 {
+            slice.fill(Self(color));
+            return;
+        }
+        #[cfg(target_arch = "arm")]
+        {
+            unsafe extern "C" {
+                fn bridge_blend_rgba(pixels: *mut u8, count: usize, color: *const u8);
+            }
+            // SAFETY: Pixel is a transparent wrapper around repr(C) RGBA bytes;
+            // the C routine writes exactly slice.len() pixels, including its tail.
+            unsafe {
+                bridge_blend_rgba(
+                    slice.as_mut_ptr().cast(),
+                    slice.len(),
+                    (&color as *const PremultipliedRgbaColor).cast(),
+                );
+            }
+        }
+        #[cfg(not(target_arch = "arm"))]
+        for pixel in slice {
+            pixel.0.blend(color);
+        }
+    }
+
+    fn from_rgb(red: u8, green: u8, blue: u8) -> Self {
+        Self(PremultipliedRgbaColor::from_rgb(red, green, blue))
+    }
+
+    fn background() -> Self {
+        Self(PremultipliedRgbaColor::background())
+    }
+}
 
 #[cfg(target_arch = "arm")]
 pub(crate) unsafe fn rgba_to_bgra(
@@ -314,13 +359,16 @@ impl Buffer {
     }
 }
 impl TargetPixelBuffer for Buffer {
-    type TargetPixel = PremultipliedRgbaColor;
+    type TargetPixel = Pixel;
     fn num_lines(&self) -> usize {
         self.height as usize
     }
     fn line_slice(&mut self, line: usize) -> &mut [Self::TargetPixel] {
         let offset = line * self.width as usize;
-        &mut self.pixels[offset..offset + self.width as usize]
+        let row = &mut self.pixels[offset..offset + self.width as usize];
+        // SAFETY: repr(transparent) preserves layout and alignment; the returned
+        // mutable slice has the same lifetime and exclusive access as this row.
+        unsafe { std::slice::from_raw_parts_mut(row.as_mut_ptr().cast(), row.len()) }
     }
     fn draw_texture(&mut self, args: &DrawTextureArgs, clip: &PhysicalRegion) -> bool {
         let done = self.texture(args, clip);

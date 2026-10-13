@@ -24,6 +24,7 @@ libc = { version = "0.2.190", optional = true }
 i-slint-backend-testing = { version = "=1.18.1", path = "/home/dpower/data/GitHub/slint-1.18.1/internal/backends/testing", optional = true, features = ["renderer-software"] }
 
 [build-dependencies]
+image = { version = "0.25.10", default-features = false, features = ["png"] }
 slint-build = { version = "=1.18.1", path = "/home/dpower/data/GitHub/slint-1.18.1/api/rs/build" }
 
 [[bin]]

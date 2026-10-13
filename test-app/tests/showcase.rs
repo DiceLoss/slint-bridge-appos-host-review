@@ -78,7 +78,19 @@ fn showcase_state_forms_filtering_and_transparency() {
     // The real embedded bitmap must decode, and changing it must affect the
     // scrolling/animation content, not just the gutters around opaque cards.
     let size = app.get_wallpaper().size();
-    assert_eq!((size.width, size.height), (1638, 960));
+    assert_eq!((size.width, size.height), (1024, 600));
+    assert!(
+        app.get_wallpaper().to_rgb8().is_none(),
+        "TDE background must be RGBA"
+    );
+    assert!(
+        app.get_wallpaper()
+            .to_rgba8()
+            .unwrap()
+            .as_slice()
+            .iter()
+            .all(|p| p.a == 255)
+    );
     let photograph = app.get_wallpaper();
     let mut swatch = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::new(1, 1);
     swatch.make_mut_slice()[0] = slint::Rgba8Pixel {

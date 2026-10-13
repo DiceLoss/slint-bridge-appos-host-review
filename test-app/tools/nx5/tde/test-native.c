@@ -30,6 +30,41 @@ static FY_S32 free_mmz(FY_U32 p,FY_VOID *v) {
     free(v); return 0;
 }
 static void close_tde(void) { ++closes; }
+static void test_span_blending(void) {
+    for (unsigned alpha = 0; alpha < 256; ++alpha) {
+        uint8_t color[4] = {alpha, alpha / 2, 0, alpha};
+        for (unsigned opaque = 0; opaque < 2; ++opaque) {
+            uint8_t actual[256 * 4], expected[256 * 4];
+            for (unsigned value = 0; value < 256; ++value) {
+                uint8_t *p = actual + value * 4;
+                p[0] = value; p[1] = value / 2; p[2] = value / 3;
+                p[3] = opaque ? 255 : value;
+                for (unsigned c = 0; c < 3; ++c)
+                    expected[value * 4 + c] = p[c] * (255 - alpha) / 255 + color[c];
+                expected[value * 4 + 3] = p[3] + alpha - p[3] * alpha / 255;
+            }
+            bridge_blend_rgba(actual, 256, color);
+            assert(!memcmp(actual, expected, sizeof actual));
+        }
+    }
+    for (unsigned count = 0; count <= 65; ++count) {
+        for (unsigned shift = 0; shift < 4; ++shift) {
+            uint8_t actual[65 * 4 + 8], expected[65 * 4 + 8];
+            uint8_t color[4] = {67, 13, 111, 127};
+            memset(actual, 0xa5, sizeof actual);
+            memcpy(expected, actual, sizeof actual);
+            for (unsigned i = 0; i < count; ++i) {
+                uint8_t *p = expected + shift + i * 4;
+                for (unsigned c = 0; c < 3; ++c)
+                    p[c] = p[c] * (255 - color[3]) / 255 + color[c];
+                p[3] = p[3] + color[3] - p[3] * color[3] / 255;
+            }
+            bridge_blend_rgba(actual + shift, count, color);
+            assert(!memcmp(actual, expected, sizeof actual));
+        }
+    }
+    puts("PASS span-blend exact Slint RGBA, all alpha pairs, lengths=0..65 alignments=0..3 and guards");
+}
 static void test_sdk_loading(void) {
     int error;
     /* A visible SDK must not be loaded by TDE before the display owns it. */
@@ -54,6 +89,7 @@ int main(int argc, char **argv) {
         test_sdk_loading();
         return 0;
     }
+    test_span_blending();
     uint32_t reciprocals[256] = {0};
     for (unsigned alpha = 1; alpha < 256; ++alpha)
         reciprocals[alpha] = ((255u << 16) + alpha - 1) / alpha;
