@@ -17,6 +17,7 @@
 
 | 记录 | 内容 |
 | --- | --- |
+| [清理版部署与触摸验证](nx5-cleanup-deploy.md) | `c087071` 部署、六页 MCP、实体 evdev 配对、正常退出及上一版回退 |
 | [NEON 反预乘与写页优化](nx5-neon-unpremultiply.md) | 精确整数向量化、连续块快路径、真实半透明写页耗时与像素对照 |
 | [TDE 写页与格式转换](nx5-tde-writeback.md) | 单次转换能力实测、CPU 转换后 TDE 写页对照、4915200 个实际页像素核验 |
 | [共享 MMZ 画布](nx5-shared-canvas.md) | CPU/TDE 共用映射、移除回拷、真实物理页写回和错误整帧重绘 |

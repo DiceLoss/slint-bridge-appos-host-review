@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-13T12:41:24.125699+00:00",
+  "checked_at_utc": "2026-10-13T13:16:34.433205+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -46,7 +46,7 @@
     ],
     "pan": [
       0,
-      600
+      0
     ],
     "vo_device_enabled": true,
     "initialization_error_observed": "gui layer region(0,0,1024,600) cannot exceed frame region(0,0)",
@@ -105,8 +105,8 @@
       0,
       600
     ],
-    "physical_touch_validation": "Prioracab18a+Slint22804ff: user confirmed fluent physical scrolling and synchronized titles. Current0e8516d ring update checked via native MCP; no new evdev latency or physical-ring confirmation recorded.",
-    "physical_touch_evidence": "evidence/nx5-image-optimization/2026-10-13/user-observation.json",
+    "physical_touch_validation": "c087071: 8 physical contacts / 16 evdev SYN_REPORT edges matched to Slint. 265 events, 251 Accepted, 14 Rejected (one initial press outside a control, 13 moves); zero dropped/unknown. User confirmed display and touch normal. Controls slider ended at 48%.",
+    "physical_touch_evidence": "evidence/nx5-cleanup-deploy/2026-10-13/physical-summary.json",
     "prior_physical_touch_validation": "287da8c baseline: 12 physical contacts, 49 Slint events Accepted, zero dropped; 24 contact edges matched, maximum timestamp delta 10.209 ms (1 ms precision; conservative bound 11.3 ms). User reported timely pause/resume. f963558: the finite recording window had zero events; the user subsequently confirmed the requested 4 physical taps responded normally, without a new latency sample. Its 3 native MCP pause/resume cycles passed with 24 Accepted events.",
     "prior_physical_touch_evidence": "evidence/nx5-alpha-deploy/2026-10-12-287da8c/results.json",
     "previous_image_background_touch": {
@@ -129,8 +129,8 @@
     }
   ],
   "running_ui": {
-    "path": "/tmp/slint-bridge-neon-final/showcase",
-    "pid": 6818,
+    "path": "/tmp/slint-bridge-clean-c087071/showcase",
+    "pid": 12364,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -145,7 +145,7 @@
     "trace_enabled": false,
     "last_observed_fps": 29.0,
     "fps_evidence": "evidence/nx5-neon-unpremultiply/2026-10-13/list-window/result.json",
-    "fps_note": "35.7-second list window after 8-second warmup: six complete 150-presentation batches all 29.00 FPS. This trace/screenshot-history window used 94.62% of one core; separate adjacent fresh/no-trace comparison measured new 76.35% vs old 77.14%. No full-scene or physical input timing measurement.",
+    "fps_note": "Historical 4a2eda2 NEON list window: six complete 150-presentation batches at 29 FPS. c087071 produces an identical stripped binary; no new FPS/CPU performance window was measured in this deployment.",
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
@@ -153,7 +153,7 @@
       "forward": "adb -s 192.168.1.151:5555 forward tcp:19315 tcp:9315",
       "tools_available": 18,
       "tools_exercised": 11,
-      "verification": "evidence/nx5-neon-unpremultiply/2026-10-13/device-ui/summary.json",
+      "verification": "evidence/nx5-cleanup-deploy/2026-10-13/device-ui/summary.json",
       "exercised_tools": [
         "list_windows",
         "get_window_properties",
@@ -167,25 +167,25 @@
         "get_element_properties",
         "drag_element"
       ],
-      "screenshot_status": "Six pages and ten guarded snapshots passed; 227 events, zero dropped/unknown. Hardware pixels verified independently.",
-      "restored_properties": "evidence/nx5-neon-unpremultiply/2026-10-13/resident-ui.json"
+      "screenshot_status": "Six pages and ten guarded snapshots passed; 227 events, zero dropped/unknown. Physical user/evdev validation recorded separately; no new hardware pixel sampling.",
+      "restored_properties": "evidence/nx5-cleanup-deploy/2026-10-13/resident-ui.json"
     },
-    "log": "/tmp/slint-bridge-neon-final/live-final.log",
-    "source_commit": "4a2eda2b1330fa001d521bca6371d27f92db7347",
+    "log": "/tmp/slint-bridge-clean-c087071/live-final.log",
+    "source_commit": "c0870718920558ee1dc6259fd34a4410adfa3ebd",
     "fault_injection_enabled": false,
-    "source_state": "Exact Q16 NEON unpremultiplication over 8 pixels, one reciprocal lookup for uniform alpha. Separate 16-pixel opaque/clear runs preserve fast paths. CPU/TDE shared cached MMZ; framebuffer conversion/write stays on CPU. No new allocations or runtime switches; resident has no exit timer.",
-    "source_manifest": "evidence/nx5-neon-unpremultiply/2026-10-13/manifest.json",
+    "source_state": "Unused UI imports and infallible internal constructor Result wrapping removed. Rebuilt stripped binary is byte-identical to 4a2eda2. Resident has no exit timer; trace, QuickFill override, WBC and observer are off.",
+    "source_manifest": "evidence/nx5-cleanup-deploy/2026-10-13/manifest.json",
     "resources": {
-      "rss_kib": 14800,
-      "vm_hwm_kib": 15016,
+      "rss_kib": 15096,
+      "vm_hwm_kib": 15380,
       "vm_peak_kib": 33608,
       "threads": 3,
       "mmz_used_kib": 12100,
       "mmz_blocks": 5,
-      "wbc_running": false,
-      "mem_available_kib": 44836
+      "mem_available_kib": 44868,
+      "wbc_running": false
     },
-    "runtime_source_sha256": "4a37dda144d41ef5b7a1fe12420952fbae22dfebc51fb95171b43334fef31abb",
+    "runtime_source_sha256": "6ef9926a694f0e7f8d08ceccdce14df272a1833545372da1b87653d08af15032",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "wake_source_sha256": "4c67e34b31870b5254b093ee17181bad74d0dda6b86a3af9bb5cc6bebda8256a",
     "performance_manifest": "evidence/nx5-neon-unpremultiply/2026-10-13/manifest.json",
@@ -193,7 +193,7 @@
     "tde_fill_enabled": false,
     "native_source_sha256": "23386d5cf76b17ab0e57653fc01b0a0540d3ac07eac8d3c946ba7d87888052f2"
   },
-  "status": "neon_unpremultiply_verified_resident",
+  "status": "cleanup_deployed_display_and_physical_touch_verified",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -211,11 +211,12 @@
     "2026-10-13 fdb0f0e: QuickFill and global-opacity texture preparation verified. Twenty-two fill groups show CPU faster through 1024x600; QuickFill remains explicit opt-in. Native callback audit confirms accepted TDE primitives do not fall through to software rendering. Finite process 25598 exited cleanly; resident 25632 uses default fill with trace off. Kernel ring overlap, rather than whole-prefix matching, identifies the complete test window. Prior ring binary retained for recovery.",
     "2026-10-13 shared MMZ: d34f436 resident PID 6670, no timer/trace/observer/WBC. Old staged fdb0f0e kept for recovery. Ring recovery and 16 other unused test/log files archived with SHA256 before cleanup. Finite shared run 3893 exited normally; signal-driven reclamation of old residents recorded separately.",
     "2026-10-13 TDE writeback investigation: required ABGR8888 conversion rejected; tested alternatives fail output semantics. Exact CPU/MMZ conversion + TDE framebuffer copy verified but slower for all 4 patterns. Runtime remains d34f436. Probe exited normally; old residents 6670/12062/14723 were separately SIGTERM-stopped. Restore command marker timeout was verified as a successful launch via /proc and MCP; no duplicate SDK start. New resident PID 17394, no timer or trace. Final strengthened sentinel check passed again; resident restored as PID 20127 after separately stopping 17394.",
-    "2026-10-13 NEON: 4a2eda2 resident PID 6818, no timer/trace/WBC/observer. Exact integer 8-pixel conversion and separate opaque/clear runs; physical pixels verified. Initial opaque slowdown was rejected and fixed. Trace CPU outlier retained; adjacent no-trace old/new comparison found no regression. Shared-MMZ d34f436 kept for recovery; older fdb0f0e and finished diagnostics archived before cleanup. Finite 6663 exited normally; signal stops of residents recorded separately."
+    "2026-10-13 NEON: 4a2eda2 resident PID 6818, no timer/trace/WBC/observer. Exact integer 8-pixel conversion and separate opaque/clear runs; physical pixels verified. Initial opaque slowdown was rejected and fixed. Trace CPU outlier retained; adjacent no-trace old/new comparison found no regression. Shared-MMZ d34f436 kept for recovery; older fdb0f0e and finished diagnostics archived before cleanup. Finite 6663 exited normally; signal stops of residents recorded separately.",
+    "2026-10-13 cleanup deployment: c087071 resident PID 12364; previous 4a2eda2 kept for rollback. Stripped binaries have identical SHA256. Finite PID 12253 exited normally; old PID 6818 SIGTERM and kernel reclaim recorded separately. 8 physical contacts matched; user confirmed display/touch. Seventeen finished diagnostic/older-recovery files archived and removed; no firmware/SDK/driver/network/boot-service changes."
   ],
   "previous_serial_device": "/dev/ttyUSB2",
-  "serial_recheck_evidence": "evidence/nx5-showcase/2026-10-13/build-manifest.json",
-  "serial_rechecked_at_utc": "2026-10-13T01:41:24.113140+00:00",
+  "serial_recheck_evidence": "evidence/nx5-cleanup-deploy/2026-10-13/manifest.json",
+  "serial_rechecked_at_utc": "2026-10-13T13:16:34.433205+00:00",
   "scheduling": {
     "timer_quantum_us": 10000,
     "policy": "block before the final timer quantum, then poll events and the monotonic deadline",
@@ -227,7 +228,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "Final NEON CPU exhaustive lane/alpha and boundary checks, C real-framebuffer probe and production Rust writeback: 8601600 physical pixels exact in 14 final-page readbacks, 490 presentations total. 100 hardware-TDE memory pages max error 1. Six-page/ten-snapshot MCP, 900 completed presentations at 29 FPS, adjacent old/new CPU comparison, finite clean exit. No new WBC, video, evdev latency or optical scanout certification.",
+  "observation_scope": "c087071 deployment: six-page/ten-snapshot native MCP, 227 automated events, 8 physical contacts and 16 evdev-to-Slint edges, user-confirmed display/touch, normal finite exit and resident restore. Same stripped binary as 4a2eda2. No new WBC, framebuffer pixel, DMA fault, FPS or optical scanout measurement.",
   "hardware_regression": {
     "report": "docs/nx5-hardware.md",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -360,12 +361,12 @@
     }
   },
   "recovery_ui": {
-    "path": "/tmp/slint-bridge-shared-final/showcase",
-    "source_commit": "d34f436a8c2a8ba00a2c3a18a4c7a621fd0af182",
+    "path": "/tmp/slint-bridge-neon-final/showcase",
+    "source_commit": "4a2eda2b1330fa001d521bca6371d27f92db7347",
     "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
-    "sha256": "255226ed8d7362878b20a1d926d8dde07a06ea6864731f43805a0f2e3908bb40",
-    "startup_script": "/tmp/slint-bridge-shared-final/start-live.sh",
-    "procedure": "docs/nx5-neon-unpremultiply.md#常驻与回退"
+    "sha256": "729f5088bc670c74ddef6fa002d69859fd67e692e351286ae219ee5bc3c81b7f",
+    "startup_script": "/tmp/slint-bridge-neon-final/start-live.sh",
+    "procedure": "docs/nx5-cleanup-deploy.md#常驻与回退"
   },
   "alpha_validation": {
     "report": "docs/nx5-alpha.md",
@@ -583,5 +584,26 @@
     "finite_exit_mmz_kib": 4900,
     "finite_exit_mmz_blocks": 2,
     "finite_forced_mmz_cleanup": false
+  },
+  "cleanup_deployment_validation": {
+    "report": "docs/nx5-cleanup-deploy.md",
+    "evidence": "evidence/nx5-cleanup-deploy/2026-10-13/results.json",
+    "source_commit": "c0870718920558ee1dc6259fd34a4410adfa3ebd",
+    "stripped_binary_identical_to_neon": true,
+    "finite_pid": 12253,
+    "finite_exit_code": 0,
+    "finite_exit_mmz_kib": 4900,
+    "finite_exit_mmz_blocks": 2,
+    "mcp_pages": 6,
+    "mcp_snapshots": 10,
+    "mcp_events": 227,
+    "physical_contacts": 8,
+    "physical_edges": 16,
+    "physical_events": 265,
+    "physical_accepted": 251,
+    "physical_rejected": 14,
+    "physical_dropped": 0,
+    "physical_unknown": 0,
+    "physical_user_confirmation": "已完成，显示和触摸都正常"
   }
 }

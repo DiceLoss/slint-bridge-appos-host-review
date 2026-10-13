@@ -1,10 +1,10 @@
 # NX5 测试目标
 
-本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中路径相对于仓库根目录；最近收尾记录为 2026-10-13 的 NEON 反预乘优化（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
+本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中路径相对于仓库根目录；最近收尾记录为 2026-10-13 的清理版部署（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
 
-当前为 `4a2eda2` + Slint `22804ff`，路径 `/tmp/slint-bridge-neon-final/showcase`，观测 PID 6818，无退出定时器，trace 与 QuickFill 诊断开关关闭。半透明反预乘已用精确整数 NEON 加速，生产 Rust 整屏写页约 19.13 ms；累计 8601600 个实际页像素完全一致，六页/十张 MCP 截图、短列表 29.00 FPS 和正常退出通过。详见 [NEON 报告](../../../docs/nx5-neon-unpremultiply.md)。
+当前为 `c087071` + Slint `22804ff`，路径 `/tmp/slint-bridge-clean-c087071/showcase`，观测 PID 12364，无退出定时器，trace 与 QuickFill 诊断开关关闭。六页/十张 MCP 截图、8 次实体触摸的 evdev 配对和正常退出通过，用户确认显示与触摸正常。详见 [部署报告](../../../docs/nx5-cleanup-deploy.md)。
 
-恢复版本为 `/tmp/slint-bridge-shared-final/showcase`（`d34f436`）及其 `start-live.sh`。当前和恢复版本都使用共享 MMZ；新版只优化 CPU 转换，没有增加 MMZ 块或生产 TDE 写页。此前 TDE 格式转换调查与成绩保留在 [原报告](../../../docs/nx5-tde-writeback.md)。更早的 `fdb0f0e` 已校验归档；当前路径以 [保留策略](deploy-retain.json) 为准。
+恢复版本为 `/tmp/slint-bridge-neon-final/showcase`（`4a2eda2`）及其 `start-live.sh`；更早的 `d34f436` 已校验归档。清理版与上一版 strip 二进制逐字节一致；此前 NEON 半透明写页 19.13 ms、实际像素及列表 29 FPS 成绩保留在 [NEON 报告](../../../docs/nx5-neon-unpremultiply.md)，本轮未重新测量性能。当前路径以 [保留策略](deploy-retain.json) 为准。
 
 纯色版本的 [性能报告](../../../docs/nx5-showcase-performance.md) 和 [首次部署报告](../../../docs/nx5-showcase.md) 保留原场景与提交的数据，不改记为图片背景成绩。
 

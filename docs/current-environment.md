@@ -1,5 +1,13 @@
 # NX5 最近环境记录
 
+2026-10-13 清理版部署收尾：当前为 `c087071` + Slint `22804ff`，路径 `/tmp/slint-bridge-clean-c087071/showcase`，观测 PID **12364**。无退出定时器，trace、QuickFill 诊断、WBC 和观察器关闭；旧版 `/tmp/slint-bridge-neon-final/showcase`（`4a2eda2`）及启动脚本保留回退。两个 strip 二进制逐字节一致。
+
+六页/十张原生 MCP 截图、227 条自动交互事件和正常退出检查通过；实体输入录到 8 次接触，16 个边沿均与 Slint 配对，265 条事件无丢失。用户确认显示和触摸正常，Controls 滑块最终为 48%。17 个诊断/更早回退文件已归档校验后清理。详见 [本次部署报告](nx5-cleanup-deploy.md)；本轮没有重测 FPS、WBC 或物理页像素。
+
+设备仍为 USB1 / ADB `192.168.1.151:5555`、Linux #233，启动 ID `938c34d4-456a-4b1a-b532-678c0f92efd0`。操作前仍需重新核对实际身份、显示所有者和恢复文件。下方部署状态保留各阶段原始口径，不能用于当前进程操作。
+
+## 2026-10-13 NEON 优化记录（历史）
+
 2026-10-13 NEON 反预乘优化收尾：当前为 `4a2eda2` + Slint `22804ff`，路径 `/tmp/slint-bridge-neon-final/showcase`，观测 PID **6818**。无退出定时器，trace、WBC 和观察器关闭；恢复为 `/tmp/slint-bridge-shared-final/showcase`（`d34f436`）。
 
 真实探针的半透明整屏写页由 52.75 ms 降至 19.34 ms，alpha 渐变由 51.61 ms 降至 22.89 ms；生产 Rust 写页独立测得半透明 19.13 ms。两组最后页读回合计 8601600 像素完全一致，另有 100 帧真实 TDE＋内存双页对照通过。六页/十张 MCP 截图和短列表 29.00 FPS 通过；相邻无 trace CPU 对照为新版 76.35%、旧版 77.14%。首次带 trace 窗口的较高 CPU 值保留，不用于归因。有限进程正常退出并释放资源。完整范围见 [NEON 报告](nx5-neon-unpremultiply.md) 和 [设备快照](../test-app/devices/nx5/current-target.json)。
