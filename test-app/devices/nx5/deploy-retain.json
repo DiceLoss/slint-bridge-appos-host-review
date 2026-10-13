@@ -12,6 +12,6 @@
     "/tmp/slint-bridge-fill-fdb0f0e/start-live.sh",
     "/tmp/slint-bridge-fill-fdb0f0e/live.log",
     "/tmp/slint-bridge-shared-final/start-live.sh",
-    "/tmp/slint-bridge-shared-final/live.log"
+    "/tmp/slint-bridge-shared-final/live-after-writeback-final.log"
   ]
 }

@@ -166,3 +166,30 @@ sh test-app/tools/nx5/display/build-alpha-observer.sh
 按设备说明交叉构建 `--bin alpha-regression`，分别使用 `nx5` 和 `nx5-tde` 验证软件/TDE feature 的输出。部署插件和程序、确认原显示所有者退出后，设置同一个 SDK/字体环境和插件搜索路径，运行 `alpha-regression OUTPUT_DIRECTORY [--framebuffer=PATH] [--touch=PATH]`；输出目录必须已存在。可用 `run-alpha.sh BINARY_DIRECTORY tde|software` 保存资源和内核快照；目录内分别放置 `alpha-tde`、`alpha-software` 及插件，同一结果目录拒绝覆盖。成功返回 0，日志应有五个 `passed=true` 阶段、每帧 `bad=0`，保存五份 WBC CSV；在主机运行 `python3 test-app/tools/nx5/display/check-alpha.py <结果目录>` 核对实际页、样本完整性、误差和退出资源。此测试只接受对应 8×6 色块网格可整除的诊断尺寸，不限制库支持的面板大小。
 
 共享 MMZ 画布的面积、NEON 边界和真实写页回归入口见 [TDE 报告](../../../docs/nx5-tde.md#构建与接入)。真实写页测试使用生产像素转换与完成契约，交替呈现 210 帧色块；需独占显示，测完恢复常驻程序。NEON 边界项仅执行 CPU 转换，不加载 SDK。
+
+## TDE 转换与物理写页探针
+
+`probe-format.c` 只操作独立 MMZ，记录单次 TDE 转换的拒绝码和像素误差；`probe-writeback.c` 对照 CPU 直接写 framebuffer 与 CPU 转换 MMZ 后 TDE 拷贝。两者都会加载 SDK，必须先退出当前显示所有者，不能与展示程序或另一 SDK 进程并行。探针内部再次检查 VO 和独占锁。写页探针明确限定当前已验证的 1024×600、32 位 BGRA 模式，短暂显示测试图案；实测范围及结果见 [写页调查](../../../docs/nx5-tde-writeback.md)。
+
+从仓库根构建（使用当前 SDK 头文件）：
+
+```sh
+mkdir -p target/nx5-tde-writeback
+for name in probe-format probe-writeback; do
+  /opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-gcc \
+    -std=gnu11 -O2 -Wall -Wextra -Werror -march=armv7-a -mtune=cortex-a7 \
+    -mfpu=neon-vfpv4 -mfloat-abi=softfp \
+    -I /home/dpower/data/GitLab/LGUI3/c_library/third_party/include/NX5/codec \
+    "test-app/tools/nx5/tde/$name.c" -ldl -o "target/nx5-tde-writeback/$name"
+done
+```
+
+按本文件部署流程归档、上传后，在已独占显示的 root 终端逐个运行，示例路径需替换为实际部署目录：
+
+```sh
+LD_LIBRARY_PATH=/tmp/slint-bridge-c03c3bb/lib /tmp/slint-bridge-next/probe-format
+LD_LIBRARY_PATH=/tmp/slint-bridge-c03c3bb/lib /tmp/slint-bridge-next/probe-writeback \
+  /tmp/slint-bridge-c03c3bb/dev/panel
+```
+
+格式探针输出中的拒绝/像素不符是调查结果，其进程退出码 0 不表示所有格式可用。写页探针则对实际页、源画布和前台页进行断言；异常 SDK 返回立即停止后续写入，不在未知 DMA 状态下继续操作或关闭 SDK。正常结束后核对 VO、MMZ 和锁，再恢复已有 `start-live.sh`；归档并校验测试文件后清理设备副本。

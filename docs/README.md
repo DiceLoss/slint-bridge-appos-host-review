@@ -17,6 +17,7 @@
 
 | 记录 | 内容 |
 | --- | --- |
+| [TDE 写页与格式转换](nx5-tde-writeback.md) | 单次转换能力实测、CPU 转换后 TDE 写页对照、4915200 个实际页像素核验 |
 | [共享 MMZ 画布](nx5-shared-canvas.md) | CPU/TDE 共用映射、移除回拷、真实物理页写回和错误整帧重绘 |
 | [填充与整体透明度混合](nx5-fill-blend.md) | QuickFill 与 CPU 对照、整体 opacity 缓存、硬件像素及故障验证 |
 | [Controls 百分比圆环修复](nx5-controls-ring.md) | 固定整圈改为百分比圆弧，五档/两种状态及保留缓冲回退验证 |

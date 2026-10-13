@@ -1,5 +1,11 @@
 # NX5 最近环境记录
 
+2026-10-13 TDE 写页调查收尾：常驻仍为 `d34f436` + Slint `22804ff`，路径 `/tmp/slint-bridge-shared-final/showcase`，重新启动后观测 PID **20127**。本轮只新增诊断工具与报告，生产路径未改；无退出定时器，trace、WBC 和观察器关闭。恢复版本仍为 `fdb0f0e`。
+
+所需单次 TDE 转换未通过；CPU 转换 MMZ 后 TDE 拷贝的 4915200 个实际页像素完全一致，但四种图案均比 CPU/NEON 直接写页更慢。不透明全屏为 11.39 ms 对 6.61 ms，半透明为 66.36 ms 对 52.75 ms。独占探针正常退出并释放 VO/MMZ，随后原生 MCP 确认常驻恢复。完整范围与原始证据见 [TDE 写页调查](nx5-tde-writeback.md)，资源快照见 [current-target.json](../test-app/devices/nx5/current-target.json)。本轮没有新增展示 FPS、WBC 或实体触摸测量。
+
+## 2026-10-13 共享 MMZ 画布收尾（历史）
+
 2026-10-13 共享 MMZ 画布验证收尾：当前程序为 `d34f436` + Slint `22804ff`，路径 `/tmp/slint-bridge-shared-final/showcase`，观测 PID **6670**。无退出定时器，trace、QuickFill 诊断开关、WBC 和观察器关闭。恢复程序为 `/tmp/slint-bridge-fill-fdb0f0e/showcase`。身份、PID 和显示所有者在操作前仍须重新核对。
 
 CPU/TDE 已共用 SDK 的 cached MMZ 映射。真实物理页最终六组全幅共 3686400 像素完全一致；不透明全屏写页约 6.65 ms，旧式暂存对照约 14.69 ms。列表短窗口 900 次有效完成提交均为 29.00 FPS，CPU 约 76.8% 单核。六页 MCP 与十张截图通过，180 秒有限进程正常退出、MMZ 回到基线，无对应进程强制回收。

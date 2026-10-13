@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-13T09:52:57.200847+00:00",
+  "checked_at_utc": "2026-10-13T10:27:37.724637+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -130,7 +130,7 @@
   ],
   "running_ui": {
     "path": "/tmp/slint-bridge-shared-final/showcase",
-    "pid": 6670,
+    "pid": 20127,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -168,22 +168,22 @@
         "drag_element"
       ],
       "screenshot_status": "Six pages and ten guarded snapshots passed, 227 events with no dropped/unknown events. MCP bypasses hardware pixels and evdev.",
-      "restored_properties": "evidence/nx5-shared-canvas/2026-10-13/resident-ui.json"
+      "restored_properties": "evidence/nx5-tde-writeback/2026-10-13/resident-final-ui.json"
     },
-    "log": "/tmp/slint-bridge-shared-final/live.log",
+    "log": "/tmp/slint-bridge-shared-final/live-after-writeback-final.log",
     "source_commit": "d34f436a8c2a8ba00a2c3a18a4c7a621fd0af182",
     "fault_injection_enabled": false,
     "source_state": "Shared cached MMZ retained canvas; CPU and synchronous TDE use one allocation with cache ownership transfers. No MMZ-to-heap readback. Known completion failure repaints full frame; unknown DMA forbids access. Default CPU fill, NEON transparent output block. Resident has no exit timer.",
     "source_manifest": "evidence/nx5-shared-canvas/2026-10-13/manifest.json",
     "resources": {
-      "rss_kib": 14848,
-      "vm_hwm_kib": 15132,
+      "rss_kib": 14864,
+      "vm_hwm_kib": 15148,
       "vm_peak_kib": 33608,
       "threads": 3,
       "mmz_used_kib": 12100,
       "mmz_blocks": 5,
       "wbc_running": false,
-      "mem_available_kib": 45044
+      "mem_available_kib": 44936
     },
     "runtime_source_sha256": "4a37dda144d41ef5b7a1fe12420952fbae22dfebc51fb95171b43334fef31abb",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
@@ -192,7 +192,7 @@
     "slint_source_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
     "tde_fill_enabled": false
   },
-  "status": "shared_mmz_canvas_verified_resident",
+  "status": "shared_mmz_resident_after_tde_writeback_probe",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -208,7 +208,8 @@
     "2026-10-13 performance: same 308afe5 binary, native MCP automatic windows then physical evdev/MCP pairing. First long recording evicted 245 events; complete 240-event short window used. Restore PID 3765 safely rejected while old lock was retiring; after full owner/VO release PID 3782 started normally. Diagnostic files archived; f963558 recovery retained.",
     "2026-10-13 image background: 41f87b2 deployed and performance tested. List FPS fell to 20.365 while other dynamic scenes remained 29.00. Timed process 11893 expired while waiting for physical operation; resident PID 12090 restored without --seconds. User confirmed normal response. 308afe5 is recovery; older f963558 and diagnostics archived after verification.",
     "2026-10-13 fdb0f0e: QuickFill and global-opacity texture preparation verified. Twenty-two fill groups show CPU faster through 1024x600; QuickFill remains explicit opt-in. Native callback audit confirms accepted TDE primitives do not fall through to software rendering. Finite process 25598 exited cleanly; resident 25632 uses default fill with trace off. Kernel ring overlap, rather than whole-prefix matching, identifies the complete test window. Prior ring binary retained for recovery.",
-    "2026-10-13 shared MMZ: d34f436 resident PID 6670, no timer/trace/observer/WBC. Old staged fdb0f0e kept for recovery. Ring recovery and 16 other unused test/log files archived with SHA256 before cleanup. Finite shared run 3893 exited normally; signal-driven reclamation of old residents recorded separately."
+    "2026-10-13 shared MMZ: d34f436 resident PID 6670, no timer/trace/observer/WBC. Old staged fdb0f0e kept for recovery. Ring recovery and 16 other unused test/log files archived with SHA256 before cleanup. Finite shared run 3893 exited normally; signal-driven reclamation of old residents recorded separately.",
+    "2026-10-13 TDE writeback investigation: required ABGR8888 conversion rejected; tested alternatives fail output semantics. Exact CPU/MMZ conversion + TDE framebuffer copy verified but slower for all 4 patterns. Runtime remains d34f436. Probe exited normally; old residents 6670/12062/14723 were separately SIGTERM-stopped. Restore command marker timeout was verified as a successful launch via /proc and MCP; no duplicate SDK start. New resident PID 17394, no timer or trace. Final strengthened sentinel check passed again; resident restored as PID 20127 after separately stopping 17394."
   ],
   "previous_serial_device": "/dev/ttyUSB2",
   "serial_recheck_evidence": "evidence/nx5-showcase/2026-10-13/build-manifest.json",
@@ -224,7 +225,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "Real SDK shared MMZ rendering, independent fill area correctness and three-path timing, 100 hardware-TDE memory pages; CPU NEON exact boundaries; 210 real framebuffer presentations with six full final-page readbacks (3686400 pixels exact). Six-page/ten-snapshot native MCP check and short list window, finite clean exit. No new WBC, video, full-scene performance or evdev latency measurement.",
+  "observation_scope": "Current runtime binary unchanged (d34f436). This run tested standalone MMZ format-conversion probes and CPU/MMZ+TDE copy to real framebuffer: final sentinel probe had 280 presentations, 8 full final-page readbacks, 4915200 pixels exact with source/front unchanged. Hybrid path slower in all 4 patterns; no production writeback switch. Restored resident verified with native MCP. No new WBC, evdev timing or showcase FPS measurement.",
   "hardware_regression": {
     "report": "docs/nx5-hardware.md",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -539,5 +540,25 @@
     "list_completed_presentations": 900,
     "list_fps": 29.0,
     "list_cpu_percent": 76.83859071814604
+  },
+  "tde_writeback_validation": {
+    "report": "docs/nx5-tde-writeback.md",
+    "manifest": "evidence/nx5-tde-writeback/2026-10-13/manifest.json",
+    "single_operation_conversion_correct_paths": 0,
+    "format_combinations": 100,
+    "physical_pixels_compared": 4915200,
+    "physical_max_channel_error": 0,
+    "presentations": 280,
+    "hybrid_faster_patterns": 0,
+    "patterns": 4,
+    "opaque_cpu_direct_ms": 6.605071,
+    "opaque_cpu_mmz_tde_ms": 11.392669,
+    "alpha127_cpu_direct_ms": 52.751431,
+    "alpha127_cpu_mmz_tde_ms": 66.357082,
+    "normal_exit_mmz_kib": 4900,
+    "normal_exit_mmz_blocks": 2,
+    "normal_forced_mmz_cleanup": false,
+    "production_changes": false,
+    "nonzero_back_page_sentinel": true
   }
 }
