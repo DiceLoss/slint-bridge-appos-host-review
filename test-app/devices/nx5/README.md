@@ -1,8 +1,10 @@
 # NX5 测试目标
 
-本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中引用的仓库路径相对于仓库根目录；最近记录时间为 2026-10-12 18:32:20（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
+本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中路径相对于仓库根目录；最近收尾记录为 2026-10-13 09:41（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
 
-当前已部署 `f963558`，观测 PID 22475，路径 `/tmp/slint-bridge-alpha-f963558/display`。它修复了部署 `287da8c` 时发现的 NX5 alpha 量程问题；软件/TDE 实际页与黑底 WBC 通过，60 秒纹理运行稳定 29 FPS。基线实体触摸与修复版 MCP 交互的不同范围见 [透明 UI 部署实测](../../../docs/nx5-alpha.md)。任务开始时的 `2de9168` 程序及 `/tmp/slint-bridge-touch-2de9168/start-live.sh` 保留为回退。
+当前已部署六页展示应用 `308afe5`，路径 `/tmp/slint-bridge-showcase-308afe5/showcase`，观测 PID 30541。六页设备 MCP 检查和正常退出资源检查通过，用户确认显示和实体触摸正常；完整范围见 [展示应用报告](../../../docs/nx5-showcase.md)。`f963558` 及 `/tmp/slint-bridge-alpha-f963558/start-live.sh` 保留为回退。较早的 `2de9168` 已经校验归档。
+
+原 `f963558` 的 alpha 量程、实际页/WBC 和 29 FPS 成绩仍属于 [2026-10-12 透明 UI 实测](../../../docs/nx5-alpha.md)，不改记为六页新界面的测量。
 
 此前同进程初始化重试、VO/描述符清理、WBC 正负对照及纹理退出见 [审查修复实机报告](../../../docs/nx5-review-fixes.md)；当时截图 OOM 及清理后 [十次截图复验](../../../docs/nx5-screenshot-memory.md) 保留原始记录。双页像素和三项独立 ignored 测试等也保留各自此前报告口径，不作为本次触摸部署的新结果。
 
