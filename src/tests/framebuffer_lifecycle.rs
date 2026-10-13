@@ -186,8 +186,7 @@ fn installed_platform_exit(exit: Exit) {
             framebuffer,
             inputs,
             Vec::new(),
-        )
-        .unwrap();
+        );
         slint::platform::set_platform(Box::new(platform)).unwrap();
         let app = ExitScene::new().unwrap();
         if matches!(exit, Exit::ShowError) {

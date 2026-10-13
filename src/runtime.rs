@@ -155,7 +155,7 @@ impl BridgePlatform {
             input.resync(&mut initial_events)?;
             inputs.push(input);
         }
-        let mut platform = Self::with_inputs(config, framebuffer, inputs, initial_events)?;
+        let mut platform = Self::with_inputs(config, framebuffer, inputs, initial_events);
         platform.timer_quantum = timer_quantum;
         Ok(platform)
     }
@@ -165,10 +165,10 @@ impl BridgePlatform {
         framebuffer: Framebuffer,
         inputs: Vec<Evdev>,
         initial_events: Vec<WindowEvent>,
-    ) -> Result<Self, Error> {
+    ) -> Self {
         let wake = framebuffer.wake();
         let size = config.rotation.logical_size(framebuffer.layout.size);
-        Ok(Self {
+        Self {
             window: RefCell::new(Weak::new()),
             size,
             rotation: config.rotation,
@@ -180,7 +180,7 @@ impl BridgePlatform {
             timer_quantum: Duration::ZERO,
             created: Cell::new(false),
             running: Cell::new(false),
-        })
+        }
     }
 
     fn run(&self) -> Result<(), Error> {

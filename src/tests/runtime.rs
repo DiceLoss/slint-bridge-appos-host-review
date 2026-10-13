@@ -49,8 +49,7 @@ fn queued_callbacks_yield_to_touch_before_finishing_the_backlog() {
             decoder: super::input::touch_decoder(Rotation::None),
         }],
         Vec::new(),
-    )
-    .unwrap();
+    );
     slint::platform::set_platform(Box::new(platform)).unwrap();
     let ui = LoopScene::new().unwrap();
     ui.invoke_focus_keys();
@@ -175,8 +174,7 @@ fn event_loop_runs_callbacks_and_timers_during_flip_and_reports_idle_failure() {
         target.fb,
         Vec::new(),
         Vec::new(),
-    )
-    .unwrap();
+    );
     let wake = platform.wake.clone();
     slint::platform::set_platform(Box::new(platform)).unwrap();
     let ui = LoopScene::new().unwrap();
@@ -258,8 +256,7 @@ fn event_loop_preserves_ui_and_pending_presentation_errors() {
         target.fb,
         Vec::new(),
         Vec::new(),
-    )
-    .unwrap();
+    );
     let wake = platform.wake.clone();
     slint::platform::set_platform(Box::new(platform)).unwrap();
     let ui = LoopScene::new().unwrap();
@@ -335,8 +332,7 @@ fn real_event_loop_handles_evdev_timers_cross_thread_updates_and_quit() {
             decoder,
         }],
         Vec::new(),
-    )
-    .unwrap();
+    );
     let queue = platform.wake.clone();
     slint::platform::set_platform(Box::new(platform)).unwrap();
     let ui = LoopScene::new().unwrap();
@@ -441,8 +437,7 @@ fn failed_show_can_retry_without_losing_tasks_or_explicit_quit() {
         target.fb,
         Vec::new(),
         Vec::new(),
-    )
-    .unwrap();
+    );
     slint::platform::set_platform(Box::new(platform)).unwrap();
     let called = Arc::new(AtomicBool::new(false));
     let observed = called.clone();
@@ -521,8 +516,7 @@ fn event_loop_accepts_deferred_window_creation() {
         target.fb,
         Vec::new(),
         Vec::new(),
-    )
-    .unwrap();
+    );
     slint::platform::set_platform(Box::new(platform)).unwrap();
     let root = Arc::new(Mutex::new(None));
     let created = root.clone();
@@ -608,8 +602,7 @@ fn rerun_redraws_current_state_before_presenting() {
         target.fb,
         Vec::new(),
         Vec::new(),
-    )
-    .unwrap();
+    );
     let wake = platform.wake.clone();
     slint::platform::set_platform(Box::new(platform)).unwrap();
     let ui = LoopScene::new().unwrap();
