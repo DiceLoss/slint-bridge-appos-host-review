@@ -75,6 +75,8 @@ class Client:
 def exercise(client, output):
     client.window, = client.data("list_windows")["windowHandles"]
     client.root = client.data("get_window_properties", windowHandle=client.window)["rootElementHandle"]
+    client.click("Showcase::nav-overview")
+    client.expect_text("The interface, in motion")
     client.call("start_event_recording", windowHandle=client.window)
     client.screenshot(output, "01-overview")
     client.click("Showcase::nav-controls")

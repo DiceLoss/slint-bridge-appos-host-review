@@ -1,12 +1,12 @@
 {
-  "current_binary": "/tmp/slint-bridge-showcase-308afe5/showcase",
-  "recovery_binary": "/tmp/slint-bridge-alpha-f963558/display",
+  "current_binary": "/tmp/slint-bridge-image-41f87b2/showcase",
+  "recovery_binary": "/tmp/slint-bridge-showcase-308afe5/showcase",
   "keep": [
+    "/tmp/slint-bridge-image-41f87b2/start-live.sh",
+    "/tmp/slint-bridge-image-41f87b2/live.log",
     "/tmp/slint-bridge-showcase-308afe5/start-live.sh",
     "/tmp/slint-bridge-showcase-308afe5/live.log",
     "/tmp/slint-bridge-showcase-308afe5/live-after-performance-2.log",
-    "/tmp/slint-bridge-alpha-f963558/start-live.sh",
-    "/tmp/slint-bridge-alpha-f963558/live.log",
     "/tmp/slint-bridge-c03c3bb/start-live.sh",
     "/tmp/slint-bridge-c03c3bb/lib",
     "/tmp/slint-bridge-c03c3bb/dev",

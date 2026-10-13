@@ -1,6 +1,12 @@
 # NX5 最近环境记录
 
-2026-10-13 本轮性能测试收尾：仍运行同一 `308afe5` 展示二进制，最新观测 PID **3782**，日志 `/tmp/slint-bridge-showcase-308afe5/live-after-performance-2.log`；已恢复关闭 trace 的常驻模式，观察器与事件录制均结束，`f963558` 回退保留。当前机器可读状态见 [current-target.json](../test-app/devices/nx5/current-target.json)。
+2026-10-13 图片背景复测收尾：当前为 `41f87b2`，路径 `/tmp/slint-bridge-image-41f87b2/showcase`，观测 PID **12090**，无退出定时器。trace、输入观察器、事件录制和 WBC 已关闭；纯色 `308afe5` 保留作回退。机器可读快照见 [current-target.json](../test-app/devices/nx5/current-target.json)。
+
+实际 PNG 背景和半透明界面下，动画/透明混合仍为 29.00 FPS，列表约 20.37 FPS、CPU 接近单核 100%，动态 RSS 约 20.5 MiB。实体共同采样区间 16 次接触，处理时延中位数 2.755 ms、最高 55.580 ms；用户确认恢复后的常驻界面响应正常。首次等待实体操作时有限测试到期造成空窗，现已恢复常驻，详情及所有测量边界见 [图片背景报告](nx5-image-background.md)。
+
+## 2026-10-13 纯色展示性能收尾（历史）
+
+2026-10-13 纯色版本性能测试收尾：该轮运行 `308afe5` 展示二进制，当时观测 PID **3782**，日志 `/tmp/slint-bridge-showcase-308afe5/live-after-performance-2.log`；已恢复关闭 trace 的常驻模式，观察器与事件录制均结束，`f963558` 回退保留。该轮详细数据见 [纯色性能报告](nx5-showcase-performance.md)。
 
 动画、列表、两种透明场景共 6150 次有效完成提交，日志精度下均为 29.00 FPS；动态 RSS 约 13.9 MiB。完整实体短窗口 240 条事件全部 Accepted、零丢失；14 条 evdev 边沿配对的中位时延 1.756 ms，最高 59.734 ms 出现在 Motion → Devices 切页抬起，含量化裕量为 60.734 ms。范围、原始记录覆盖与恢复时的一次安全拒绝见 [性能报告](nx5-showcase-performance.md)。以下保留此前采集口径，不能沿用旧 PID。
 
