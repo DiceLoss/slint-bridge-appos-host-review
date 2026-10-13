@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-13T05:42:55.986137+00:00",
+  "checked_at_utc": "2026-10-13T06:24:04.149393+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -105,7 +105,7 @@
       0,
       600
     ],
-    "physical_touch_validation": "On the optimized resident build, user physically switched Overview/Devices/Layers and scrolled: fluent scrolling and synchronized titles. No new evdev-to-dispatch latency sample; previous measured samples remain scoped to41f87b2.",
+    "physical_touch_validation": "Prioracab18a+Slint22804ff: user confirmed fluent physical scrolling and synchronized titles. Current0e8516d ring update checked via native MCP; no new evdev latency or physical-ring confirmation recorded.",
     "physical_touch_evidence": "evidence/nx5-image-optimization/2026-10-13/user-observation.json",
     "prior_physical_touch_validation": "287da8c baseline: 12 physical contacts, 49 Slint events Accepted, zero dropped; 24 contact edges matched, maximum timestamp delta 10.209 ms (1 ms precision; conservative bound 11.3 ms). User reported timely pause/resume. f963558: the finite recording window had zero events; the user subsequently confirmed the requested 4 physical taps responded normally, without a new latency sample. Its 3 native MCP pause/resume cycles passed with 24 Accepted events.",
     "prior_physical_touch_evidence": "evidence/nx5-alpha-deploy/2026-10-12-287da8c/results.json",
@@ -129,8 +129,8 @@
     }
   ],
   "running_ui": {
-    "path": "/tmp/slint-bridge-image-opt-22804ff/showcase",
-    "pid": 31200,
+    "path": "/tmp/slint-bridge-ring-0e8516d/showcase",
+    "pid": 6967,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -140,12 +140,12 @@
       "--framebuffer=/tmp/slint-bridge-c03c3bb/dev/panel",
       "--touch=/tmp/slint-bridge-c03c3bb/dev/touch"
     ],
-    "sha256": "debd6958f962f2f3f61cca65e9f1650e41547bfd8f9616f178082b2ca948ea7b",
+    "sha256": "ed17b5242a781b84d8242d2633e809c283ef902a3a16f5b7d57a6be72454a7ae",
     "frame_interval_us": 16667,
     "trace_enabled": false,
     "last_observed_fps": null,
     "fps_evidence": "evidence/nx5-image-optimization/2026-10-13/automatic-verified/phases.json",
-    "fps_note": "Completed presentations: list29.00, motion28.98, blend28.97, cutout28.90 FPS; CPU list median94.56% of one core. Scene-specific measurements, not UI ticks.",
+    "fps_note": "No new performance measurement for0e8516d. The referenced list29FPS/motion28.98/blend28.97/cutout28.90 results remain scoped to prioracab18a+Slint22804ff.",
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
@@ -153,7 +153,7 @@
       "forward": "adb -s 192.168.1.151:5555 forward tcp:19315 tcp:9315",
       "tools_available": 18,
       "tools_exercised": 11,
-      "verification": "evidence/nx5-image-optimization/2026-10-13/device-ui-resident/summary.json",
+      "verification": "evidence/nx5-ring/2026-10-13/device/results.json",
       "exercised_tools": [
         "list_windows",
         "get_window_properties",
@@ -167,24 +167,24 @@
         "set_element_value",
         "take_screenshot"
       ],
-      "screenshot_status": "Guarded native captures. Three real active-page comparisons after cache fix: 1843200 pixels, exact match including title and NX5 alpha encoding.",
-      "final_screenshot": "evidence/nx5-image-optimization/2026-10-13/resident-overview.png",
-      "restored_properties": "evidence/nx5-image-optimization/2026-10-13/resident-window.json"
+      "screenshot_status": "Ten guarded native ring screenshots: five percentages in On/Off; colored area and clockwise quadrants passed. This is not a new physical framebuffer/WBC sample.",
+      "final_screenshot": "evidence/nx5-ring/2026-10-13/restored.png",
+      "restored_properties": "evidence/nx5-ring/2026-10-13/device/restored.json"
     },
-    "log": "/tmp/slint-bridge-image-opt-22804ff/live.log",
-    "source_commit": "acab18a622b79a0b904b60df00777f6a6813b858",
+    "log": "/tmp/slint-bridge-ring-0e8516d/live.log",
+    "source_commit": "0e8516decb8a82b6eb31d2246d877001f8f3ab38",
     "fault_injection_enabled": false,
-    "source_state": "Optimized photo UI plus Slint text-cache invalidation fix; resident with no exit timer. User confirmed fluent scrolling and synchronized page titles.",
-    "source_manifest": "evidence/nx5-image-optimization/2026-10-13/manifest-verified.json",
+    "source_state": "Controls ring follows configured percentage clockwise; five values in both power states checked via native MCP; prior level96.46754 and powerOn restored. Resident without exit timer, traceoff.",
+    "source_manifest": "evidence/nx5-ring/2026-10-13/manifest.json",
     "resources": {
-      "rss_kib": 18584,
-      "vm_hwm_kib": 23372,
-      "vm_peak_kib": 41084,
+      "rss_kib": 17228,
+      "vm_hwm_kib": 22036,
+      "vm_peak_kib": 40000,
       "threads": 3,
       "mmz_used_kib": 12100,
       "mmz_blocks": 5,
       "wbc_running": false,
-      "mem_available_kib": 40308
+      "mem_available_kib": 42552
     },
     "runtime_source_sha256": "4a37dda144d41ef5b7a1fe12420952fbae22dfebc51fb95171b43334fef31abb",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
@@ -192,7 +192,7 @@
     "performance_manifest": "evidence/nx5-image-optimization/2026-10-13/manifest-verified.json",
     "slint_source_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6"
   },
-  "status": "image_scroll_optimized_and_cache_repaint_fixed_resident",
+  "status": "controls_ring_progress_fixed_resident",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -222,7 +222,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "acab18a + Slint22804ff. Final four-scene performance6300 valid completed frames; list29FPS and17.0MiB RSS; TDE backgroundcopy/cache errors0. Three full active-page images1843200pixels exactly match CPU reference. User physical response normal. Finite31000 normalexit releasesTDE MMZ; finalresident31200 traceoff. No new WBC/LCD or evdev latency certification.",
+  "observation_scope": "0e8516d Controls progress ring fix on sameNX5 andSlint22804ff. Five percentage states and On/Off checked via native MCP; host reused-buffer shrinking/growing pixel regression passed. Earlier full performance/physical-page results remain scoped toacab18a. No new full performance/WBC/evdev latency measurement.",
   "hardware_regression": {
     "report": "docs/nx5-hardware.md",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -355,11 +355,12 @@
     }
   },
   "recovery_ui": {
-    "path": "/tmp/slint-bridge-image-41f87b2/showcase",
-    "source_commit": "41f87b20d1c9189e9adcddb3954014a41596f67f",
-    "sha256": "5b9e1b85763a2a2c3c2f58d4aa7bfad89159ea4d14e753b9a5926da0fb37a334",
-    "startup_script": "/tmp/slint-bridge-image-41f87b2/start-live.sh",
-    "procedure": "docs/nx5-image-optimization.md#常驻与回退"
+    "path": "/tmp/slint-bridge-image-opt-22804ff/showcase",
+    "source_commit": "acab18a622b79a0b904b60df00777f6a6813b858",
+    "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
+    "sha256": "debd6958f962f2f3f61cca65e9f1650e41547bfd8f9616f178082b2ca948ea7b",
+    "startup_script": "/tmp/slint-bridge-image-opt-22804ff/start-live.sh",
+    "procedure": "docs/nx5-controls-ring.md#部署与资料"
   },
   "alpha_validation": {
     "report": "docs/nx5-alpha.md",
@@ -471,5 +472,33 @@
     "finite_exit_mmz_kib": 4900,
     "finite_exit_mmz_blocks": 2,
     "physical_feedback": "evidence/nx5-image-optimization/2026-10-13/user-observation.json"
+  },
+  "controls_ring_validation": {
+    "report": "docs/nx5-controls-ring.md",
+    "source_commit": "0e8516decb8a82b6eb31d2246d877001f8f3ab38",
+    "binary_sha256": "ed17b5242a781b84d8242d2633e809c283ef902a3a16f5b7d57a6be72454a7ae",
+    "evidence": "evidence/nx5-ring/2026-10-13/device/results.json",
+    "percentages": [
+      0,
+      25,
+      50,
+      75,
+      100
+    ],
+    "power_states": [
+      true,
+      false
+    ],
+    "snapshot_checks": 10,
+    "host_reused_buffer_sequence": [
+      100,
+      75,
+      25,
+      0,
+      50,
+      100
+    ],
+    "restored_value": 96.46754,
+    "restored_power": true
   }
 }

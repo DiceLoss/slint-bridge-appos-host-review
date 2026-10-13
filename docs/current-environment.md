@@ -1,6 +1,12 @@
 # NX5 最近环境记录
 
-2026-10-13 图片列表优化收尾：当前为桥接工程 `acab18a` + Slint `22804ff`，路径 `/tmp/slint-bridge-image-opt-22804ff/showcase`，观测 PID **31200**，无退出定时器；trace、观察器、WBC 和事件录制均关闭。回退保留原图片版 `41f87b2`。实际状态与资源见 [current-target.json](../test-app/devices/nx5/current-target.json)，恢复时必须重新核对 PID 和显示所有者。
+2026-10-13 圆环用例修复收尾：当前程序为 `0e8516d`，路径 `/tmp/slint-bridge-ring-0e8516d/showcase`，观测 PID **6967**，使用同一 Slint `22804ff`。Controls 圆环已绑定配置百分比，五档/两种配色的原生 MCP 与主机保留缓冲回归通过；切换前数值及开关已恢复。无退出定时器，trace、观察器和 WBC 关闭。回退为上一版 `/tmp/slint-bridge-image-opt-22804ff/showcase`。详情见 [圆环修复](nx5-controls-ring.md)，实际快照及恢复前提见 [current-target.json](../test-app/devices/nx5/current-target.json)。
+
+本轮未重复全场景性能或物理页测量；下方 29 FPS 与实际页成绩继续保留优化版的原有范围。
+
+## 2026-10-13 图片列表优化收尾（历史）
+
+2026-10-13 图片列表优化收尾：该轮为桥接工程 `acab18a` + Slint `22804ff`，路径 `/tmp/slint-bridge-image-opt-22804ff/showcase`，观测 PID **31200**，无退出定时器；trace、观察器、WBC 和事件录制均关闭。回退保留原图片版 `41f87b2`。实际状态与资源见 [current-target.json](../test-app/devices/nx5/current-target.json)，恢复时必须重新核对 PID 和显示所有者。
 
 最终列表 **29.00 FPS**，其余三场景 28.90–28.98 FPS；列表动态 RSS 17.0 MiB、CPU 中位数 94.6% 单核。真实页三组 1843200 像素完全匹配软件参考；测试发现并修复了 Slint 文字缓存淘汰后的标题漏刷。用户确认“滑动流畅，标题同步正常”。实测范围、临时文件空间不足的失败样本和清理过程见 [优化报告](nx5-image-optimization.md)。
 

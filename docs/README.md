@@ -17,6 +17,7 @@
 
 | 记录 | 内容 |
 | --- | --- |
+| [Controls 百分比圆环修复](nx5-controls-ring.md) | 固定整圈改为百分比圆弧，五档/两种状态及保留缓冲回退验证 |
 | [图片列表优化与像素复测](nx5-image-optimization.md) | 图片格式/TDE 对照、精确 NEON 混合、缓存淘汰导致的标题漏刷与实际页核验 |
 | [图片背景部署与性能复测](nx5-image-background.md) | `41f87b2` 实际 PNG 背景与半透明界面；列表约 20.37 FPS、其余场景 29 FPS、RSS/CPU 和实体输入对照 |
 | [展示应用性能实测](nx5-showcase-performance.md) | `308afe5` 动画/列表/透明交互的完成提交帧率、CPU/RSS、实体触摸配对及切页时延 |
