@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include "../../../../src/backends/nx5/tde/native.c"
+static int operation;
 static int fault, cancels, ends, frees, closes, flushes;
 static int free_fault;
 static void *unreleased;
@@ -17,9 +18,21 @@ static FY_S32 copy(TDE_HANDLE job,TDE2_SURFACE_S *s,TDE2_RECT_S *sr,TDE2_SURFACE
     memset(current->target.ptr, 0x37, current->bytes); /* Simulate a partial scratch write. */
     return fault==2 || fault==3 ? -102 : 0;
 }
+static FY_S32 fill(TDE_HANDLE job, TDE2_SURFACE_S *d, TDE2_RECT_S *dr, FY_U32 color) {
+    assert(color == 0x7f6b3917u);
+    return copy(job, d, dr, d, dr);
+}
+static FY_S32 blend(TDE_HANDLE job, TDE2_SURFACE_S *bg, TDE2_RECT_S *br,
+    TDE2_SURFACE_S *fg, TDE2_RECT_S *fr, TDE2_SURFACE_S *d, TDE2_RECT_S *dr, TDE2_OPT_S *opt) {
+    (void)bg; (void)br;
+    assert(opt->stBlendOpt.bPixelAlphaEnable && !opt->stBlendOpt.bGlobalAlphaEnable);
+    assert(!opt->stBlendOpt.bSrc2AlphaPremulti);
+    for (unsigned i = 0; i < 64; ++i) assert(((uint8_t *)current->source[0].ptr)[i] == 127);
+    return copy(job, fg, fr, d, dr);
+}
 static FY_S32 flush(FY_U32 p,FY_VOID *v,FY_U32 n) {
     (void)p;(void)v;assert(n); ++flushes;
-    return fault==5 && flushes==3 ? -105 : 0;
+    return fault==5 && flushes==(operation == 2 ? 2 : 3) ? -105 : 0;
 }
 static FY_S32 free_mmz(FY_U32 p,FY_VOID *v) {
     (void)p; ++frees;
@@ -65,6 +78,38 @@ static void test_span_blending(void) {
     }
     puts("PASS span-blend exact Slint RGBA, all alpha pairs, lengths=0..65 alignments=0..3 and guards");
 }
+static void test_prepare_rgba(void) {
+    for (unsigned premul=0;premul<2;++premul) {
+        for (unsigned alpha=0;alpha<256;++alpha) {
+            uint8_t source[256*4], actual[256*4], expected[256*4];
+            for (unsigned a=0;a<256;++a) {
+                for (unsigned c=0;c<3;++c) source[a*4+c]=(a*37+c*83)&255;
+                source[a*4+3]=a;
+                unsigned effective=a*alpha/255;
+                for (unsigned c=0;c<3;++c)
+                    expected[a*4+c]=source[a*4+c]*(premul ? alpha : effective)/255;
+                expected[a*4+3]=effective;
+            }
+            bridge_prepare_rgba(actual,source,256,premul,alpha);
+            assert(!memcmp(actual,expected,sizeof actual));
+        }
+    }
+    for (unsigned n=0;n<=65;++n) {
+        for (unsigned shift=0;shift<4;++shift) {
+            uint8_t source[65*4+8], actual[65*4+8], expected[65*4+8];
+            memset(source,173,sizeof source);memset(actual,0xa5,sizeof actual);
+            memcpy(expected,actual,sizeof actual);
+            for (unsigned i=0;i<n;++i) {
+                unsigned a=173*127/255;
+                for (unsigned c=0;c<3;++c) expected[shift+i*4+c]=173*a/255;
+                expected[shift+i*4+3]=a;
+            }
+            bridge_prepare_rgba(actual+shift,source+shift,n,0,127);
+            assert(!memcmp(actual,expected,sizeof actual));
+        }
+    }
+    puts("PASS source preparation straight/premultiplied all alpha pairs, lengths=0..65, alignments=0..3 and guards");
+}
 static void test_sdk_loading(void) {
     int error;
     /* A visible SDK must not be loaded by TDE before the display owns it. */
@@ -90,6 +135,7 @@ int main(int argc, char **argv) {
         return 0;
     }
     test_span_blending();
+    test_prepare_rgba();
     uint32_t reciprocals[256] = {0};
     for (unsigned alpha = 1; alpha < 256; ++alpha)
         reciprocals[alpha] = ((255u << 16) + alpha - 1) / alpha;
@@ -135,20 +181,25 @@ int main(int argc, char **argv) {
     }
     }
     puts("PASS pixel-conversion alpha_max=128/255 all channel/alpha pairs, lengths=0..65 alignments=0..3 guards/source unchanged");
+    for (operation=0;operation<3;++operation) {
     for(fault=0;fault<=5;++fault) {
         cancels=ends=frees=closes=flushes=0;
         Engine *e=calloc(1,sizeof(*e)); current=e;
         e->api.FY_TDE2_BeginJob=begin; e->api.FY_TDE2_CancelJob=cancel;
         e->api.FY_TDE2_EndJob=end_job; e->api.FY_TDE2_QuickCopy=copy;
+        e->api.FY_TDE2_QuickFill=fill; e->api.FY_TDE2_Bitblit=blend;
         e->api.FY_MPI_SYS_MmzFlushCache=flush; e->api.FY_MPI_SYS_MmzFree=free_mmz;
         e->api.FY_TDE2_Close=close_tde; e->opened=1;
         e->width=4;e->height=4;e->bytes=64;
         e->target.ptr=calloc(1,64); e->source[0].ptr=calloc(1,64);
         uint8_t pixels[64], source[64];memset(pixels,0xa5,64);memset(source,255,64);
+        if (operation == 1) for (unsigned i=3;i<64;i+=4) pixels[i]=255;
+        uint8_t before[64];memcpy(before,pixels,64);
         BridgeRect rect={0,0,0,0,4,4}; int error;
-        int result=bridge_tde_draw(e,pixels,source,4,4,16,0,0,1,&rect,1,&error);
-        if(!fault) { assert(result==0);for(unsigned i=0;i<64;++i) assert(pixels[i]==0x37); }
-        else { assert(result<0);for(unsigned i=0;i<64;++i) assert(pixels[i]==0xa5); }
+        int result=operation == 2 ? bridge_tde_fill(e,pixels,0x7f6b3917u,&rect,1,&error) :
+            bridge_tde_draw(e,pixels,source,4,4,16,0,operation == 1 ? 127 : 255,0,1,&rect,1,&error);
+        if(!fault) { assert(result==(operation == 1));for(unsigned i=0;i<64;++i) assert(pixels[i]==(operation == 1 && i%4 == 3 ? 255 : 0x37)); }
+        else { assert(result<0);assert(!memcmp(pixels,before,64)); }
         assert(cancels==(fault==2 || fault==3));
         assert(ends==(fault==0 || fault==4 || fault==5));
         if(fault==3 || fault==4) {
@@ -158,7 +209,8 @@ int main(int argc, char **argv) {
             e->quarantined=0;
         } else assert(!e->quarantined);
         bridge_tde_destroy(e); assert(frees==2 && closes==1);
-        printf("PASS fault=%d result=%d sdk=%d\n",fault,result,error);
+        printf("PASS operation=%d fault=%d result=%d sdk=%d\n",operation,fault,result,error);
+    }
     }
     for (free_fault=1;free_fault<=2;++free_fault) {
         frees=closes=0; in_use=1;

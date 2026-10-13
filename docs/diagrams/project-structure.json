@@ -124,7 +124,7 @@
       "width": 400,
       "height": 70,
       "label": "tde/mod.rs",
-      "sublabel": "可选纹理加速 · 缓存 · 软件回退",
+      "sublabel": "填充 / 纹理 · 缓存 · 软件回退",
       "fill": "#fff7ed",
       "stroke": "#fdba74",
       "flat": true

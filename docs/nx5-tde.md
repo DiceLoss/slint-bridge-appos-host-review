@@ -1,6 +1,6 @@
 # NX5 TDE 接入与实机验证
 
-> 性能表和测试计数是 TDE 初次接入阶段的记录。后续整屏优化达到约 29 FPS，NX5 专用限帧也已移除；现行运行行为见 [平台说明](software-platform.md)。下方绘制范围和构建命令与当前实现一致，原始证据为不随 Git 分发的本地档案。
+> 性能表和测试计数是 TDE 初次接入阶段的记录。后续整屏优化达到约 29 FPS，NX5 专用限帧也已移除；现行运行行为见 [平台说明](software-platform.md)。现行绘制范围见本文对应小节及平台说明，构建命令与当前实现一致，原始证据为不随 Git 分发的本地档案。
 
 `nx5-tde` 已接入当前 NX5 #233 固件，并通过真实硬件绘制、软件参考图像、缓存更新、双页输出和软件回退验证。该 feature 包含 `nx5`；应用仍使用相同的 `init(Config)` 和 Slint 组件 API。
 
@@ -26,9 +26,11 @@
 
 ## 绘制范围与精度
 
-加速入口是本地 Slint 1.18.1 的 `TargetPixelBuffer::draw_texture()`，支持 RGBA 和预乘 RGBA 的等尺寸纹理。当前策略仅提交不少于 32768 个有效像素、最多 16 个互不重叠裁剪矩形的操作。源宽需为 4 的倍数，源高需为偶数，且源尺寸不能超过目标画布。复制使用 `FY_TDE2_QuickCopy`；透明混合使用 `FY_TDE2_Bitblit`，混合的坐标和尺寸需为偶数，目标像素需不透明。
+纹理加速入口是本地 Slint 1.18.1 的 `TargetPixelBuffer::draw_texture()`，支持 RGBA 和预乘 RGBA 的等尺寸纹理。当前策略仅提交不少于 32768 个有效像素、最多 16 个互不重叠裁剪矩形的操作。源宽需为 4 的倍数，源高需为偶数，且源尺寸不能超过目标画布。复制使用 `FY_TDE2_QuickCopy`；透明混合使用 `FY_TDE2_Bitblit`，混合的坐标和尺寸需为偶数，目标像素需不透明。
 
-缩放、旋转、整体透明度、着色、平铺、其他源格式、小图和不满足硬件限制的裁剪返回软件 renderer 处理。矩形、字体、路径等仍使用 Slint 软件实现。不会为了满足硬件对齐而扩大绘制区域。
+整体透明度现已支持：准备源像素时合并 opacity，并把 opacity 纳入两槽缓存键；不直接使用 SDK 的全局 alpha 开关。缩放、旋转、着色、平铺、其他源格式、小图和不满足硬件限制的裁剪返回软件 renderer 处理。字体、路径、圆角/透明矩形继续使用软件实现，不扩大裁剪区域。
+
+`TargetPixelBuffer::fill_background()` / `draw_rectangle()` 已连接 `FY_TDE2_QuickFill`，正常运行保留更快的 CPU 填充，可用 `SLINT_BRIDGE_TDE_FILL=1` 进行显式硬件对照。适用区域、默认策略和精度以 [平台说明](software-platform.md) 为准；本轮像素和耗时见 [2026-10-13 填充/混合报告](nx5-fill-blend.md)。
 
 实测不透明复制、源图写时复制更新和软件回退均与参考图像逐字节一致。单次透明纹理混合的 RGB 最大通道差为 **1/255**，alpha 与软件一致。硬件与软件的混合取整并非逐字节相同，连续叠层可能积累量化误差。
 
@@ -77,7 +79,7 @@ SLINT_BRIDGE_TRACE=1 LD_LIBRARY_PATH=/system/app/clib \
 /run/slint-bridge-tde/display-tde --textures --touch=/dev/input/event0
 ```
 
-上述设备命令约定已将构建输出 `target/arm-unknown-linux-gnueabi/release/display` 部署并命名为 `display-tde`。`SLINT_BRIDGE_TRACE` 只要被设置就启用统计：每 150 次完成提交报告 FPS，每 150 次绘制报告 TDE 纹理复制、混合、软件纹理回调、缓存命中和错误计数；`software` 不是全部软件绘制操作的数量。禁用 TDE 时构建 `--features nx5` 即可。日常统一部署路径见 [NX5 设备说明](../test-app/devices/nx5/README.md)，UI 截图使用 [Slint MCP](slint-mcp.md)。
+上述设备命令约定已将构建输出 `target/arm-unknown-linux-gnueabi/release/display` 部署并命名为 `display-tde`。`SLINT_BRIDGE_TRACE` 只要被设置就启用统计：每 150 次完成提交报告 FPS，每 150 次绘制报告 TDE 纹理复制、混合、软件纹理回调、缓存命中、错误及填充计数；`software` 不是全部软件绘制操作的数量。禁用 TDE 时构建 `--features nx5` 即可。日常统一部署路径见 [NX5 设备说明](../test-app/devices/nx5/README.md)，UI 截图使用 [Slint MCP](slint-mcp.md)。
 
 实机回归是忽略测试，需先退出显示所有者，并逐项单独运行：
 
@@ -90,7 +92,9 @@ export SLINT_DEFAULT_FONT=/run/slint-bridge-display/DejaVuSans.ttf
 export LD_LIBRARY_PATH=/system/app/clib
 ./tde-tests backends::nx5::tde::tests::nx5_hardware_compare --exact --ignored --nocapture
 ./tde-tests backends::nx5::tde::tests::nx5_demo_pages_match_full_frames --exact --ignored --nocapture
-# 第三个实机测试只交替现有页，不写像素：
+# 面积/形状阶梯：真实 TDE，比较完整回拷成本，不写物理显示页。
+./tde-tests backends::nx5::tde::tests::nx5_fill_area_crossover --exact --ignored --nocapture
+# 翻页节拍测试只交替现有页，不写像素：
 ./tde-tests backends::nx5::tests::blocking_flip_cadence --exact --ignored --nocapture
 ```
 

@@ -193,3 +193,9 @@ NX5 TDE、观察器插件、部署与 MCP 运行命令见 [devices/nx5/README.md
 库内 `src/tests/` 及 `src/backends/nx5/tde/tests.rs` 保留需要私有实现的单元/故障注入测试。TDE 像素比较只共享本工程的声明式场景和纹理素材，不再把应用的 `main.rs` 编译进库测试。
 
 MCP 不能替代 evdev 解码、物理页所有权、TDE/DMA 失败及实际扫描输出验证；这些底层测试和 NX5 工具继续保留。历史报告入口在 [docs/README.md](../docs/README.md)，原始证据作为本地 `evidence/` 档案保留，不纳入 Git；证据重放需要另行取得对应日志。
+
+### NX5 填充与整体透明度对照
+
+`nx5-tde` 的等尺寸 RGBA 图像现支持整体透明度，透明度变化会重新准备源缓存。已有 Media 展示中的缩放图片仍走软件回退；完整支持边界见 [平台说明](../docs/software-platform.md)，不能用滑块操作或 MCP 截图代替硬件命中检查。
+
+需要比较纯色填充时，在上述设备启动命令前加 `SLINT_BRIDGE_TDE_FILL=1 SLINT_BRIDGE_TRACE=1`；TDE 统计行的 `fill` 显示硬件填充次数。正常运行不设置此变量，保留本板实测更快的 CPU 填充。实测与回归范围见 [填充/混合报告](../docs/nx5-fill-blend.md)。

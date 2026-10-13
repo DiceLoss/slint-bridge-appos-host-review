@@ -97,6 +97,10 @@ SDK 按无版本库名 `libVideoDec.so` 交给系统动态加载器查找，可�
 
 NX5 打开 `Config::framebuffer` 指定的设备，通过 `FBIOGET_FSCREENINFO` / `FBIOGET_VSCREENINFO` 获取实际分辨率、stride、像素位域、虚拟尺寸和显存容量，使用前述通用布局校验，不限定 1024×600 或固定 stride。尺寸由设备当前模式决定，要求至少两页完整容量；两页偏移为 `0` 与实际 `yres`。初始化布局传给提交线程；每次 PAN 前核对尺寸、stride 和像素格式，读回后再次核对尺寸/格式与目标页，布局变化或无效偏移会终止提交。提交线程调用阻塞 `FBIOPAN_DISPLAY`，成功并读回目标页后才复用旧页；不提供单缓冲或忽略错误的回退。页号读回用于错误检测，不作为硬件退休证明。其他设备仍须提供与驱动匹配的实现和验证。TDE 不再以 1024×600 限制画布大小，仍检查尺寸溢出、SDK 对齐及作业完成状态；SDK 不支持或无法分配时使用既有软件回退。TDE 绘制范围由 [tde/mod.rs](../src/backends/nx5/tde/mod.rs) 与 [native.c](../src/backends/nx5/tde/native.c) 实现，说明及历史像素比较见 [TDE 报告](nx5-tde.md)。使用 `nx5-tde` 构建时，板级像素类型保持 Slint 预乘 RGBA 语义，对圆角矩形等操作内部的连续同色混合使用 CPU 批量路径；Cortex-A7/NEON 预设启用 8 像素向量混合，尾部及无 NEON 构建使用同一精确整数算法，不改变 RGB 的 `/255` 向下取整或 alpha 的原有舍入。不透明填充保留 Slint 的批量填充。此 CPU 路径不提交 DMA，不依赖 TDE 作业成功；图片 TDE 复制/混合及未知 DMA 隔离仍按原有契约执行。
 
+`nx5-tde` 的等尺寸 RGBA 纹理支持整体透明度。上传时按 Slint 顺序计算：straight RGBA 先合并逐像素/整体 alpha，再预乘 RGB；预乘 RGBA 直接缩放四个通道。Cortex-A7 预设使用 NEON；其余构建使用相同整数规则。准备后的缓存键包含透明度，透明度变化会重新上传，同一图像与透明度可复用。SDK 的全局 alpha 开关不符合该预乘语义，因此不使用；混合仍限定不透明目标和偶数矩形，单次 RGB 容差为 1/255。
+
+`SLINT_BRIDGE_TDE_FILL=1` 在 `nx5-tde` 构建中显式开启 QuickFill 对照路径：纯色窗口背景和无圆角/边框的不透明整数矩形可进入硬件，至少 32768 像素、至多 16 个裁剪区域；背景清除可保留预乘 alpha。其他值或未设置时使用 CPU 批量填充，因为本板从 16×16 到 1024×600 的 22 组面积/形状/颜色对照均为 CPU 更快；全屏 CPU 约 1.71 ms，TDE 含提交/同步/回拷约 9.34 ms。硬件填充复用现有私有 MMZ 目标，同样遵守完成确认、失败回退及未知 DMA 隔离，不增加 MMZ 块。`SLINT_BRIDGE_TRACE` 的 TDE 行末新增 `fill` 次数；`software` 仍只计未加速的纹理回调。完整条件和新测量见 [填充与整体透明度实测](nx5-fill-blend.md)。
+
 已知 DMA 完成后的 MMZ 释放失败会永久关闭进程内 TDE 创建门闩，后续使用软件路径；同一地址不重复释放，避免部分释放后重复分配累积资源。未知 DMA 仍保持原有整帧失败与会话隔离。
 
 ## 构建依赖
@@ -151,7 +155,7 @@ cargo clippy --locked --offline --workspace --features nx5-tde,slint/mcp --all-t
 cargo doc --locked --offline --workspace --features nx5-tde --no-deps
 ```
 
-公共接口测试在 [test-app/tests/public_api.rs](../test-app/tests/public_api.rs)；私有回归在 [src/tests/](../src/tests/)、显示/等待模块内及 [TDE 测试](../src/backends/nx5/tde/tests.rs)。三个实机测试分别测量阻塞翻页、TDE 像素/回退和实际演示的双页像素；需单独部署并独占设备，不能把主机的 ignored 计为通过。执行命令见 [TDE 报告的构建与接入](nx5-tde.md#构建与接入)。
+公共接口测试在 [test-app/tests/public_api.rs](../test-app/tests/public_api.rs)；私有回归在 [src/tests/](../src/tests/)、显示/等待模块内及 [TDE 测试](../src/backends/nx5/tde/tests.rs)。实机测试覆盖阻塞翻页、TDE 像素/回退与调用链、实际演示的双页像素，以及填充面积/形状耗时；需单独部署并独占设备，不能把主机的 ignored 计为通过。执行命令见 [TDE 报告的构建与接入](nx5-tde.md#构建与接入)。
 
 [Framebuffer 析构回归](../src/tests/framebuffer_lifecycle.rs) 使用内存文件、受控提交回调及 TDE 资源替身，不访问真实硬件。[WBC 生命周期回归](../test-app/src/nx5_observer.rs) 使用真实 Slint 应用/定时器、返回错误的平台及受控观察线程，验证错误退出等待和 panic 处理，并通过子进程与替身动态库确认 `LD_LIBRARY_PATH` 加载及配置路径传递；它不替代设备 WBC 采样。
 

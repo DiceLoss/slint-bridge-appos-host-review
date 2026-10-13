@@ -1,9 +1,10 @@
-//! Optional texture offload. CPU pixels are authoritative; MMZ is private scratch.
+//! Optional fill and texture offload. CPU pixels are authoritative; MMZ is private scratch.
 use crate::Error;
 use i_slint_renderer_software::{
-    DrawTextureArgs, PhysicalRegion, PremultipliedRgbaColor, RenderingRotation, SoftwareRenderer,
-    TargetPixel, TargetPixelBuffer, TextureCacheKey, TexturePixelFormat,
+    DrawRectangleArgs, DrawTextureArgs, PhysicalRegion, PremultipliedRgbaColor, RenderingRotation,
+    SoftwareRenderer, TargetPixel, TargetPixelBuffer, TextureCacheKey, TexturePixelFormat,
 };
+use slint::Brush;
 
 // Keep Slint's exact pixel semantics while accelerating long constant-color spans.
 #[repr(transparent)]
@@ -126,6 +127,7 @@ struct Texture<'a> {
     height: u32,
     stride: u32,
     premultiplied: bool,
+    alpha: u8,
     slot: u32,
     upload: bool,
     rects: &'a [Rect],
@@ -143,6 +145,15 @@ enum Outcome {
     Unsupported,
 }
 trait Accelerator {
+    fn fill(
+        &mut self,
+        _pixels: &mut [PremultipliedRgbaColor],
+        _color: PremultipliedRgbaColor,
+        _rects: &[Rect],
+    ) -> Result<bool, Failure> {
+        Ok(false)
+    }
+
     fn draw(
         &mut self,
         pixels: &mut [PremultipliedRgbaColor],
@@ -152,6 +163,7 @@ trait Accelerator {
 
 #[derive(Default, Debug, Clone, Copy)]
 pub(crate) struct Stats {
+    pub filled: u64,
     pub copied: u64,
     pub blended: u64,
     pub software: u64,
@@ -164,12 +176,13 @@ pub(crate) struct Buffer {
     width: u32,
     height: u32,
     engine: Option<Box<dyn Accelerator>>,
-    keys: [Option<TextureCacheKey>; 2],
+    keys: [Option<(TextureCacheKey, u8)>; 2],
     next_slot: usize,
     fatal: Option<Failure>,
     pub stats: Stats,
     frames: u64,
     trace: bool,
+    fill_enabled: bool,
 }
 
 impl Buffer {
@@ -187,6 +200,9 @@ impl Buffer {
         }
         // Host builds keep the identical callback/fallback path without the SDK.
         buffer.trace = std::env::var_os("SLINT_BRIDGE_TRACE").is_some();
+        // On this board, solid CPU fill is faster than DMA plus readback.
+        // Keep QuickFill available for explicit hardware comparisons.
+        buffer.fill_enabled = std::env::var("SLINT_BRIDGE_TDE_FILL").as_deref() == Ok("1");
         Ok(buffer)
     }
     pub fn software(width: u32, height: u32) -> Result<Self, Error> {
@@ -209,6 +225,7 @@ impl Buffer {
             stats: Stats::default(),
             frames: 0,
             trace: false,
+            fill_enabled: false,
         })
     }
     pub fn pixels(&self) -> &[PremultipliedRgbaColor] {
@@ -234,16 +251,69 @@ impl Buffer {
         self.frames += 1;
         if self.trace && self.frames.is_multiple_of(150) {
             eprintln!(
-                "slint-bridge: tde frames={} copy={} blend={} software={} cache_hits={} errors={}",
+                "slint-bridge: tde frames={} copy={} blend={} software={} cache_hits={} errors={} fill={}",
                 self.frames,
                 self.stats.copied,
                 self.stats.blended,
                 self.stats.software,
                 self.stats.cache_hits,
-                self.stats.errors
+                self.stats.errors,
+                self.stats.filled
             );
         }
         Ok(region)
+    }
+
+    fn disable(&mut self, error: Failure) {
+        self.stats.errors += 1;
+        eprintln!(
+            "slint-bridge: TDE disabled after SDK error {} (unknown completion={})",
+            error.code, error.unknown
+        );
+        if error.unknown {
+            self.fatal = Some(error);
+        }
+        // Native Drop retains MMZ/library/fd if completion is unknown.
+        self.engine = None;
+        self.keys = [None, None];
+    }
+
+    fn fill(&mut self, color: PremultipliedRgbaColor, rects: &[Rect]) -> bool {
+        if !self.fill_enabled {
+            return false;
+        }
+        let Some(engine) = self.engine.as_mut() else {
+            return false;
+        };
+        let area: u64 = rects
+            .iter()
+            .map(|r| u64::from(r.width) * u64::from(r.height))
+            .sum();
+        if area < 32768 || rects.len() > 16 {
+            return false;
+        }
+        match engine.fill(&mut self.pixels, color, rects) {
+            Ok(done) => {
+                self.stats.filled += u64::from(done);
+                done
+            }
+            Err(error) => {
+                self.disable(error);
+                false
+            }
+        }
+    }
+
+    fn fill_rects(&self, bounds: (i64, i64, u32, u32), clip: &PhysicalRegion) -> Vec<Rect> {
+        clip.iter()
+            .filter_map(|(p, s)| {
+                clipped(
+                    bounds,
+                    (p.x, p.y, s.width, s.height),
+                    (self.width, self.height),
+                )
+            })
+            .collect()
     }
 
     fn texture(&mut self, args: &DrawTextureArgs, clip: &PhysicalRegion) -> bool {
@@ -254,8 +324,7 @@ impl Buffer {
         if !matches!(
             source.pixel_format,
             TexturePixelFormat::Rgba | TexturePixelFormat::RgbaPremultiplied
-        ) || args.alpha != 255
-            || args.colorize.is_some()
+        ) || args.colorize.is_some()
             || args.tiling.is_some()
             || args.rotation != RenderingRotation::NoRotation
             || args.dst_width != source.width as usize
@@ -301,7 +370,8 @@ impl Buffer {
         if area < 32768 || rects.len() > 16 {
             return false;
         }
-        let key = args.source_cache_key();
+        // Prepared source pixels include opacity; changing it must upload again.
+        let key = args.source_cache_key().map(|key| (key, args.alpha));
         let cached = key.as_ref().and_then(|key| {
             self.keys
                 .iter()
@@ -320,6 +390,7 @@ impl Buffer {
             height: source.height,
             stride: source.byte_stride as u32,
             premultiplied: matches!(source.pixel_format, TexturePixelFormat::RgbaPremultiplied),
+            alpha: args.alpha,
             slot: slot as u32,
             upload: cached.is_none(),
             rects: &rects,
@@ -342,17 +413,7 @@ impl Buffer {
                 true
             }
             Err(error) => {
-                self.stats.errors += 1;
-                eprintln!(
-                    "slint-bridge: TDE disabled after SDK error {} (unknown completion={})",
-                    error.code, error.unknown
-                );
-                if error.unknown {
-                    self.fatal = Some(error);
-                }
-                // Native Drop retains MMZ/library/fd if completion is unknown.
-                self.engine = None;
-                self.keys = [None, None];
+                self.disable(error);
                 false
             }
         }
@@ -370,6 +431,55 @@ impl TargetPixelBuffer for Buffer {
         // mutable slice has the same lifetime and exclusive access as this row.
         unsafe { std::slice::from_raw_parts_mut(row.as_mut_ptr().cast(), row.len()) }
     }
+    fn fill_background(&mut self, brush: &Brush, clip: &PhysicalRegion) -> bool {
+        if !self.fill_enabled || self.engine.is_none() {
+            return false;
+        }
+        let Brush::SolidColor(color) = brush else {
+            return false;
+        };
+        let rects = self.fill_rects((0, 0, self.width, self.height), clip);
+        self.fill((*color).into(), &rects)
+    }
+    fn draw_rectangle(&mut self, args: &DrawRectangleArgs, clip: &PhysicalRegion) -> bool {
+        if !self.fill_enabled || self.engine.is_none() {
+            return false;
+        }
+        let Brush::SolidColor(color) = args.background else {
+            return false;
+        };
+        // QuickFill replaces pixels. Anti-aliased edges, borders, gradients and
+        // translucent source-over retain Slint's software implementation.
+        if args.alpha != 255
+            || color.alpha() != 255
+            || args.border_width != 0.
+            || [
+                args.top_left_radius,
+                args.top_right_radius,
+                args.bottom_left_radius,
+                args.bottom_right_radius,
+            ]
+            .iter()
+            .any(|r| *r != 0.)
+            || [args.x, args.y, args.width, args.height]
+                .iter()
+                .any(|v| !v.is_finite() || v.fract() != 0. || v.abs() > i32::MAX as f32)
+            || args.width <= 0.
+            || args.height <= 0.
+        {
+            return false;
+        }
+        let rects = self.fill_rects(
+            (
+                args.x as i64,
+                args.y as i64,
+                args.width as u32,
+                args.height as u32,
+            ),
+            clip,
+        );
+        self.fill(color.into(), &rects)
+    }
     fn draw_texture(&mut self, args: &DrawTextureArgs, clip: &PhysicalRegion) -> bool {
         let done = self.texture(args, clip);
         if !done {
@@ -386,6 +496,14 @@ mod native {
     unsafe extern "C" {
         fn bridge_tde_create(width: u32, height: u32, error: *mut i32) -> *mut c_void;
         fn bridge_tde_destroy(context: *mut c_void);
+        fn bridge_tde_fill(
+            context: *mut c_void,
+            pixels: *mut u8,
+            color: u32,
+            rects: *const Rect,
+            count: u32,
+            error: *mut i32,
+        ) -> i32;
         fn bridge_tde_draw(
             context: *mut c_void,
             pixels: *mut u8,
@@ -394,6 +512,7 @@ mod native {
             height: u32,
             stride: u32,
             premultiplied: i32,
+            alpha: u8,
             slot: u32,
             upload: i32,
             rects: *const Rect,
@@ -412,6 +531,36 @@ mod native {
         }
     }
     impl Accelerator for Native {
+        fn fill(
+            &mut self,
+            pixels: &mut [PremultipliedRgbaColor],
+            color: PremultipliedRgbaColor,
+            rects: &[Rect],
+        ) -> Result<bool, Failure> {
+            let mut code = 0;
+            let packed = u32::from_le_bytes([color.red, color.green, color.blue, color.alpha]);
+            // SAFETY: canvas and rectangles remain valid during this synchronous
+            // call. C validates geometry and only commits completed scratch DMA.
+            let result = unsafe {
+                bridge_tde_fill(
+                    self.0.as_ptr(),
+                    pixels.as_mut_ptr().cast(),
+                    packed,
+                    rects.as_ptr(),
+                    rects.len() as u32,
+                    &mut code,
+                )
+            };
+            match result {
+                0 => Ok(true),
+                2 => Ok(false),
+                _ => Err(Failure {
+                    code,
+                    unknown: result == -2,
+                }),
+            }
+        }
+
         fn draw(
             &mut self,
             pixels: &mut [PremultipliedRgbaColor],
@@ -430,6 +579,7 @@ mod native {
                     t.height,
                     t.stride,
                     t.premultiplied as i32,
+                    t.alpha,
                     t.slot,
                     t.upload as i32,
                     t.rects.as_ptr(),

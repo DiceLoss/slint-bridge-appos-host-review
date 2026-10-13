@@ -361,7 +361,50 @@ fn nx5_hardware_compare() {
     let (window, scene) = setup();
     let mut hardware = Buffer::new(512, 384).unwrap();
     assert!(hardware.engine.is_some(), "TDE must actually be active");
+    hardware.fill_enabled = true;
     let mut software = Buffer::software(512, 384).unwrap();
+    for alpha in [0, 1, 127, 255] {
+        scene.set_canvas_color(slint::Color::from_argb_u8(alpha, 211, 97, 39));
+        let before = hardware.stats.filled;
+        let dispatch = draw_audited(&window, &mut hardware);
+        assert!(dispatch.accepted[0] > 0);
+        assert_eq!(dispatch.rows_after_accepted, [0; 3]);
+        println!("dispatch fill_alpha={alpha} counts={dispatch:?}");
+        draw(&window, &mut software).unwrap();
+        assert_eq!(difference(hardware.pixels(), software.pixels()), (0, 0));
+        assert!(hardware.stats.filled > before);
+        println!("correctness name=fill alpha={alpha} exact=true");
+    }
+    let rect = Rect {
+        sx: 0,
+        sy: 0,
+        dx: 3,
+        dy: 5,
+        width: 301,
+        height: 201,
+    };
+    let color: PremultipliedRgbaColor = slint::Color::from_rgb_u8(213, 93, 37).into();
+    assert!(hardware.fill(color, &[rect]));
+    for y in 5..206 {
+        software.pixels[y * 512 + 3..y * 512 + 304].fill(color);
+    }
+    assert_eq!(difference(hardware.pixels(), software.pixels()), (0, 0));
+    println!("correctness name=fill-odd-rectangle exact=true guards=true");
+    {
+        let name = "fill-full";
+        for (label, buffer) in [("hardware", &mut hardware), ("software", &mut software)] {
+            let start = Instant::now();
+            for _ in 0..100 {
+                draw(&window, buffer).unwrap();
+            }
+            println!(
+                "benchmark name={name} path={label} frames=100 mean_ms={:.3}",
+                start.elapsed().as_secs_f64() * 10.
+            );
+        }
+    }
+    hardware.fill_enabled = false;
+    scene.set_canvas_color(slint::Color::from_rgb_u8(25, 55, 77));
     for (name, alpha, premul, x, y, w, h, opacity, accelerated) in [
         ("opaque", false, false, 0., 0., 512., 384., 1., true),
         ("straight-alpha", true, false, 0., 0., 512., 384., 1., true),
@@ -388,17 +431,7 @@ fn nx5_hardware_compare() {
             1.,
             false,
         ),
-        (
-            "opacity-fallback",
-            true,
-            true,
-            0.,
-            0.,
-            512.,
-            384.,
-            0.5,
-            false,
-        ),
+        ("global-opacity", true, true, 0., 0., 512., 384., 0.5, true),
         (
             "scale-fallback",
             false,
@@ -418,7 +451,11 @@ fn nx5_hardware_compare() {
         scene.set_image_height(h);
         scene.set_image_opacity(opacity);
         let before = hardware.stats;
-        draw(&window, &mut hardware).unwrap();
+        let dispatch = draw_audited(&window, &mut hardware);
+        assert_eq!(dispatch.rows_after_accepted, [0; 3]);
+        assert_eq!(dispatch.accepted[2] > 0, accelerated);
+        assert_eq!(dispatch.rows_after_fallback[2] > 0, !accelerated);
+        println!("dispatch name={name} counts={dispatch:?}");
         draw(&window, &mut software).unwrap();
         let (maximum, differing) = difference(hardware.pixels(), software.pixels());
         let submitted =
@@ -468,6 +505,42 @@ fn nx5_hardware_compare() {
             sw / hw
         );
     }
+    for (name, alpha, premul) in [
+        ("opaque-opacity", false, false),
+        ("straight-opacity", true, false),
+        ("premultiplied-opacity", true, true),
+    ] {
+        scene.set_picture(image(512, 384, alpha, premul));
+        for opacity in [1. / 255., 63. / 255., 0.5, 0.5, 254. / 255., 1.] {
+            scene.set_image_opacity(opacity);
+            let before = hardware.stats;
+            draw(&window, &mut hardware).unwrap();
+            draw(&window, &mut software).unwrap();
+            let (maximum, different) = difference(hardware.pixels(), software.pixels());
+            println!(
+                "correctness name={name} opacity={opacity} max_channel_error={maximum} differing_channels={different}"
+            );
+            assert!(maximum <= 1, "{name} at {opacity}");
+            // Slint culls images at opacity <= 0.01 before the callback.
+            assert_eq!(
+                hardware.stats.blended + hardware.stats.copied > before.blended + before.copied,
+                opacity > 0.01
+            );
+        }
+        scene.set_image_opacity(0.5);
+        draw(&window, &mut hardware).unwrap();
+        for (path, buffer) in [("hardware", &mut hardware), ("software", &mut software)] {
+            let start = Instant::now();
+            for _ in 0..60 {
+                draw(&window, buffer).unwrap();
+            }
+            println!(
+                "benchmark name={name} path={path} frames=60 mean_ms={:.3}",
+                start.elapsed().as_secs_f64() * 1000. / 60.
+            );
+        }
+    }
+    scene.set_image_opacity(1.);
     // A cropped source view has a larger byte stride than the uploaded width.
     scene.set_picture(image(528, 388, true, true));
     scene.set_crop_x(8);
@@ -713,4 +786,340 @@ fn nx5_demo_pages_match_full_frames() {
     reference.join().unwrap();
     drop(framebuffer);
     drop(display);
+}
+
+#[test]
+fn image_opacity_invalidates_prepared_source_cache() {
+    struct Probe;
+    impl Accelerator for Probe {
+        fn draw(
+            &mut self,
+            _: &mut [PremultipliedRgbaColor],
+            _: &Texture<'_>,
+        ) -> Result<Outcome, Failure> {
+            Ok(Outcome::Blended)
+        }
+    }
+    let (window, scene) = setup();
+    scene.set_picture(image(512, 384, true, true));
+    let mut buffer = Buffer::software(512, 384).unwrap();
+    buffer.engine = Some(Box::new(Probe));
+    for opacity in [1.0, 0.5, 0.5, 0.25, 0.25, 1.0] {
+        scene.set_image_opacity(opacity);
+        draw(&window, &mut buffer).unwrap();
+    }
+    assert_eq!(buffer.stats.blended, 6);
+    assert_eq!(buffer.stats.cache_hits, 2);
+}
+
+#[test]
+fn solid_fill_clipping_and_software_edges_match() {
+    struct FillProbe;
+    impl Accelerator for FillProbe {
+        fn fill(
+            &mut self,
+            pixels: &mut [PremultipliedRgbaColor],
+            color: PremultipliedRgbaColor,
+            rects: &[Rect],
+        ) -> Result<bool, Failure> {
+            for r in rects {
+                for y in r.dy..r.dy + r.height as i32 {
+                    let offset = y as usize * 512 + r.dx as usize;
+                    pixels[offset..offset + r.width as usize].fill(color);
+                }
+            }
+            Ok(true)
+        }
+        fn draw(
+            &mut self,
+            _: &mut [PremultipliedRgbaColor],
+            _: &Texture<'_>,
+        ) -> Result<Outcome, Failure> {
+            Ok(Outcome::Unsupported)
+        }
+    }
+    let (window, scene) = setup();
+    let mut hardware = Buffer::software(512, 384).unwrap();
+    hardware.engine = Some(Box::new(FillProbe));
+    hardware.fill_enabled = true;
+    let mut software = Buffer::software(512, 384).unwrap();
+    for alpha in [0, 1, 127, 255] {
+        scene.set_canvas_color(slint::Color::from_argb_u8(alpha, 211, 97, 39));
+        draw(&window, &mut hardware).unwrap();
+        draw(&window, &mut software).unwrap();
+        assert_eq!(difference(hardware.pixels(), software.pixels()), (0, 0));
+    }
+    assert_eq!(hardware.stats.filled, 4);
+    let mut args = DrawRectangleArgs::default();
+    args.x = -17.;
+    args.y = 3.;
+    args.width = 300.;
+    args.height = 220.;
+    args.alpha = 255;
+    args.background = slint::Color::from_rgb_u8(217, 107, 29).into();
+    // Use the renderer's full dirty region without constructing private Slint fields.
+    let mut region = None;
+    window.request_redraw();
+    window.draw_if_needed(|r| region = Some(r.render_into_buffer(&mut software)));
+    let region = region.unwrap();
+    assert!(hardware.draw_rectangle(&args, &region));
+    assert_eq!(hardware.pixels()[3 * 512].red, 217);
+    assert_eq!(hardware.pixels()[3 * 512 + 282].red, 217);
+    assert_ne!(hardware.pixels()[3 * 512 + 283].red, 217);
+    args.x = 0.5;
+    assert!(!hardware.draw_rectangle(&args, &region));
+    args.x = 0.;
+    args.top_left_radius = 1.;
+    assert!(!hardware.draw_rectangle(&args, &region));
+    args.top_left_radius = 0.;
+    args.alpha = 127;
+    assert!(!hardware.draw_rectangle(&args, &region));
+    args.alpha = 255;
+    args.border_width = 1.;
+    assert!(!hardware.draw_rectangle(&args, &region));
+}
+
+#[test]
+fn fill_failure_preserves_fallback_and_unknown_dma_frame_rejection() {
+    struct FillFailure(bool);
+    impl Accelerator for FillFailure {
+        fn fill(
+            &mut self,
+            _: &mut [PremultipliedRgbaColor],
+            _: PremultipliedRgbaColor,
+            _: &[Rect],
+        ) -> Result<bool, Failure> {
+            Err(Failure {
+                code: -78,
+                unknown: self.0,
+            })
+        }
+        fn draw(
+            &mut self,
+            _: &mut [PremultipliedRgbaColor],
+            _: &Texture<'_>,
+        ) -> Result<Outcome, Failure> {
+            unreachable!("fill failure disables the accelerator before image drawing")
+        }
+    }
+    let (window, scene) = setup();
+    scene.set_picture(image(512, 384, true, true));
+    let mut reference = Buffer::software(512, 384).unwrap();
+    draw(&window, &mut reference).unwrap();
+    for unknown in [false, true] {
+        let mut buffer = Buffer::software(512, 384).unwrap();
+        buffer.fill_enabled = true;
+        buffer.engine = Some(Box::new(FillFailure(unknown)));
+        let result = draw(&window, &mut buffer);
+        assert_eq!(result.is_err(), unknown);
+        assert_eq!(buffer.has_unknown_dma(), unknown);
+        assert!(buffer.engine.is_none());
+        assert_eq!(buffer.stats.errors, 1);
+        if unknown {
+            assert!(matches!(
+                draw(&window, &mut buffer),
+                Err(Error::AccelerationFailed(_))
+            ));
+        } else {
+            assert_eq!(difference(buffer.pixels(), reference.pixels()), (0, 0));
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires exclusive NX5; measures fill area/shape crossover without framebuffer writes"]
+fn nx5_fill_area_crossover() {
+    use std::hint::black_box;
+    let _display = crate::backends::nx5::open().unwrap();
+    let mut hardware = Buffer::new(1024, 600).unwrap();
+    let mut software = Buffer::software(1024, 600).unwrap();
+    let engine = hardware.engine.as_mut().expect("TDE must be active");
+    let summarize = |mut samples: Vec<f64>| {
+        let average = samples.iter().sum::<f64>() / samples.len() as f64;
+        samples.sort_by(f64::total_cmp);
+        (
+            average,
+            samples[samples.len() / 2],
+            samples[samples.len() * 95 / 100],
+        )
+    };
+    for (name, width, height, split) in [
+        ("tiny", 16, 16, false),
+        ("small", 64, 64, false),
+        ("square-16k", 128, 128, false),
+        ("wide-32k", 1024, 32, false),
+        ("tall-32k", 128, 256, false),
+        ("square-64k", 256, 256, false),
+        ("split-64k", 1024, 32, true),
+        ("wide-128k", 1024, 128, false),
+        ("half-196k", 512, 384, false),
+        ("half-screen", 1024, 300, false),
+        ("full-screen", 1024, 600, false),
+    ] {
+        let mut rects = vec![Rect {
+            sx: 0,
+            sy: 0,
+            dx: 0,
+            dy: 0,
+            width,
+            height,
+        }];
+        if split {
+            rects.push(Rect {
+                dy: 568,
+                ..rects[0]
+            });
+        }
+        for (color_name, color) in [
+            ("clear", PremultipliedRgbaColor::default()),
+            ("opaque", slint::Color::from_rgb_u8(25, 55, 77).into()),
+        ] {
+            let mut timings = [Vec::new(), Vec::new()];
+            for iteration in 0..70 {
+                // Alternate order and discard ten warm-up pairs. Both paths
+                // include the production output write, not just SDK enqueue.
+                for path in [iteration % 2, 1 - iteration % 2] {
+                    let started = Instant::now();
+                    if path == 0 {
+                        assert!(
+                            engine
+                                .fill(
+                                    black_box(&mut hardware.pixels),
+                                    black_box(color),
+                                    black_box(&rects)
+                                )
+                                .unwrap()
+                        );
+                    } else {
+                        let pixels = black_box(&mut software.pixels);
+                        for r in &rects {
+                            for y in r.dy as usize..r.dy as usize + r.height as usize {
+                                let at = y * 1024 + r.dx as usize;
+                                pixels[at..at + r.width as usize].fill(black_box(color));
+                            }
+                        }
+                    }
+                    if iteration >= 10 {
+                        timings[path].push(started.elapsed().as_secs_f64() * 1e6);
+                    }
+                }
+            }
+            assert_eq!(difference(&hardware.pixels, &software.pixels), (0, 0));
+            let (ha, hm, hp) = summarize(std::mem::take(&mut timings[0]));
+            let (ca, cm, cp) = summarize(std::mem::take(&mut timings[1]));
+            let area = width * height * rects.len() as u32;
+            println!(
+                "fill_area name={name} color={color_name} width={width} height={height} rects={} pixels={area} samples=60 hw_mean_us={ha:.3} hw_p50_us={hm:.3} hw_p95_us={hp:.3} cpu_mean_us={ca:.3} cpu_p50_us={cm:.3} cpu_p95_us={cp:.3} speedup={:.3} exact=true",
+                rects.len(),
+                ca / ha
+            );
+        }
+    }
+}
+// Observe the real renderer callback boundary. The fixture contains only
+// background, Image and Rectangle operations, so every raster row has an owner.
+#[derive(Default, Debug)]
+struct DispatchCounts {
+    accepted: [usize; 3], // background, rectangle, texture
+    fallback: [usize; 3],
+    rows_after_accepted: [usize; 3],
+    rows_after_fallback: [usize; 3],
+}
+struct DispatchAudit<'a> {
+    buffer: &'a mut Buffer,
+    current: Option<(usize, bool)>,
+    counts: DispatchCounts,
+}
+impl DispatchAudit<'_> {
+    fn record(&mut self, kind: usize, accepted: bool) -> bool {
+        self.current = Some((kind, accepted));
+        if accepted {
+            self.counts.accepted[kind] += 1;
+        } else {
+            self.counts.fallback[kind] += 1;
+        }
+        accepted
+    }
+}
+impl TargetPixelBuffer for DispatchAudit<'_> {
+    type TargetPixel = Pixel;
+    fn num_lines(&self) -> usize {
+        self.buffer.num_lines()
+    }
+    fn line_slice(&mut self, line: usize) -> &mut [Pixel] {
+        if let Some((kind, accepted)) = self.current {
+            if accepted {
+                self.counts.rows_after_accepted[kind] += 1;
+            } else {
+                self.counts.rows_after_fallback[kind] += 1;
+            }
+        }
+        self.buffer.line_slice(line)
+    }
+    fn fill_background(&mut self, brush: &Brush, clip: &PhysicalRegion) -> bool {
+        let accepted = self.buffer.fill_background(brush, clip);
+        self.record(0, accepted)
+    }
+    fn draw_rectangle(&mut self, args: &DrawRectangleArgs, clip: &PhysicalRegion) -> bool {
+        let accepted = self.buffer.draw_rectangle(args, clip);
+        self.record(1, accepted)
+    }
+    fn draw_texture(&mut self, args: &DrawTextureArgs, clip: &PhysicalRegion) -> bool {
+        let accepted = self.buffer.draw_texture(args, clip);
+        self.record(2, accepted)
+    }
+}
+fn draw_audited(window: &MinimalSoftwareWindow, buffer: &mut Buffer) -> DispatchCounts {
+    let mut audit = DispatchAudit {
+        buffer,
+        current: None,
+        counts: DispatchCounts::default(),
+    };
+    window.request_redraw();
+    slint::platform::update_timers_and_animations();
+    let mut rendered = false;
+    window.draw_if_needed(|renderer| {
+        rendered = true;
+        renderer.render_into_buffer(&mut audit);
+    });
+    assert!(rendered && !audit.buffer.has_unknown_dma());
+    audit.counts
+}
+
+#[test]
+fn accepted_texture_is_not_drawn_again_by_software() {
+    struct Sentinel;
+    impl Accelerator for Sentinel {
+        fn draw(
+            &mut self,
+            pixels: &mut [PremultipliedRgbaColor],
+            _: &Texture<'_>,
+        ) -> Result<Outcome, Failure> {
+            pixels.fill(PremultipliedRgbaColor::from_rgb(252, 13, 47));
+            Ok(Outcome::Copied)
+        }
+    }
+    let (window, scene) = setup();
+    scene.set_picture(image(512, 384, false, true));
+    let mut buffer = Buffer::software(512, 384).unwrap();
+    buffer.engine = Some(Box::new(Sentinel));
+    let counts = draw_audited(&window, &mut buffer);
+    assert_eq!(counts.accepted[2], 1);
+    assert_eq!(counts.rows_after_accepted, [0; 3]);
+    assert!(counts.rows_after_fallback[0] > 0 && counts.rows_after_fallback[1] > 0);
+    let pixel = buffer.pixels()[200 * 512 + 200];
+    assert_eq!(
+        [pixel.red, pixel.green, pixel.blue, pixel.alpha],
+        [252, 13, 47, 255]
+    );
+    // If draw_texture's success were ignored, software would replace this
+    // sentinel with the source image. A rejected operation must do exactly that.
+    buffer.engine = None;
+    let counts = draw_audited(&window, &mut buffer);
+    assert_eq!(counts.accepted[2], 0);
+    assert_eq!(counts.fallback[2], 1);
+    assert!(counts.rows_after_fallback[2] > 0);
+    let mut reference = Buffer::software(512, 384).unwrap();
+    draw(&window, &mut reference).unwrap();
+    assert_eq!(difference(buffer.pixels(), reference.pixels()), (0, 0));
 }

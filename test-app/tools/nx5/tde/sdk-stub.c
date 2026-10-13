@@ -8,6 +8,7 @@ void FY_TDE2_Close(void) { abort(); }
 void FY_TDE2_BeginJob(void) { abort(); }
 void FY_TDE2_EndJob(void) { abort(); }
 void FY_TDE2_CancelJob(void) { abort(); }
+void FY_TDE2_QuickFill(void) { abort(); }
 void FY_TDE2_QuickCopy(void) { abort(); }
 void FY_TDE2_Bitblit(void) { abort(); }
 void FY_MPI_SYS_MmzAlloc_Cached(void) { abort(); }
