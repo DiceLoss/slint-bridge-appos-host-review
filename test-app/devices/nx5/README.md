@@ -1,10 +1,10 @@
 # NX5 测试目标
 
-本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中路径相对于仓库根目录；最近收尾记录为 2026-10-13 的清理版部署（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
+本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中路径相对于仓库根目录；最近收尾记录为 2026-10-14 的输入延迟优化部署（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
 
-当前为 `c087071` + Slint `22804ff`，路径 `/tmp/slint-bridge-clean-c087071/showcase`，观测 PID 12364，无退出定时器，trace 与 QuickFill 诊断开关关闭。六页/十张 MCP 截图、8 次实体触摸的 evdev 配对和正常退出通过，用户确认显示与触摸正常。详见 [部署报告](../../../docs/nx5-cleanup-deploy.md)。
+当前为 `a0e880c` + Slint `22804ff`，路径 `/tmp/slint-bridge-input-a0e880c/showcase`，观测 PID 7241，无退出定时器，trace 与 QuickFill 诊断开关关闭。约 1 ms 分段写页、六页/十张 MCP 截图、112 次自动 evdev 接触、真实页像素及正常退出验证通过；列表 900 次完成提交保持 29 FPS。本轮没有新增手指触摸确认。详见 [输入延迟报告](../../../docs/nx5-input-latency.md)。
 
-恢复版本为 `/tmp/slint-bridge-neon-final/showcase`（`4a2eda2`）及其 `start-live.sh`；更早的 `d34f436` 已校验归档。清理版与上一版 strip 二进制逐字节一致；此前 NEON 半透明写页 19.13 ms、实际像素及列表 29 FPS 成绩保留在 [NEON 报告](../../../docs/nx5-neon-unpremultiply.md)，本轮未重新测量性能。当前路径以 [保留策略](deploy-retain.json) 为准。
+恢复版本为 `/tmp/slint-bridge-clean-c087071/showcase`（`c087071`）及其 `start-live.sh`；更早的 NEON 副本已校验归档。此前清理版的实体触摸确认保留在 [部署报告](../../../docs/nx5-cleanup-deploy.md)，NEON 转换性能保留在 [NEON 报告](../../../docs/nx5-neon-unpremultiply.md)。当前路径以 [保留策略](deploy-retain.json) 为准。
 
 纯色版本的 [性能报告](../../../docs/nx5-showcase-performance.md) 和 [首次部署报告](../../../docs/nx5-showcase.md) 保留原场景与提交的数据，不改记为图片背景成绩。
 
