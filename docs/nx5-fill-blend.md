@@ -80,3 +80,13 @@ TDE 计时覆盖私有 MMZ 的缓存同步、QuickFill 提交、阻塞完成确�
 ```
 
 原始记录位于本地 `evidence/nx5-fill-blend/2026-10-13/`，不随 Git 分发，检出后需另行取得。最终调用链测试程序 SHA256 为 `ad7db851e699ad0c6fa704b633b48087aa15f8d384cb52f95bc0bf750ad5e79d`；部署归档保存每轮程序、日志、源构建和摘要。展示程序部署状态以带时间戳的 [环境快照](../test-app/devices/nx5/current-target.json) 为准。
+
+## 常驻与回退
+
+本轮实现提交 `fdb0f0e`，展示程序 SHA256 为 `f1693d2533472cc2435ccd6a039aacc41d76d2daea903e39ad71c99cb358426b`。六页原生 MCP 查询/导航、透明度设置和透明开口往返通过；无截图干扰的约 30 秒 Motion 窗口统计五个完整批次，共 750 次成功完成提交，28.81–29.00 FPS，合并约 28.96 FPS。这只是短运行检查，未把既有全场景性能结果算成本版本成绩。末组 TDE 统计 `copy=1191, cache_hits=1190, blend=0, errors=0, fill=0`，与当前展示应用的适用范围一致。
+
+有限进程 PID 25598 按 90 秒定时正常退出，MMZ 回到 4900 KiB / 2 块、VO 关闭、独占锁释放；本进程无强制 MMZ 回收或 OOM。内核日志环形缓冲淘汰了开头的旧行，因此用退出前后共有的连续 80 行定位完整新增窗口；原始日志与提取结果均保留。
+
+最终常驻为 `/tmp/slint-bridge-fill-fdb0f0e/showcase`，观测 PID **25632**，启动脚本 `start-live.sh` 无退出定时器并清除 trace/QuickFill 诊断开关。原生 MCP 已核对 Overview。恢复副本为 `/tmp/slint-bridge-ring-0e8516d/showcase`，更早图片优化版及诊断文件经摘要校验后归档清理。最新资源数值见 [设备快照](../test-app/devices/nx5/current-target.json)。
+
+恢复前重新核对设备身份、实际 PID、可执行文件和显示所有者；通过 MCP 切静态页，确认后台提交空闲，停止该进程并确认 VO/锁释放后，由 root 执行 `sh /tmp/slint-bridge-ring-0e8516d/start-live.sh`。不要复制本文 PID；tmpfs 路径在重启后需重新部署。

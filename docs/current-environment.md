@@ -1,6 +1,12 @@
 # NX5 最近环境记录
 
-2026-10-13 圆环用例修复收尾：当前程序为 `0e8516d`，路径 `/tmp/slint-bridge-ring-0e8516d/showcase`，观测 PID **6967**，使用同一 Slint `22804ff`。Controls 圆环已绑定配置百分比，五档/两种配色的原生 MCP 与主机保留缓冲回归通过；切换前数值及开关已恢复。无退出定时器，trace、观察器和 WBC 关闭。回退为上一版 `/tmp/slint-bridge-image-opt-22804ff/showcase`。详情见 [圆环修复](nx5-controls-ring.md)，实际快照及恢复前提见 [current-target.json](../test-app/devices/nx5/current-target.json)。
+2026-10-13 填充与整体透明度验证收尾：当前程序为 `fdb0f0e` + Slint `22804ff`，路径 `/tmp/slint-bridge-fill-fdb0f0e/showcase`，观测 PID **25632**。无退出定时器，trace、QuickFill 诊断开关、WBC 和观察器关闭；普通填充继续使用 CPU。整体透明度已接入符合条件的 TDE 图像混合。恢复程序为 `/tmp/slint-bridge-ring-0e8516d/showcase`。
+
+22 组面积/形状/颜色对照均未发现本面板范围内的 TDE 填充优势；真实 SDK 调用链检查中，TDE 成功后同一操作的软件绘制行数为 0。六页 MCP、短 Motion 窗口（750 次有效完成提交，约 28.96 FPS）和正常退出资源检查通过。此次未重测物理显示页、WBC 或实体触摸时延；完整范围见 [填充/混合报告](nx5-fill-blend.md)，实际快照见 [current-target.json](../test-app/devices/nx5/current-target.json)。
+
+## 2026-10-13 圆环修复收尾（历史）
+
+2026-10-13 圆环用例修复收尾：该轮程序为 `0e8516d`，路径 `/tmp/slint-bridge-ring-0e8516d/showcase`，观测 PID **6967**，使用同一 Slint `22804ff`。Controls 圆环已绑定配置百分比，五档/两种配色的原生 MCP 与主机保留缓冲回归通过；切换前数值及开关已恢复。无退出定时器，trace、观察器和 WBC 关闭。回退为上一版 `/tmp/slint-bridge-image-opt-22804ff/showcase`。详情见 [圆环修复](nx5-controls-ring.md)，实际快照及恢复前提见 [current-target.json](../test-app/devices/nx5/current-target.json)。
 
 本轮未重复全场景性能或物理页测量；下方 29 FPS 与实际页成绩继续保留优化版的原有范围。
 
