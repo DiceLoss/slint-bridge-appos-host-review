@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-13T03:30:56.425340+00:00",
+  "checked_at_utc": "2026-10-13T05:42:55.986137+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -105,10 +105,14 @@
       0,
       600
     ],
-    "physical_touch_validation": "Image version resident: 16 contacts / 32 kernel SYN_REPORT edges matched within the common evdev/MCP interval. 488 MCP events: 485 Accepted, 3 Rejected; zero dropped/unknown. Median completed-dispatch delay 2.755 ms, max 55.580 ms (56.580 ms with 1ms quantization margin) on Motion-to-Devices release. Two observer contacts before MCP recording excluded only as a complete prefix; raw evidence retained. User confirmed normal response.",
-    "physical_touch_evidence": "evidence/nx5-image-background/2026-10-13/results.json",
+    "physical_touch_validation": "On the optimized resident build, user physically switched Overview/Devices/Layers and scrolled: fluent scrolling and synchronized titles. No new evdev-to-dispatch latency sample; previous measured samples remain scoped to41f87b2.",
+    "physical_touch_evidence": "evidence/nx5-image-optimization/2026-10-13/user-observation.json",
     "prior_physical_touch_validation": "287da8c baseline: 12 physical contacts, 49 Slint events Accepted, zero dropped; 24 contact edges matched, maximum timestamp delta 10.209 ms (1 ms precision; conservative bound 11.3 ms). User reported timely pause/resume. f963558: the finite recording window had zero events; the user subsequently confirmed the requested 4 physical taps responded normally, without a new latency sample. Its 3 native MCP pause/resume cycles passed with 24 Accepted events.",
-    "prior_physical_touch_evidence": "evidence/nx5-alpha-deploy/2026-10-12-287da8c/results.json"
+    "prior_physical_touch_evidence": "evidence/nx5-alpha-deploy/2026-10-12-287da8c/results.json",
+    "previous_image_background_touch": {
+      "validation": "Image version resident: 16 contacts / 32 kernel SYN_REPORT edges matched within the common evdev/MCP interval. 488 MCP events: 485 Accepted, 3 Rejected; zero dropped/unknown. Median completed-dispatch delay 2.755 ms, max 55.580 ms (56.580 ms with 1ms quantization margin) on Motion-to-Devices release. Two observer contacts before MCP recording excluded only as a complete prefix; raw evidence retained. User confirmed normal response.",
+      "evidence": "evidence/nx5-image-background/2026-10-13/results.json"
+    }
   },
   "vendor_files": [
     {
@@ -125,8 +129,8 @@
     }
   ],
   "running_ui": {
-    "path": "/tmp/slint-bridge-image-41f87b2/showcase",
-    "pid": 12090,
+    "path": "/tmp/slint-bridge-image-opt-22804ff/showcase",
+    "pid": 31200,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -136,12 +140,12 @@
       "--framebuffer=/tmp/slint-bridge-c03c3bb/dev/panel",
       "--touch=/tmp/slint-bridge-c03c3bb/dev/touch"
     ],
-    "sha256": "5b9e1b85763a2a2c3c2f58d4aa7bfad89159ea4d14e753b9a5926da0fb37a334",
+    "sha256": "debd6958f962f2f3f61cca65e9f1650e41547bfd8f9616f178082b2ca948ea7b",
     "frame_interval_us": 16667,
     "trace_enabled": false,
     "last_observed_fps": null,
-    "fps_evidence": "evidence/nx5-image-background/2026-10-13/automatic/phases.json",
-    "fps_note": "Image background and translucent panels: motion/blend/cutout 29.00 FPS, list 20.365 FPS. Scenario-specific completed presentations, not UI ticks.",
+    "fps_evidence": "evidence/nx5-image-optimization/2026-10-13/automatic-verified/phases.json",
+    "fps_note": "Completed presentations: list29.00, motion28.98, blend28.97, cutout28.90 FPS; CPU list median94.56% of one core. Scene-specific measurements, not UI ticks.",
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
@@ -149,7 +153,7 @@
       "forward": "adb -s 192.168.1.151:5555 forward tcp:19315 tcp:9315",
       "tools_available": 18,
       "tools_exercised": 11,
-      "verification": "evidence/nx5-image-background/2026-10-13/device-ui/summary.json",
+      "verification": "evidence/nx5-image-optimization/2026-10-13/device-ui-resident/summary.json",
       "exercised_tools": [
         "list_windows",
         "get_window_properties",
@@ -163,31 +167,32 @@
         "set_element_value",
         "take_screenshot"
       ],
-      "screenshot_status": "Guarded native screenshots after performance windows; restored resident overview verified.",
-      "final_screenshot": "evidence/nx5-image-background/2026-10-13/restored-overview.png",
-      "restored_properties": "evidence/nx5-image-background/2026-10-13/resident-window.json"
+      "screenshot_status": "Guarded native captures. Three real active-page comparisons after cache fix: 1843200 pixels, exact match including title and NX5 alpha encoding.",
+      "final_screenshot": "evidence/nx5-image-optimization/2026-10-13/resident-overview.png",
+      "restored_properties": "evidence/nx5-image-optimization/2026-10-13/resident-window.json"
     },
-    "log": "/tmp/slint-bridge-image-41f87b2/live.log",
-    "source_commit": "41f87b20d1c9189e9adcddb3954014a41596f67f",
+    "log": "/tmp/slint-bridge-image-opt-22804ff/live.log",
+    "source_commit": "acab18a622b79a0b904b60df00777f6a6813b858",
     "fault_injection_enabled": false,
-    "source_state": "41f87b2 photographic background running without an exit timer; trace, observer and recording off. User confirmed normal physical response after restoring resident mode.",
-    "source_manifest": "evidence/nx5-image-background/2026-10-13/manifest.json",
+    "source_state": "Optimized photo UI plus Slint text-cache invalidation fix; resident with no exit timer. User confirmed fluent scrolling and synchronized page titles.",
+    "source_manifest": "evidence/nx5-image-optimization/2026-10-13/manifest-verified.json",
     "resources": {
-      "rss_kib": 20636,
-      "vm_hwm_kib": 24536,
-      "vm_peak_kib": 43804,
+      "rss_kib": 18584,
+      "vm_hwm_kib": 23372,
+      "vm_peak_kib": 41084,
       "threads": 3,
       "mmz_used_kib": 12100,
       "mmz_blocks": 5,
       "wbc_running": false,
-      "mem_available_kib": 40172
+      "mem_available_kib": 40308
     },
     "runtime_source_sha256": "4a37dda144d41ef5b7a1fe12420952fbae22dfebc51fb95171b43334fef31abb",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "wake_source_sha256": "4c67e34b31870b5254b093ee17181bad74d0dda6b86a3af9bb5cc6bebda8256a",
-    "performance_manifest": "evidence/nx5-image-background/2026-10-13/manifest.json"
+    "performance_manifest": "evidence/nx5-image-optimization/2026-10-13/manifest-verified.json",
+    "slint_source_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6"
   },
-  "status": "image_background_deployed_performance_measured_resident_restored",
+  "status": "image_scroll_optimized_and_cache_repaint_fixed_resident",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -217,7 +222,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "41f87b2 real embedded 1638x960 PNG plus translucent panels, same bridge/backend. 5850 valid completed presentations: motion/blend/cutout 29.00 FPS, list 20.365 FPS, list CPU near one core. Dynamic RSS about 20.5 MiB. Physical interval matched, user normal response. Finite run expired before initial physical capture; no evidence of crash, restored no-timer resident. No new WBC/video/scanout certification.",
+  "observation_scope": "acab18a + Slint22804ff. Final four-scene performance6300 valid completed frames; list29FPS and17.0MiB RSS; TDE backgroundcopy/cache errors0. Three full active-page images1843200pixels exactly match CPU reference. User physical response normal. Finite31000 normalexit releasesTDE MMZ; finalresident31200 traceoff. No new WBC/LCD or evdev latency certification.",
   "hardware_regression": {
     "report": "docs/nx5-hardware.md",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -350,12 +355,11 @@
     }
   },
   "recovery_ui": {
-    "path": "/tmp/slint-bridge-showcase-308afe5/showcase",
-    "source_commit": "308afe5f0b07795f7d6c8ecb345bc73a1d75d402",
-    "sha256": "81a87f5932fdf820c3295282b9af7afddffbc7aec080826958bf4b2a7a5cc01a",
-    "startup_script": "/tmp/slint-bridge-showcase-308afe5/start-live.sh",
-    "host_backup": "evidence/nx5-image-background/2026-10-13/rollback",
-    "procedure": "docs/nx5-image-background.md#常驻与资料"
+    "path": "/tmp/slint-bridge-image-41f87b2/showcase",
+    "source_commit": "41f87b20d1c9189e9adcddb3954014a41596f67f",
+    "sha256": "5b9e1b85763a2a2c3c2f58d4aa7bfad89159ea4d14e753b9a5926da0fb37a334",
+    "startup_script": "/tmp/slint-bridge-image-41f87b2/start-live.sh",
+    "procedure": "docs/nx5-image-optimization.md#常驻与回退"
   },
   "alpha_validation": {
     "report": "docs/nx5-alpha.md",
@@ -439,5 +443,33 @@
     "tde_blend": 0,
     "tde_errors": 0,
     "library_or_sdk_changed": false
+  },
+  "image_optimization_validation": {
+    "report": "docs/nx5-image-optimization.md",
+    "evidence": "evidence/nx5-image-optimization/2026-10-13/results-verified.json",
+    "tested_commit": "acab18a622b79a0b904b60df00777f6a6813b858",
+    "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
+    "binary_sha256": "debd6958f962f2f3f61cca65e9f1650e41547bfd8f9616f178082b2ca948ea7b",
+    "fps_by_scene": {
+      "motion": 28.98088730098165,
+      "list": 29.0,
+      "blend": 28.974485523964454,
+      "cutout": 28.903233567815015
+    },
+    "pixel_comparison": "evidence/nx5-image-optimization/2026-10-13/pixels-verified/comparison.json",
+    "pixels_compared": 1843200,
+    "maximum_channel_error": 0,
+    "tde_last_counters": {
+      "frames": 12000,
+      "copy": 9882,
+      "blend": 0,
+      "software": 1009811,
+      "cache_hits": 9881,
+      "errors": 0
+    },
+    "finite_exit_pid": 31000,
+    "finite_exit_mmz_kib": 4900,
+    "finite_exit_mmz_blocks": 2,
+    "physical_feedback": "evidence/nx5-image-optimization/2026-10-13/user-observation.json"
   }
 }

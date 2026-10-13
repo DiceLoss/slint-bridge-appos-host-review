@@ -1,6 +1,12 @@
 # NX5 最近环境记录
 
-2026-10-13 图片背景复测收尾：当前为 `41f87b2`，路径 `/tmp/slint-bridge-image-41f87b2/showcase`，观测 PID **12090**，无退出定时器。trace、输入观察器、事件录制和 WBC 已关闭；纯色 `308afe5` 保留作回退。机器可读快照见 [current-target.json](../test-app/devices/nx5/current-target.json)。
+2026-10-13 图片列表优化收尾：当前为桥接工程 `acab18a` + Slint `22804ff`，路径 `/tmp/slint-bridge-image-opt-22804ff/showcase`，观测 PID **31200**，无退出定时器；trace、观察器、WBC 和事件录制均关闭。回退保留原图片版 `41f87b2`。实际状态与资源见 [current-target.json](../test-app/devices/nx5/current-target.json)，恢复时必须重新核对 PID 和显示所有者。
+
+最终列表 **29.00 FPS**，其余三场景 28.90–28.98 FPS；列表动态 RSS 17.0 MiB、CPU 中位数 94.6% 单核。真实页三组 1843200 像素完全匹配软件参考；测试发现并修复了 Slint 文字缓存淘汰后的标题漏刷。用户确认“滑动流畅，标题同步正常”。实测范围、临时文件空间不足的失败样本和清理过程见 [优化报告](nx5-image-optimization.md)。
+
+## 2026-10-13 首次图片背景复测（历史）
+
+2026-10-13 图片背景复测收尾：该轮为 `41f87b2`，路径 `/tmp/slint-bridge-image-41f87b2/showcase`，观测 PID **12090**，无退出定时器。trace、输入观察器、事件录制和 WBC 已关闭；纯色 `308afe5` 保留作回退。该轮详细数据见 [图片背景报告](nx5-image-background.md)。
 
 实际 PNG 背景和半透明界面下，动画/透明混合仍为 29.00 FPS，列表约 20.37 FPS、CPU 接近单核 100%，动态 RSS 约 20.5 MiB。实体共同采样区间 16 次接触，处理时延中位数 2.755 ms、最高 55.580 ms；用户确认恢复后的常驻界面响应正常。首次等待实体操作时有限测试到期造成空窗，现已恢复常驻，详情及所有测量边界见 [图片背景报告](nx5-image-background.md)。
 
