@@ -1,0 +1,51 @@
+import { LineEdit, Switch } from "std-widgets.slint";
+import { DeviceRow } from "models.slint";
+import { Label, Caption, Heading, Card, Action, Meter, Palette } from "widgets.slint";
+
+export component Devices inherits VerticalLayout {
+    in property <[DeviceRow]> rows;
+    in-out property <string> query;
+    in-out property <bool> online-only;
+    in property <string> selected-name;
+    callback filter();
+    callback keyboard();
+    callback select(int);
+    spacing: 12px;
+    HorizontalLayout {
+        spacing: 12px;
+        search-input := LineEdit { text <=> root.query; placeholder-text: "Search demo devices or rooms"; height: 44px; edited => { root.filter(); } }
+        search-keyboard := Action { text: "Keyboard"; width: 104px; clicked => { root.keyboard(); } }
+        online-filter := Switch { text: "Online only"; checked <=> root.online-only; toggled => { root.filter(); } }
+        clear-filter := Action { text: "Clear"; width: 90px; clicked => { root.query = ""; root.online-only = false; root.filter(); } }
+    }
+    Card {
+        VerticalLayout {
+            padding: 16px; spacing: 8px;
+            HorizontalLayout { Heading { text: "Demo device directory"; } Caption { text: root.rows.length + " results"; horizontal-alignment: right; } }
+            Caption { text: "Touch a row for details. Drag the list to discover all devices."; }
+            device-list := Flickable {
+                mouse-drag-pan-enabled: true;
+                content-width: self.width;
+                VerticalLayout {
+                    spacing: 6px;
+                    for device in root.rows: row := Rectangle {
+                        height: 66px; border-radius: 8px; background: touch.pressed ? #ccece7 : #f2f6f8;
+                        accessible-role: button; accessible-label: device.name;
+                        accessible-action-default => { root.select(device.id); }
+                        HorizontalLayout {
+                            padding: 12px; spacing: 12px;
+                            Rectangle { width: 38px; border-radius: 8px; background: device.online ? #d7eee8 : #e2e8ed; Label { text: "" + device.id; horizontal-alignment: center; color: Palette.teal; } }
+                            VerticalLayout { Label { text: device.name; font-weight: 600; } Caption { text: device.location; } }
+                            Label { width: 80px; text: device.online ? "Online" : "Offline"; color: device.online ? Palette.teal : Palette.muted; }
+                            Label { width: 70px; text: device.level + "%"; horizontal-alignment: right; }
+                            Label { width: 20px; text: "›"; horizontal-alignment: right; }
+                        }
+                        touch := TouchArea { clicked => { root.select(device.id); } }
+                    }
+                    if root.rows.length == 0: Label { height: 110px; text: "No matching devices. Clear the filters to start again."; horizontal-alignment: center; }
+                }
+            }
+        }
+    }
+    Caption { text: "Selected: " + root.selected-name + "   /   All device values are simulated."; }
+}

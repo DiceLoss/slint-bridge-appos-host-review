@@ -1,0 +1,61 @@
+import { Slider, Switch } from "std-widgets.slint";
+import { Label, Caption, Heading, Card, Action, Palette } from "widgets.slint";
+
+export component Motion inherits VerticalLayout {
+    in property <float> phase;
+    in property <int> ticks;
+    in-out property <bool> running;
+    in-out property <float> speed;
+    in property <bool> expanded;
+    callback replay();
+    callback toggle();
+    spacing: 14px;
+    HorizontalLayout {
+        spacing: 12px;
+        motion-toggle := Action { text: root.running ? "Pause motion" : "Resume motion"; primary: true; clicked => { root.toggle(); } }
+        Label { text: "Speed"; width: 50px; }
+        speed-slider := Slider { minimum: 0.25; maximum: 2; step: 0.25; value <=> root.speed; height: 44px; }
+        Label { text: root.speed + "×"; width: 45px; }
+        Caption { text: "UI ticks " + root.ticks; width: 110px; }
+    }
+    Card {
+        VerticalLayout {
+            padding: 20px; spacing: 12px;
+            Heading { text: "Motion playground"; }
+            Caption { text: "Position, clipping and opacity. Pause to inspect a single state."; }
+            Rectangle {
+                min-height: 115px; background: #102a3b; border-radius: 10px; clip: true;
+                for i in 18: Rectangle { x: i * parent.width / 17; width: 1px; height: 100%; background: #254454; }
+                for i in 6: Rectangle {
+                    x: (parent.width - self.width) * (0.5 + 0.5 * sin(root.phase * 1deg + i * 48deg));
+                    y: 14px + i * (parent.height - 60px) / 6;
+                    width: 34px + i * 6px; height: 34px + i * 6px; border-radius: self.width / 2;
+                    background: i < 3 ? #46ddbc : #58a6ef; opacity: 0.35 + i * 0.1;
+                }
+            }
+        }
+    }
+    Card {
+        height: 133px;
+        HorizontalLayout {
+            padding: 18px; spacing: 20px;
+            VerticalLayout {
+                Heading { text: "A change of state"; }
+                Caption { text: "Native Slint easing, color and corner transitions."; }
+                transition-button := Action { text: "Replay transition"; clicked => { root.replay(); } }
+            }
+            Rectangle {
+                width: 240px;
+                Rectangle {
+                    x: root.expanded ? parent.width - self.width : 0;
+                    y: (parent.height - self.height) / 2;
+                    width: root.expanded ? 130px : 76px; height: 76px;
+                    border-radius: root.expanded ? 12px : 38px;
+                    background: root.expanded ? #347dd1 : #009b88;
+                    animate x, width, border-radius, background { duration: 800ms; easing: ease-in-out; }
+                    Text { text: root.expanded ? "EXPANDED" : "READY"; color: white; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
+                }
+            }
+        }
+    }
+}

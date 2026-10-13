@@ -1,0 +1,56 @@
+import { Label, Caption, Heading, Card, Action, Meter, Palette } from "widgets.slint";
+
+export component Overview inherits VerticalLayout {
+    in property <int> event-count;
+    in property <int> ticks;
+    in property <[float]> samples;
+    callback navigate(int);
+    spacing: 16px;
+    HorizontalLayout {
+        spacing: 14px;
+        for metric in [{title: "SCENES", value: "06", note: "Explore the full interface"}, {title: "INTERACTIONS", value: "" + root.event-count, note: "Actions in this session"}, {title: "UI TICKS", value: "" + root.ticks, note: "Animation ticks, not display FPS"}]: Card {
+            height: 112px;
+            VerticalLayout {
+                padding: 18px; spacing: 3px;
+                Caption { text: metric.title; }
+                Heading { text: metric.value; font-size: 32px; }
+                Caption { text: metric.note; }
+            }
+        }
+    }
+    HorizontalLayout {
+        spacing: 16px;
+        Card {
+            horizontal-stretch: 3;
+            VerticalLayout {
+                padding: 20px; spacing: 12px;
+                HorizontalLayout { Heading { text: "A little motion. A lot to explore."; } }
+                Caption { text: "SIMULATED SIGNAL  /  live model updates"; }
+                Rectangle {
+                    min-height: 80px;
+                    for i in 4: Rectangle { y: i * (parent.height - 1px) / 3; width: 100%; height: 1px; background: #e8eef2; }
+                    HorizontalLayout {
+                        spacing: 5px;
+                        for sample in root.samples: Rectangle {
+                            Rectangle { y: parent.height * (1 - sample / 100); height: parent.height * sample / 100; width: 100%; border-radius: 3px; background: @linear-gradient(0deg, #048e86, #62d7bf); }
+                        }
+                    }
+                }
+                HorizontalLayout { Caption { text: "Earlier"; } Caption { text: "Now"; horizontal-alignment: right; } }
+                Action { text: "Explore animation   →"; clicked => { root.navigate(3); } }
+            }
+        }
+        Card {
+            horizontal-stretch: 2;
+            VerticalLayout {
+                padding: 20px; spacing: 14px;
+                Heading { text: "Made for touch"; }
+                Label { text: "Controls that respond.\nState that stays with you."; wrap: word-wrap; }
+                Caption { text: "Sliders • Forms • Lists • Dialogs\nTextures • Alpha • Motion"; wrap: word-wrap; }
+                Rectangle { vertical-stretch: 1; }
+                Action { text: "Try the controls"; primary: true; clicked => { root.navigate(1); } }
+                Action { text: "Open interaction lab"; clicked => { root.navigate(5); } }
+            }
+        }
+    }
+}

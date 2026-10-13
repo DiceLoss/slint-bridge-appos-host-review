@@ -12,5 +12,11 @@ fn main() {
             println!("cargo:rerun-if-changed={}", dependency.display());
         }
     }
-    slint_build::compile("ui/app.slint").expect("compile test UI");
+    slint_build::compile_with_config(
+        "ui/app.slint",
+        slint_build::CompilerConfiguration::default()
+            .with_style("fluent".into())
+            .embed_resources(slint_build::EmbedResourcesKind::EmbedFiles),
+    )
+    .expect("compile test UI");
 }

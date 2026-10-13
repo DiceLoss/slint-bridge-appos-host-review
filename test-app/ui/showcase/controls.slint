@@ -1,0 +1,70 @@
+import { Slider, Switch, CheckBox, LineEdit, ComboBox } from "std-widgets.slint";
+import { Label, Caption, Heading, Card, Action, Meter, Palette } from "widgets.slint";
+
+export component Controls inherits HorizontalLayout {
+    in-out property <string> station-name;
+    in-out property <float> level;
+    in-out property <bool> power;
+    in-out property <bool> notifications;
+    in-out property <int> mode;
+    in property <string> saved-summary;
+    callback apply();
+    callback keyboard();
+    callback reset();
+    spacing: 16px;
+    Card {
+        horizontal-stretch: 3;
+        VerticalLayout {
+            padding: 20px; spacing: 12px;
+            Heading { text: "Tune your workspace"; }
+            Caption { text: "Edit the demo profile, then apply your changes."; }
+            Label { text: "Station name"; }
+            HorizontalLayout {
+                spacing: 8px;
+                station-input := LineEdit { text <=> root.station-name; placeholder-text: "Enter a station name"; height: 44px; }
+                keyboard-button := Action { text: "Keyboard"; width: 102px; clicked => { root.keyboard(); } }
+            }
+            HorizontalLayout {
+                Label { text: "Output level"; }
+                Label { text: round(root.level) + "%"; horizontal-alignment: right; color: Palette.teal; }
+            }
+            level-slider := Slider { minimum: 0; maximum: 100; step: 1; value <=> root.level; height: 44px; }
+            HorizontalLayout {
+                spacing: 16px;
+                Label { text: "Profile"; }
+                profile-select := ComboBox { model: ["Balanced", "Quiet", "Performance"]; current-index <=> root.mode; height: 44px; }
+            }
+            HorizontalLayout {
+                power-switch := Switch { text: "Output enabled"; checked <=> root.power; height: 44px; }
+                notifications-check := CheckBox { text: "Notifications"; checked <=> root.notifications; height: 44px; }
+            }
+            Rectangle { vertical-stretch: 1; }
+            HorizontalLayout {
+                spacing: 10px;
+                apply-button := Action { text: "Apply profile"; primary: true; clicked => { root.apply(); } }
+                reset-button := Action { text: "Reset…"; clicked => { root.reset(); } }
+            }
+        }
+    }
+    Card {
+        horizontal-stretch: 2;
+        VerticalLayout {
+            padding: 22px; spacing: 18px;
+            Caption { text: "LIVE PREVIEW  /  simulated device"; }
+            Rectangle {
+                height: 114px; border-radius: 12px;
+                background: root.power ? #e1f5ef : #edf0f3;
+                Rectangle { width: 68px; height: 68px; x: (parent.width - self.width) / 2; y: 23px; border-radius: 34px; border-width: 9px; border-color: root.power ? Palette.teal : #b5c2cd;
+                    Label { text: round(root.level) + "%"; horizontal-alignment: center; }
+                }
+            }
+            Heading { text: root.station-name == "" ? "Unnamed station" : root.station-name; }
+            Label { text: root.power ? "Output enabled" : "Output disabled"; color: root.power ? Palette.teal : Palette.muted; }
+            Meter { value: root.power ? root.level : 0; }
+            Caption { text: "LAST APPLIED"; }
+            Label { text: root.saved-summary; wrap: word-wrap; }
+            Rectangle { vertical-stretch: 1; }
+            Caption { text: "Demo state only. No hardware settings are changed."; wrap: word-wrap; }
+        }
+    }
+}

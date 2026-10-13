@@ -1,0 +1,79 @@
+import { EventRow } from "models.slint";
+import { Label, Caption, Heading, Card, Action, Meter, Palette } from "widgets.slint";
+
+export component Lab inherits HorizontalLayout {
+    in property <[EventRow]> events;
+    in property <[bool]> exercised;
+    in property <int> completed;
+    in property <int> taps;
+    in property <int> drag-count;
+    in-out property <float> drag-x;
+    in-out property <float> drag-y;
+    callback tap(int);
+    callback dragged();
+    callback clear();
+    spacing: 16px;
+    Card {
+        horizontal-stretch: 1;
+        VerticalLayout {
+            padding: 18px; spacing: 8px;
+            Heading { text: "Touch & drag"; }
+            Caption { text: "Tap each target, then drag inside the pad."; }
+            HorizontalLayout {
+                spacing: 8px;
+                for i in 3: Action { text: "Tap " + (i + 1); min-width: 60px; clicked => { root.tap(i); } }
+            }
+            drag-pad := Rectangle {
+                background: #edf6f5; border-radius: 10px; min-height: 100px; clip: true;
+                Rectangle { x: root.drag-x * (parent.width - 34px); y: root.drag-y * (parent.height - 34px); width: 34px; height: 34px; border-radius: 17px; background: Palette.teal; }
+                Caption { text: "DRAG PAD"; x: 10px; y: 10px; }
+                pad-touch := TouchArea {
+                    property <length> start-x;
+                    property <length> start-y;
+                    property <bool> dragged;
+                    moved => { if self.pressed {
+                        if abs(self.mouse-x - self.start-x) + abs(self.mouse-y - self.start-y) > 4px { self.dragged = true; }
+                        root.drag-x = clamp(self.mouse-x / self.width, 0, 1);
+                        root.drag-y = clamp(self.mouse-y / self.height, 0, 1);
+                    } }
+                    pointer-event(event) => {
+                        if event.kind == PointerEventKind.down { self.start-x = self.mouse-x; self.start-y = self.mouse-y; self.dragged = false; }
+                        if event.kind == PointerEventKind.up && self.dragged { root.dragged(); }
+                    }
+                }
+            }
+            Label { text: "Taps " + root.taps + "   /   Drags " + root.drag-count; }
+            Caption { text: "" + root.completed + " / 6 exercises completed"; }
+            Meter { value: root.completed * 100 / 6; }
+            for name[index] in ["Visit every page", "Apply a profile", "Open device details", "Replay a transition", "Adjust image opacity", "Tap and drag"]: Caption {
+                text: (root.exercised[index] ? "✓  " : "○  ") + name;
+                color: root.exercised[index] ? Palette.teal : Palette.muted;
+            }
+        }
+    }
+    Card {
+        horizontal-stretch: 1;
+        VerticalLayout {
+            padding: 18px; spacing: 10px;
+            HorizontalLayout { Heading { text: "Interaction journal"; } }
+            Caption { text: "Latest 24 actions in this session · Drag to scroll"; }
+            event-list := Flickable {
+                mouse-drag-pan-enabled: true;
+                content-width: self.width;
+                VerticalLayout {
+                    spacing: 4px;
+                    for event in root.events: Rectangle {
+                        height: 46px; background: #f2f6f8; border-radius: 6px;
+                        HorizontalLayout { padding: 10px; spacing: 8px;
+                            Caption { text: "#" + event.sequence; width: 40px; }
+                            Label { text: event.action; font-size: 13px; }
+                        }
+                    }
+                    if root.events.length == 0: Caption { text: "Your next action will appear here."; height: 60px; }
+                }
+            }
+            clear-journal := Action { text: "Clear journal"; clicked => { root.clear(); } }
+            Caption { text: "Exercises record UI actions; they are not hardware test results."; wrap: word-wrap; }
+        }
+    }
+}

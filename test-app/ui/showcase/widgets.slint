@@ -1,0 +1,73 @@
+export global Palette {
+    out property <color> ink: #182d40;
+    out property <color> muted: #687e90;
+    out property <color> teal: #008b83;
+    out property <color> line: #dce5eb;
+}
+
+export component Label inherits Text {
+    color: Palette.ink;
+    font-size: 15px;
+    vertical-alignment: center;
+    overflow: elide;
+}
+
+export component Caption inherits Label {
+    color: Palette.muted;
+    font-size: 12px;
+}
+
+export component Heading inherits Label {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+export component Card inherits Rectangle {
+    background: white;
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: Palette.line;
+}
+
+export component Action inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary;
+    in property <bool> enabled: true;
+    callback clicked();
+    min-height: 44px;
+    min-width: max(90px, action-label.preferred-width + 24px);
+    border-radius: 8px;
+    background: !enabled ? #e7ecef : touch.pressed ? #b7dbd8 : primary ? Palette.teal : touch.has-hover ? #e2eeef : #eef4f5;
+    accessible-role: button;
+    accessible-label: text;
+    accessible-enabled: enabled;
+    accessible-action-default => { if enabled { root.clicked(); } }
+    action-label := Label { text: root.text; horizontal-alignment: center; color: !root.enabled ? #9aa9b4 : root.primary ? white : Palette.ink; }
+    touch := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } }
+}
+
+export component NavItem inherits Rectangle {
+    in property <string> text;
+    in property <string> number;
+    in property <bool> selected;
+    callback clicked();
+    height: 49px;
+    border-radius: 8px;
+    background: selected ? #214c59 : touch.has-hover ? #1b3445 : transparent;
+    accessible-role: button;
+    accessible-label: text;
+    accessible-action-default => { root.clicked(); }
+    Rectangle { x: 0; y: 13px; width: 3px; height: 23px; background: root.selected ? #54e0c4 : transparent; border-radius: 2px; }
+    Text { x: 14px; width: 27px; height: 100%; text: root.number; color: root.selected ? #54e0c4 : #718a9e; font-size: 12px; vertical-alignment: center; }
+    Text { x: 44px; width: parent.width - 48px; height: 100%; text: root.text; color: root.selected ? white : #a7b9c7; font-size: 14px; vertical-alignment: center; }
+    touch := TouchArea { clicked => { root.clicked(); } }
+}
+
+export component Meter inherits Rectangle {
+    in property <float> value;
+    in property <color> tint: Palette.teal;
+    height: 7px;
+    background: #eaf0f3;
+    border-radius: 3px;
+    Rectangle { x: 0; y: 0; width: parent.width * clamp(root.value, 0, 100) / 100; height: 100%; border-radius: 3px; background: root.tint; }
+}

@@ -2,6 +2,8 @@ use slint_bridge::{Config, InputDevice};
 
 slint::include_modules!();
 
+pub mod showcase;
+
 #[path = "../fixtures/textures.rs"]
 mod textures;
 pub use textures::configure_textures;

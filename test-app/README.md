@@ -11,6 +11,8 @@ test-app/
 ├── src/
 │   ├── lib.rs                 # 生成的界面类型、设备路径配置
 │   ├── main.rs                # display：运动、纹理、暂停/恢复
+│   ├── bin/showcase.rs        # showcase：六页触屏展示与交互测试
+│   ├── showcase.rs            # 模拟数据、跨页状态、回调与动画时钟
 │   ├── bin/basic.rs           # basic：最小接入示例
 │   ├── bin/init-retry.rs      # NX5 同进程初始化失败与资源清理验证
 │   ├── bin/startup-regression.rs # NX5 启动/重试/退出实机验证
@@ -20,13 +22,17 @@ test-app/
 │   ├── app.slint              # 导出测试界面
 │   ├── basic.slint            # 不依赖设备尺寸的基础窗口
 │   ├── display.slint          # 随窗口尺寸布局的运动/纹理场景
+│   ├── showcase.slint         # 展示应用外壳、导航及模态对话框
+│   ├── showcase/              # 六个页面、共享控件及模型类型
 │   ├── startup.slint          # 可拒绝布局与纯色像素验证
 │   └── alpha.slint            # 半透明色块与黑底参考色
 ├── fixtures/textures.rs       # 确定性的纹理素材；底层 TDE 比较也复用它
 ├── tests/public_api.rs        # 仅使用适配库公开接口的回归
+├── tests/showcase.rs          # 展示应用状态、筛选、表单及透明像素回归
 ├── devices/nx5/               # 当前设备记录与构建/运行说明
 └── tools/
     ├── check-feature-matrix.py
+    ├── check-showcase.py      # 主机原生 Slint MCP 交互与截图检查
     └── nx5/                  # WBC、TDE、翻页等硬件诊断及历史证据重放
 ```
 
@@ -69,6 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | 用例 | 运行选择 | 验证内容 |
 | --- | --- | --- |
 | 最小显示 | `--bin basic` | 从公开接口初始化平台并创建窗口 |
+| 完整界面展示 | `--bin showcase -- --touch=/dev/input/event0` | 六页导航、表单、列表、动画、透明区域、交互记录 |
 | 运动与触摸 | `--bin display -- --touch=/dev/input/event0` | 连续更新；点击暂停、再次点击恢复 |
 | 纹理与透明混合 | `--bin display -- --textures` | 大图、透明图和运动组合；是否实际使用硬件加速由板级统计确认 |
 | MCP 交互 | `display` 加 MCP 构建和运行环境 | 元素树、截图、点击/拖动、输入事件录制 |
@@ -79,6 +86,48 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | NX5 窗口启动 | `--bin startup-regression`，仅 `nx5-tde` | 首次显示失败清理、同一组件重试、延迟创建和真实前台页像素 |
 
 `basic` 只使用 `--framebuffer` 和 `--touch` 路径配置。`display` 另外支持 `--textures`、`--pattern`、`--split`、`--observe=N` 和 `--seconds=N`；这些选项使用表中所示的 `--name=value` 或独立开关格式。旋转、按键映射和帧间隔通过 Rust `Config` 配置，当前没有对应命令行参数。
+
+## 六页展示应用 showcase
+
+`showcase` 是独立的触屏应用，使用浅色内容区、深色导航和蓝绿色强调色；原来的 `display` 继续用于固定运动/纹理和 WBC 诊断。新界面面向 NX5 的 1024×600 屏幕，最低布局尺寸为 960×600，大屏随窗口扩展。使用英文标签以兼容现有 DejaVu Sans 字体，未引入中文字体依赖。
+
+| 页面 | 可操作内容 | 检查重点 |
+| --- | --- | --- |
+| Overview | 实时模拟柱图、快捷入口、会话计数 | 布局、渐变、模型更新、导航 |
+| Controls | 名称输入、触屏字母/数字键盘、滑块、开关、复选框、下拉框、应用与重置确认 | 双向绑定、输入校验、取消不改值、跨页状态保留 |
+| Devices | 18 条模拟设备、名称/房间搜索、触屏搜索键盘、在线筛选、空状态、滚动和详情弹窗 | 列表模型、触摸滚动、筛选后按稳定 ID 选择 |
+| Motion | 六个运动图形、暂停/恢复、速度滑块、原生缓动状态切换 | 位置、透明度、裁剪、颜色和圆角动画 |
+| Layers | RGBA 测试图、每像素 alpha 纹理、透明度滑块、透明窗口开口 | 图像缩放、混合、关闭底图后的真实透明像素 |
+| Interaction lab | 三个点击目标、拖动面板、六项交互练习、最近 24 条操作记录 | 点击/拖动区别、页面回调、清空记录 |
+
+设备数据和图表均为本地模拟，配置仅在本次进程中保存，不改变设备硬件设置。`UI ticks` 是应用动画更新次数，不是 framebuffer 完成数或显示 FPS；静态页面不更新动画数据。练习完成表示对应 UI 操作已发生，不表示硬件测试通过。打开透明区域时不绘制全屏底色，没有连接视频源；实机下层可能仍是黑色，视频合成仍须独立验收。
+
+应用支持 `--framebuffer=PATH`、`--touch=PATH` 和 `--seconds=N`。NX5 构建命令与设备说明相同，将 `--bin display` 换为 `--bin showcase`；运行时不传 `--textures` 或 WBC 参数。必须先按设备流程确认显示所有权、退出已有程序并保留回退，再启动新二进制。构建和主机预览不会切换设备当前版本。
+
+### 主机预览与自动交互检查
+
+主机预览使用同源 Slint 的原生 headless software backend，不打开 framebuffer、不加载厂商 SDK，也不绕过库的设备准入。仅显式开启测试工程的 `showcase-preview` feature 并传 `--preview` 时使用此路径；设备构建不需要该 feature。
+
+```sh
+SLINT_EMIT_DEBUG_INFO=1 cargo build --locked --offline \
+  -p slint-bridge-test-app --features fbdev,showcase-preview --bin showcase
+
+# 自动启动独立主机预览，使用随机 localhost 端口；输出目录必须尚不存在。
+python3 test-app/tools/check-showcase.py --output target/showcase-check
+
+# 或保留预览供 MCP 客户端检查。headless 不创建桌面可见窗口。
+SLINT_MCP_PORT=19316 target/debug/showcase --preview --seconds=300
+```
+
+原生 MCP 地址为 `http://127.0.0.1:19316/mcp`，连接方式见 [MCP 指南](../docs/slint-mcp.md)。自动检查脚本通过原生 MCP 实际操作六页，保存六页及四种附加状态的 PNG、元素树、事件记录和检查摘要；它只启动自己的主机进程，不接受设备 endpoint。截图应进一步人工检查排版，脚本通过不等于像素视觉验收。脚本终止自己创建的主机进程，不作为 NX5 SDK 正常退出验证。
+
+导航 ID 为 `Showcase::nav-overview`、`nav-controls`、`nav-devices`、`nav-motion`、`nav-media`、`nav-lab`（各 ID 均带 `Showcase::` 前缀）；页面控件例如 `Controls::level-slider`、`Devices::search-input`、`Motion::motion-toggle`、`Media::alpha-slider`、`Lab::drag-pad`。弹窗关闭/确认 ID 为 `Showcase::dialog-cancel` / `Showcase::dialog-confirm`。重建页面后重新查询元素句柄。
+
+`tests/showcase.rs` 使用 Slint 内存软件窗口检查表单校验、状态保留、重置取消、键盘编辑、列表筛选、稳定 ID、日志上限及透明开口的实际 RGBA 像素。默认 feature 矩阵包含该测试；MCP 交互检查单独运行。两者均不代替 evdev、TDE/DMA、物理双页和扫描输出验证。
+
+界面固定使用 Fluent 标准控件，图标以 SVG 数据嵌入二进制；测试工程启用同源 `i-slint-core` 的图像/SVG 解码能力，不引入桌面或 GPU 后端。动态测试图由 Rust 生成，不需另行部署素材文件；字体仍按设备说明提供。
+
+## 专用诊断说明
 
 WBC 按无版本库名 `libobserver.so` 通过系统搜索路径加载，部署目录可由 `LD_LIBRARY_PATH` 指定；新插件接收应用配置的 framebuffer 路径，并通过 ioctl 获取采样尺寸，旧插件需重新构建。
 
@@ -92,7 +141,7 @@ WBC 按无版本库名 `libobserver.so` 通过系统搜索路径加载，部署�
 
 `init-retry OUTPUT_DIRECTORY [--framebuffer=PATH] [--touch=PATH]` 需要已有的输出目录并独占设备。它连续执行两次 framebuffer 路径错误和两次输入路径错误，然后成功启动并结束一个 UI 线程；在进程仍存活时断言 VO 已关闭、无 TDE MMZ 分配，核对重复失败及 UI 退出后的设备描述符缓存不增长，并保存 `.vo`、`.mmz`、`.fds` 快照。按设备说明构建时将 `--bin display` 换为 `--bin init-retry`；正常应返回 0，不能与显示进程同时运行。
 
-应用要透出下层视频时，可将 `.slint` 根窗口设为 `background: transparent;`，在其上绘制局部 UI；当前示例仍使用各自原有背景。透明和半透明像素的输出、无 alpha 格式限制及尚未接入的视频层边界见 [Framebuffer 软件路径](../docs/software-platform.md#framebuffer-软件路径)。库内透明窗口回归使用内存双页验证移动和消失后的 alpha、颜色及行尾 padding。`alpha-regression` 另用于设备上的实际页和 WBC 检查，构建、前提及输出见 [设备工具](tools/nx5/README.md#硬件诊断与证据重放)；它使用现有黑色 VO 底色，不代表视频解码和业务视频接入已经验证。
+应用要透出下层视频时，可将 `.slint` 根窗口设为 `background: transparent;`，在其上绘制局部 UI；`basic` / `display` 保持原有背景，`showcase` 的 Layers 页可以打开透明区域。透明和半透明像素的输出、无 alpha 格式限制及尚未接入的视频层边界见 [Framebuffer 软件路径](../docs/software-platform.md#framebuffer-软件路径)。库内透明窗口回归使用内存双页验证移动和消失后的 alpha、颜色及行尾 padding。`alpha-regression` 另用于设备上的实际页和 WBC 检查，构建、前提及输出见 [设备工具](tools/nx5/README.md#硬件诊断与证据重放)；它使用现有黑色 VO 底色，不代表视频解码和业务视频接入已经验证。
 
 基础窗口适合新设备接入检查；运动/纹理场景使用窗口实际尺寸显示分辨率、安排绘图区和限制运动范围。默认不打开触摸设备，检查暂停/恢复时需指定 `--touch`，或使用 MCP 注入交互。
 
