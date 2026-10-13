@@ -1,6 +1,12 @@
 # NX5 最近环境记录
 
-2026-10-13 09:41（北京时间）收尾：当前常驻为六页展示应用 `308afe5`，路径 `/tmp/slint-bridge-showcase-308afe5/showcase`，观测 PID **30541**。原 `f963558` 保留为回退；随后用户确认“已操作，显示和触摸都正常”。完整结果及回退方法见 [展示应用部署报告](nx5-showcase.md)，机器可读快照见 [current-target.json](../test-app/devices/nx5/current-target.json)。
+2026-10-13 本轮性能测试收尾：仍运行同一 `308afe5` 展示二进制，最新观测 PID **3782**，日志 `/tmp/slint-bridge-showcase-308afe5/live-after-performance-2.log`；已恢复关闭 trace 的常驻模式，观察器与事件录制均结束，`f963558` 回退保留。当前机器可读状态见 [current-target.json](../test-app/devices/nx5/current-target.json)。
+
+动画、列表、两种透明场景共 6150 次有效完成提交，日志精度下均为 29.00 FPS；动态 RSS 约 13.9 MiB。完整实体短窗口 240 条事件全部 Accepted、零丢失；14 条 evdev 边沿配对的中位时延 1.756 ms，最高 59.734 ms 出现在 Motion → Devices 切页抬起，含量化裕量为 60.734 ms。范围、原始记录覆盖与恢复时的一次安全拒绝见 [性能报告](nx5-showcase-performance.md)。以下保留此前采集口径，不能沿用旧 PID。
+
+## 2026-10-13 首次展示部署（历史）
+
+2026-10-13 09:41（北京时间）收尾：该轮常驻为六页展示应用 `308afe5`，路径 `/tmp/slint-bridge-showcase-308afe5/showcase`，观测 PID **30541**。原 `f963558` 保留为回退；随后用户确认“已操作，显示和触摸都正常”。完整结果及回退方法见 [展示应用部署报告](nx5-showcase.md)，机器可读快照见 [current-target.json](../test-app/devices/nx5/current-target.json)。
 
 本轮设备原生 MCP 六页交互与十种界面状态检查通过；20 秒有限运行正常退出，VO 关闭、MMZ 恢复基线。收尾 RSS 15496 KiB、VmHWM 20284 KiB、3 个线程、MMZ 12100 KiB / 5 块，可用内存 49020 KiB。WBC、持续 trace、故障注入及事件录制关闭。实体确认晚于零事件录制窗口，没有新增触摸时延、WBC 或显示 FPS 测量。
 

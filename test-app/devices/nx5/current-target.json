@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-13T01:41:24.113140+00:00",
+  "checked_at_utc": "2026-10-13T02:19:49.244578+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -105,8 +105,8 @@
       0,
       600
     ],
-    "physical_touch_validation": "showcase: user confirmed display and physical touch normal after the separate recording window, which captured zero events. No new evdev comparison or touch-latency sample.",
-    "physical_touch_evidence": "evidence/nx5-showcase/2026-10-13/physical-summary.json",
+    "physical_touch_validation": "2026-10-13 performance: 7 physical contacts / 14 evdev SYN_REPORT edges matched to 240 Slint events, all Accepted, zero dropped/unknown in the complete short window. Median completed-dispatch delay 1.756 ms; maximum 59.734 ms on Motion-to-Devices navigation release (60.734 ms including 1ms quantization margin). First long recording evicted 245 records and was excluded.",
+    "physical_touch_evidence": "evidence/nx5-showcase-performance/2026-10-13/results.json",
     "prior_physical_touch_validation": "287da8c baseline: 12 physical contacts, 49 Slint events Accepted, zero dropped; 24 contact edges matched, maximum timestamp delta 10.209 ms (1 ms precision; conservative bound 11.3 ms). User reported timely pause/resume. f963558: the finite recording window had zero events; the user subsequently confirmed the requested 4 physical taps responded normally, without a new latency sample. Its 3 native MCP pause/resume cycles passed with 24 Accepted events.",
     "prior_physical_touch_evidence": "evidence/nx5-alpha-deploy/2026-10-12-287da8c/results.json"
   },
@@ -126,7 +126,7 @@
   ],
   "running_ui": {
     "path": "/tmp/slint-bridge-showcase-308afe5/showcase",
-    "pid": 30541,
+    "pid": 3782,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -139,9 +139,9 @@
     "sha256": "81a87f5932fdf820c3295282b9af7afddffbc7aec080826958bf4b2a7a5cc01a",
     "frame_interval_us": 16667,
     "trace_enabled": false,
-    "last_observed_fps": null,
-    "fps_evidence": null,
-    "fps_note": "Not measured for showcase; UI ticks are application animation updates, not completed display frames.",
+    "last_observed_fps": 29.0,
+    "fps_evidence": "evidence/nx5-showcase-performance/2026-10-13/automatic-02/phases.json",
+    "fps_note": "Same binary: four approximately 60s dynamic windows, 41 full batches / 6150 completed presentations, all 29.00 FPS at log precision. Cross-boundary first batches excluded. Trace off after test; not UI ticks or LCD scanout measurement.",
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
@@ -163,29 +163,31 @@
         "set_element_value",
         "take_screenshot"
       ],
-      "screenshot_status": "Ten guarded 1024x600 page/dialog snapshots plus final overview passed; final pre-capture available memory 49036 KiB.",
-      "final_screenshot": "evidence/nx5-showcase/2026-10-13/final-overview.png"
+      "screenshot_status": "Historical deployment snapshots from 2026-10-13 09:41; no screenshots during this performance run. Restored overview verified through native MCP element tree.",
+      "final_screenshot": "evidence/nx5-showcase/2026-10-13/final-overview.png",
+      "restored_properties": "evidence/nx5-showcase-performance/2026-10-13/restored-ui.json"
     },
-    "log": "/tmp/slint-bridge-showcase-308afe5/live.log",
+    "log": "/tmp/slint-bridge-showcase-308afe5/live-after-performance-2.log",
     "source_commit": "308afe5f0b07795f7d6c8ecb345bc73a1d75d402",
     "fault_injection_enabled": false,
-    "source_state": "Six-page showcase running; native MCP checks passed; user confirmed display and physical touch normal after the separate recording window.",
+    "source_state": "Same 308afe5 binary restored without trace after performance measurement; native MCP overview verified, all observers and event recording stopped.",
     "source_manifest": "evidence/nx5-showcase/2026-10-13/build-manifest.json",
     "resources": {
-      "rss_kib": 15496,
-      "vm_peak_kib": 38324,
-      "vm_hwm_kib": 20284,
+      "rss_kib": 12164,
+      "vm_hwm_kib": 12164,
+      "vm_peak_kib": 32700,
       "threads": 3,
-      "mem_available_kib": 49020,
       "mmz_used_kib": 12100,
       "mmz_blocks": 5,
-      "wbc_running": false
+      "wbc_running": false,
+      "mem_available_kib": 49984
     },
     "runtime_source_sha256": "4a37dda144d41ef5b7a1fe12420952fbae22dfebc51fb95171b43334fef31abb",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
-    "wake_source_sha256": "4c67e34b31870b5254b093ee17181bad74d0dda6b86a3af9bb5cc6bebda8256a"
+    "wake_source_sha256": "4c67e34b31870b5254b093ee17181bad74d0dda6b86a3af9bb5cc6bebda8256a",
+    "performance_manifest": "evidence/nx5-showcase-performance/2026-10-13/manifest.json"
   },
-  "status": "showcase_deployed_mcp_verified_physical_touch_confirmed",
+  "status": "showcase_performance_measured_normal_resident_restored",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -197,7 +199,8 @@
     "2026-10-12 screenshot OOM follow-up: archived and SHA256-verified all candidate regular files, removed 901 unused files and two obsolete links. Retained current and one c03c3bb recovery display, SDK/WBC, font, device links, active logs and owner lock. /run now 804 KiB; /tmp 12372 KiB. Current task diagnostic files removed after archive.",
     "2026-10-12 2de9168 deployment: old PID 3972 paused and submission worker confirmed idle before SIGTERM. Kernel reclaimed its three MMZ blocks and VO; 4900 KiB / 2 blocks before new start. New PID 30267 physical touch and guarded screenshot checks passed; old bccf6b9 binary/startup verified on host and retained on device. Retention policy updated; older c03c3bb binary and 10 diagnostic files archived before deletion.",
     "2026-10-12 alpha deployment: reproduced 287da8c composition error, user authorized fix, f963558 passed software/TDE framebuffer + WBC and 60s textures. Baseline 2de9168 PID 30267 and intermediate 287da8c PID 16103 signal-exit reclamation recorded separately. Final PID 22475 running; 2de9168 retained as rollback; bccf6b9 and intermediate diagnostics archived and removed.",
-    "2026-10-13 showcase deployment: old f963558 PID 22475 paused and fb-present idle before SIGTERM; new 308afe5 PID 30541 running. f963558 retained and host-verified for recovery; older 2de9168 and 22 diagnostic files archived and removed. No SDK, firmware, driver, network or boot-service changes."
+    "2026-10-13 showcase deployment: old f963558 PID 22475 paused and fb-present idle before SIGTERM; new 308afe5 PID 30541 running. f963558 retained and host-verified for recovery; older 2de9168 and 22 diagnostic files archived and removed. No SDK, firmware, driver, network or boot-service changes.",
+    "2026-10-13 performance: same 308afe5 binary, native MCP automatic windows then physical evdev/MCP pairing. First long recording evicted 245 events; complete 240-event short window used. Restore PID 3765 safely rejected while old lock was retiring; after full owner/VO release PID 3782 started normally. Diagnostic files archived; f963558 recovery retained."
   ],
   "previous_serial_device": "/dev/ttyUSB2",
   "serial_recheck_evidence": "evidence/nx5-showcase/2026-10-13/build-manifest.json",
@@ -213,7 +216,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "308afe5 showcase: six pages and ten states checked through native MCP (227 events: 224 Accepted, 3 PointerMoved Rejected; zero dropped/unknown). Twenty-second run exited 0, VO disabled, MMZ returned to 4900 KiB/2 blocks. User confirmed physical display/touch normal after the zero-event recording window; no new touch-latency, WBC, FPS, video-underlay or ignored hardware test results.",
+  "observation_scope": "Same showcase binary: 6150 completed presentations in clean batches across motion/list/blend/cutout at 29.00 FPS; RSS 14208..14228 KiB, automatic-process HWM 14404 KiB. Physical short-window dispatch latency includes callbacks, not LCD scanout. No new WBC/video/DMA fault tests. Same binary restored with trace and observers disabled.",
   "hardware_regression": {
     "report": "docs/nx5-hardware.md",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -384,5 +387,24 @@
     "physical_user_confirmation": "display and touch normal; received after the recording window",
     "driver_changed": false,
     "rebooted": false
+  },
+  "showcase_performance": {
+    "report": "docs/nx5-showcase-performance.md",
+    "evidence": "evidence/nx5-showcase-performance/2026-10-13/results.json",
+    "tested_commit": "308afe5f0b07795f7d6c8ecb345bc73a1d75d402",
+    "fps": 29.0,
+    "completed_presentations": 6150,
+    "physical_contacts": 7,
+    "accepted_physical_events": 240,
+    "physical_recording_dropped": 0,
+    "edge_delay_median_ms": 1.756,
+    "edge_delay_max_ms": 59.734,
+    "max_delay_note": "Motion-to-Devices navigation release; add 1ms for timestamp quantization margin.",
+    "automatic_hwm_kib": 14404,
+    "recording_hwm_kib": 17164,
+    "hardware_texture_copy_count": 0,
+    "hardware_texture_blend_count": 0,
+    "tde_errors": 0,
+    "application_or_library_changed": false
   }
 }

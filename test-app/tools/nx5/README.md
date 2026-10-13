@@ -73,6 +73,49 @@ sh -n test-app/tools/nx5/deploy-control.sh
 
 同日脚本审查修复后，29 项主机回归通过；在 #233 固件上另行验证目录外依赖保护、归档后链接改指拒绝、两轮归档清理、小型文件上传，以及缺失辅助脚本、空目录和仅余清理凭据的 `discard` 恢复。当前/恢复程序摘要和显示进程保持不变，本次测试文件已归档移除。记录在 `evidence/nx5-deploy-review/2026-10-12/`，需另行取得。重启、SIGKILL、传输损坏及计划截断使用主机故障回归验证；本轮未重启设备或触发实机 OOM，也未重复显示硬件及截图验证。
 
+## 展示应用性能采样
+
+`display/profile-showcase.py` 通过 Slint **原生 MCP** 驱动已启动的六页应用，依次测静态页、动画、列表往返滑动、两种透明混合状态和结束静态页。动态页预热约 8 秒、测量约 60 秒，测量期间不截图、不录制 MCP 事件。它使用已有 `SLINT_BRIDGE_TRACE` 的每 150 次成功提交日志，丢弃跨阶段开始边界的首批，不修改运行时或应用；MCP 手势节奏包含在测量负载中。
+
+只读 `display/observe-performance.c` 同时按约 1 秒间隔记录指定进程的 RSS/VmHWM、CPU ticks、系统可用内存，并读取真实 evdev 时间戳；不独占或注入输入、不访问 framebuffer、不加载 SDK。它仅为自身 evdev 句柄设置 `CLOCK_REALTIME`，便于与原生 MCP 毫秒时间戳配对。
+
+```sh
+# 构建观察器，不需要厂商 SDK。
+mkdir -p target/nx5-showcase-performance
+/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-gcc \
+  -std=c11 -O2 -Wall -Wextra -Werror \
+  test-app/tools/nx5/display/observe-performance.c \
+  -o target/nx5-showcase-performance/observe-performance
+```
+
+先按本文件的归档流程部署观察器。核实设备、显示所有者和恢复文件后，结束原显示进程，再以原字体、SDK 和设备参数启动**同一展示二进制**，设置 `SLINT_BRIDGE_TRACE=1`、`SLINT_MCP_PORT=9315` 和有限时长 `--seconds=900`，将日志写入新的管理目录下的 `trace.log`。原常驻 `start-live.sh` 会清除 trace，不能直接用它启动性能窗口。启动下一进程前须确认旧 PID 目录消失、VO 释放、独占锁无持有者；仅 `/proc/PID/exe` 消失不充分。
+
+同一管理目录准备文本 `phase` 文件，允许已核验的 ADB 用户写入（本板为 UID 2000；只调整这个临时标记文件），然后由 root 启动观察器：`observe-performance EVDEV ACTUAL_PID 900 PHASE_FILE > resources.log`。其中 PID 必须来自本次启动并核对 `/proc/PID/exe`，不从历史快照复制。主机配置原生 MCP 端口转发后：
+
+```sh
+python3 test-app/tools/nx5/display/profile-showcase.py \
+  --serial 192.168.1.151:5555 --remote /tmp/slint-bridge-perf-本次目录 \
+  --output evidence/本次目录/automatic
+```
+
+该命令不会上传、启动或停止显示进程；`--remote` 下须已存在 `trace.log`、`phase` 和 `resources.log`，输出目录须不存在。它在结束后保持应用运行，采样结束仍需按设备流程恢复关闭 trace 的常驻程序并归档清理。
+
+实体输入另开短窗口：MCP 设置好起始 Motion 页后，启动新观察器日志和原生事件录制，再让用户操作；从录制开始到结束不注入 MCP 输入。确认结束并松手后，停止录制并保存其 JSON 内容，停止只读观察器。每个窗口不超过 1024 条 MCP 事件；溢出会被分析器拒绝，不将环形记录覆盖当作 UI 输入丢失。以下触摸分析限定当前无旋转的 1024×600 NX5 轴映射，并用事件坐标检查该前提；结果是内核 `SYN_REPORT` 到 Slint 处理完成，包含回调，不是 LCD 端到端延迟。
+
+```sh
+python3 test-app/tools/nx5/display/analyze-showcase-performance.py \
+  --phases evidence/本次目录/automatic/phases.json \
+  --resources evidence/本次目录/automatic/resources.log \
+  --touch-raw evidence/本次目录/physical.log \
+  --touch-mcp evidence/本次目录/physical-mcp.json \
+  --output evidence/本次目录/results.json
+
+python3 -m unittest discover -s test-app/tools/nx5/display \
+  -p 'test_showcase_performance.py' -v
+```
+
+仅汇总自动窗口时同时省略两个 `--touch-*` 参数。分析器测试覆盖阶段边界批次、缺失批次、实际采样间隔/内核时钟频率、SYN_REPORT 配对和不完整记录拒绝。首次实测结果见 [展示应用性能报告](../../../docs/nx5-showcase-performance.md)。
+
 ## 硬件诊断与证据重放
 
 | 目录 | 用途 | 对应记录 |

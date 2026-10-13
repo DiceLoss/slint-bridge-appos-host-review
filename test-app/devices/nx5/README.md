@@ -1,8 +1,8 @@
 # NX5 测试目标
 
-本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中路径相对于仓库根目录；最近收尾记录为 2026-10-13 09:41（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
+本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中路径相对于仓库根目录；最近收尾记录为 2026-10-13 的展示应用性能测试（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
 
-当前已部署六页展示应用 `308afe5`，路径 `/tmp/slint-bridge-showcase-308afe5/showcase`，观测 PID 30541。六页设备 MCP 检查和正常退出资源检查通过，用户确认显示和实体触摸正常；完整范围见 [展示应用报告](../../../docs/nx5-showcase.md)。`f963558` 及 `/tmp/slint-bridge-alpha-f963558/start-live.sh` 保留为回退。较早的 `2de9168` 已经校验归档。
+当前已部署六页展示应用 `308afe5`，路径 `/tmp/slint-bridge-showcase-308afe5/showcase`，最新观测 PID 3782，已恢复关闭 trace 的常驻模式。本轮四个动态场景完成提交帧率均为 29.00 FPS，实体触摸边沿已与 evdev 配对；完整结果见 [性能报告](../../../docs/nx5-showcase-performance.md)。首次六页交互与正常退出结果保留在 [部署报告](../../../docs/nx5-showcase.md)。`f963558` 及 `/tmp/slint-bridge-alpha-f963558/start-live.sh` 保留为回退。较早的 `2de9168` 已经校验归档。
 
 原 `f963558` 的 alpha 量程、实际页/WBC 和 29 FPS 成绩仍属于 [2026-10-12 透明 UI 实测](../../../docs/nx5-alpha.md)，不改记为六页新界面的测量。
 

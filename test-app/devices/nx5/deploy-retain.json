@@ -4,6 +4,7 @@
   "keep": [
     "/tmp/slint-bridge-showcase-308afe5/start-live.sh",
     "/tmp/slint-bridge-showcase-308afe5/live.log",
+    "/tmp/slint-bridge-showcase-308afe5/live-after-performance-2.log",
     "/tmp/slint-bridge-alpha-f963558/start-live.sh",
     "/tmp/slint-bridge-alpha-f963558/live.log",
     "/tmp/slint-bridge-c03c3bb/start-live.sh",
