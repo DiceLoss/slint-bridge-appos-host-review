@@ -1,5 +1,7 @@
 # NX5 TDE 写 framebuffer 与格式转换调查
 
+> 本文保留 `35db94d` 调查阶段的实现与计时；后续 [NEON 反预乘优化](nx5-neon-unpremultiply.md) 改善了 CPU 转换，未将 TDE 写页接入生产路径。
+
 2026-10-13，当前 #233 固件、同一 SDK、1024×600 BGRA framebuffer、alpha 量程 0–128。基线运行时为 `d34f436`，使用 CPU/TDE 共享 cached MMZ 画布；工程开始点为 `08c018f`，Slint 为 `22804ff`。原始档案在本地 `evidence/nx5-tde-writeback/2026-10-13/`，不随 Git 分发，需另行取得。
 
 结论：本轮没有找到能在一次 TDE 拷贝中正确完成当前格式转换的路径。正确的“CPU 转换到 MMZ，再 TDE 拷贝到 framebuffer”实机像素通过，但比现有直接写页更慢。正常运行继续使用现有 CPU/NEON 转换写页，未改运行时或默认值。

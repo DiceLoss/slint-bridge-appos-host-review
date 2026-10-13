@@ -140,28 +140,43 @@ int main(int argc, char **argv) {
     for (unsigned alpha = 1; alpha < 256; ++alpha)
         reciprocals[alpha] = ((255u << 16) + alpha - 1) / alpha;
     for (unsigned alpha_max = 128; alpha_max <= 255; alpha_max += 127) {
+    for (unsigned mixed = 0; mixed < 2; ++mixed) {
     for (unsigned alpha = 0; alpha < 256; ++alpha) {
         uint8_t source[256*4], original[256*4], actual[256*4];
         for (unsigned channel = 0; channel < 256; ++channel) {
             memset(source+channel*4, channel, 3);
-            source[channel*4+3] = alpha;
+            if (mixed) {
+                source[channel*4+1] = 255-channel;
+                source[channel*4+2] = (channel*37)&255;
+            }
+            source[channel*4+3] = mixed ? (alpha+channel*73)&255 : alpha;
         }
         memcpy(original,source,sizeof source);
         bridge_rgba_to_bgra(actual,source,256,reciprocals,alpha_max);
         assert(!memcmp(source,original,sizeof source));
         for (unsigned channel = 0; channel < 256; ++channel) {
-            unsigned expected = alpha ? (channel*255u+alpha/2)/alpha : 0;
-            if (expected > 255) expected = 255;
-            for (unsigned c=0;c<3;++c) assert(actual[channel*4+c]==expected);
-            assert(actual[channel*4+3]==(alpha_max == 128 ? (alpha+1)/2 : alpha));
+            unsigned a = source[channel*4+3];
+            for (unsigned c=0;c<3;++c) {
+                unsigned value = source[channel*4+2-c];
+                unsigned expected = a ? (value*255u+a/2)/a : 0;
+                if (expected > 255) expected = 255;
+                assert(actual[channel*4+c]==expected);
+            }
+            assert(actual[channel*4+3]==(alpha_max == 128 ? (a+1)/2 : a));
         }
+    }
     }
     for (unsigned count = 0; count <= 65; ++count) {
         for (unsigned shift = 0; shift < 4; ++shift) {
-            for (unsigned opaque=0;opaque<2;++opaque) {
+            for (unsigned pattern=0;pattern<5;++pattern) {
                 uint8_t source[65*4+8], original[65*4+8], actual[65*4+8], expected[65*4+8];
                 for (unsigned i=0;i<sizeof source;++i) source[i]=(i*37u+11u)&255u;
-                if (opaque) for (unsigned i=0;i<count;++i) source[shift+i*4+3]=255;
+                for (unsigned i=0;i<count;++i) {
+                    if (pattern==1) source[shift+i*4+3]=255;
+                    if (pattern==2) source[shift+i*4+3]=0;
+                    if (pattern==3) source[shift+i*4+3]=i<32?255:i<48?127:0;
+                    if (pattern==4) source[shift+i*4+3]=i<16?127:i<48?255:0;
+                }
                 memcpy(original,source,sizeof source);
                 memset(actual,0xa5,sizeof actual);memcpy(expected,actual,sizeof expected);
                 for (unsigned i=0;i<count;++i) {
@@ -180,7 +195,7 @@ int main(int argc, char **argv) {
         }
     }
     }
-    puts("PASS pixel-conversion alpha_max=128/255 all channel/alpha pairs, lengths=0..65 alignments=0..3 guards/source unchanged");
+    puts("PASS pixel-conversion alpha_max=128/255 uniform/mixed-lane channel/alpha pairs, lengths=0..65 alignments=0..3 guards/source unchanged");
     for (operation=0;operation<3;++operation) {
     for(fault=0;fault<=5;++fault) {
         cancels=ends=frees=closes=flushes=0;

@@ -1,5 +1,7 @@
 # NX5 CPU/TDE 共享 MMZ 画布实测
 
+> 本文保留 `d34f436` 阶段的数据；后续 [NEON 反预乘优化](nx5-neon-unpremultiply.md) 已降低半透明写页耗时，下方约 52 ms 是优化前结果。
+
 2026-10-13，USB1 / ADB `192.168.1.151:5555`、Linux 4.9.138 #233、同一启动 ID `938c34d4-456a-4b1a-b532-678c0f92efd0`。基线为 `fdb0f0e`，Slint 为 `22804ff`，使用 `.cargo/nx5.toml` Cortex-A7/NEON 预设及原 SDK。原始档案位于本地 `evidence/nx5-shared-canvas/2026-10-13/`，不随 Git 分发，需另行取得。
 
 ## 变更与所有权

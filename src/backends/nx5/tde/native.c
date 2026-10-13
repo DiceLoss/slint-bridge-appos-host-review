@@ -83,6 +83,50 @@ static uint8_t straight_channel(uint8_t value, uint32_t factor) {
     return scaled > 255 ? 255 : (uint8_t)scaled;
 }
 
+#ifdef __ARM_NEON
+/* Exact Q16 scaling across eight pixels; final narrowing clamps to u8.
+ * Products plus rounding fit u32 even for noncanonical RGB > alpha. */
+static uint8x8_t straight_eight(uint8x8_t values, uint32x4_t low, uint32x4_t high) {
+    uint16x8_t wide = vmovl_u8(values);
+    uint16x4_t lo = vrshrn_n_u32(vmulq_u32(vmovl_u16(vget_low_u16(wide)), low), 16);
+    uint16x4_t hi = vrshrn_n_u32(vmulq_u32(vmovl_u16(vget_high_u16(wide)), high), 16);
+    return vqmovn_u16(vcombine_u16(lo, hi));
+}
+
+/* Keep the opaque loop separate: GCC 5 otherwise spills its constant alpha
+ * vector in every block because of the mixed-alpha path's register pressure. */
+static __attribute__((noinline)) size_t copy_opaque_run(uint8_t *destination,
+    const uint8_t *source, size_t count, uint8_t alpha_max) {
+    size_t copied = 0;
+    uint8x16x4_t bgra;
+    bgra.val[3] = vdupq_n_u8(alpha_max);
+    while (count - copied >= 16) {
+        uint8x16x4_t rgba = vld4q_u8(source + copied * 4);
+        uint8x8_t alpha = vand_u8(vget_low_u8(rgba.val[3]), vget_high_u8(rgba.val[3]));
+        if (vget_lane_u64(vreinterpret_u64_u8(alpha), 0) != UINT64_MAX) break;
+        bgra.val[0] = rgba.val[2]; bgra.val[1] = rgba.val[1]; bgra.val[2] = rgba.val[0];
+        vst4q_u8(destination + copied * 4, bgra);
+        copied += 16;
+    }
+    return copied;
+}
+
+static __attribute__((noinline)) size_t clear_transparent_run(uint8_t *destination,
+    const uint8_t *source, size_t count) {
+    size_t copied = 0;
+    uint8x16x4_t zero;
+    for (unsigned c = 0; c < 4; ++c) zero.val[c] = vdupq_n_u8(0);
+    while (count - copied >= 16) {
+        uint8x16x4_t rgba = vld4q_u8(source + copied * 4);
+        uint8x8_t alpha = vorr_u8(vget_low_u8(rgba.val[3]), vget_high_u8(rgba.val[3]));
+        if (vget_lane_u64(vreinterpret_u64_u8(alpha), 0) != 0) break;
+        vst4q_u8(destination + copied * 4, zero);
+        copied += 16;
+    }
+    return copied;
+}
+#endif
+
 void bridge_rgba_to_bgra(uint8_t *destination, const uint8_t *source, size_t count,
                          const uint32_t *reciprocals, uint8_t alpha_max) {
     while (count) {
@@ -92,22 +136,42 @@ void bridge_rgba_to_bgra(uint8_t *destination, const uint8_t *source, size_t cou
             uint8x16x4_t rgba = vld4q_u8(source);
             uint8x8_t alpha = vand_u8(vget_low_u8(rgba.val[3]), vget_high_u8(rgba.val[3]));
             if (vget_lane_u64(vreinterpret_u64_u8(alpha), 0) == UINT64_MAX) {
-                uint8x16x4_t bgra;
-                bgra.val[0] = rgba.val[2]; bgra.val[1] = rgba.val[1];
-                bgra.val[2] = rgba.val[0]; bgra.val[3] = vdupq_n_u8(alpha_max);
-                vst4q_u8(destination, bgra);
-                source += 64; destination += 64; count -= 16;
+                size_t copied = copy_opaque_run(destination, source, count, alpha_max);
+                source += copied * 4; destination += copied * 4; count -= copied;
                 continue;
             }
             /* Alpha zero always exports zero RGB, even for noncanonical input. */
             alpha = vorr_u8(vget_low_u8(rgba.val[3]), vget_high_u8(rgba.val[3]));
             if (vget_lane_u64(vreinterpret_u64_u8(alpha), 0) == 0) {
-                uint8x16x4_t bgra;
-                for (unsigned c = 0; c < 4; ++c) bgra.val[c] = vdupq_n_u8(0);
-                vst4q_u8(destination, bgra);
-                source += 64; destination += 64; count -= 16;
+                size_t copied = clear_transparent_run(destination, source, count);
+                source += copied * 4; destination += copied * 4; count -= copied;
                 continue;
             }
+        }
+        if (block >= 8 && (alpha_max == 128 || alpha_max == 255)) {
+            size_t groups = block / 8;
+            for (size_t i = 0; i < groups; ++i) {
+                uint8x8x4_t rgba = vld4_u8(source), bgra;
+                uint32x4_t low, high;
+                uint8x8_t same_alpha = vceq_u8(rgba.val[3], vdup_n_u8(source[3]));
+                if (vget_lane_u64(vreinterpret_u64_u8(same_alpha), 0) == UINT64_MAX) {
+                    // Flat translucent spans need only one lookup for eight pixels.
+                    low = high = vdupq_n_u32(reciprocals[source[3]]);
+                } else {
+                    low = (uint32x4_t){reciprocals[source[3]], reciprocals[source[7]],
+                        reciprocals[source[11]], reciprocals[source[15]]};
+                    high = (uint32x4_t){reciprocals[source[19]], reciprocals[source[23]],
+                        reciprocals[source[27]], reciprocals[source[31]]};
+                }
+                bgra.val[0] = straight_eight(rgba.val[2], low, high);
+                bgra.val[1] = straight_eight(rgba.val[1], low, high);
+                bgra.val[2] = straight_eight(rgba.val[0], low, high);
+                bgra.val[3] = alpha_max == 128 ? vrshr_n_u8(rgba.val[3], 1) : rgba.val[3];
+                vst4_u8(destination, bgra);
+                source += 32; destination += 32;
+            }
+            count -= groups * 8;
+            continue;
         }
 #endif
         for (size_t x = 0; x < block; ++x) {

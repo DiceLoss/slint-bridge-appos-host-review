@@ -1285,7 +1285,7 @@ fn neon_writeback_boundaries() {
         }
         for count in 0..=65 {
             for shift in 0..4 {
-                for mode in 0..3 {
+                for mode in 0..5 {
                     let mut source = vec![39; 65 * 4 + 8];
                     for i in 0..count {
                         for c in 0..3 {
@@ -1294,6 +1294,24 @@ fn neon_writeback_boundaries() {
                         source[shift + i * 4 + 3] = match mode {
                             0 => 0,
                             1 => 255,
+                            3 => {
+                                if i < 32 {
+                                    255
+                                } else if i < 48 {
+                                    127
+                                } else {
+                                    0
+                                }
+                            }
+                            4 => {
+                                if i < 16 {
+                                    127
+                                } else if i < 48 {
+                                    255
+                                } else {
+                                    0
+                                }
+                            }
                             _ => (i * 73) as u8,
                         };
                     }
