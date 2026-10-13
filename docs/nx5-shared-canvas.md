@@ -58,3 +58,9 @@
 六页 Slint 原生 MCP 交互及十张受内存检查保护的截图通过，227 条录制事件、零丢失/未知。列表预热 8 秒、滚动约 35.7 秒，丢弃跨阶段统计批次后保留 6 批、900 次成功提交，均为 **29.00 FPS**。该滚动窗口 CPU 均值约 **76.8% 单核**；结束 RSS **15660 KiB**，该进程 VmHWM **20892 KiB**（包含此前截图）。该短窗口不等同于全部动态场景长期性能；没有新增实体 evdev 时延数据。
 
 最后一条 trace 为 4050 帧、3927 次 TDE copy、3926 次缓存命中、0 错误。默认纯色填充未发起 TDE，图像混合由独立硬件用例覆盖。证据见 `device-ui/summary.json`、`list-window/result.json` 与 `showcase/remote/`。
+
+## 常驻与回退
+
+实现提交为 `d34f436`。最终常驻 `/tmp/slint-bridge-shared-final/showcase`，收尾观测 PID 6670，无退出定时器；trace、QuickFill 对照、WBC、观察器及事件录制均关闭。RSS 14848 KiB、VmHWM 15132 KiB、3 线程，MMZ 12100 KiB / 5 块。17 个不用的文件已按部署脚本归档并校验 SHA256 后清理；`/tmp` 剩余 24748 KiB，系统可用内存 45044 KiB。
+
+恢复程序 `/tmp/slint-bridge-fill-fdb0f0e/showcase` 的 SHA256 为 `f1693d2533472cc2435ccd6a039aacc41d76d2daea903e39ad71c99cb358426b`，原 `start-live.sh` 与共用字体/SDK/设备链接均保留。需要回退时，先重新核对身份和实际显示进程，通过原生 MCP 切换静态页并确认 `fb-present` 空闲，再结束该实际 PID；确认 PID 目录消失、VO 关闭、MMZ 回到基线及显示锁释放后，运行恢复目录的 `start-live.sh`。不能复制本报告 PID 直接操作。路径位于 tmpfs，重启后须重新部署；本轮未改开机服务。

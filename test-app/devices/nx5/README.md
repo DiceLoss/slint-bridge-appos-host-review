@@ -1,10 +1,10 @@
 # NX5 测试目标
 
-本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中路径相对于仓库根目录；最近收尾记录为 2026-10-13 的填充与整体透明度验证（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
+本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中路径相对于仓库根目录；最近收尾记录为 2026-10-13 的共享 MMZ 画布验证（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
 
-当前为 `fdb0f0e` + Slint `22804ff`，路径 `/tmp/slint-bridge-fill-fdb0f0e/showcase`，观测 PID 25632，无退出定时器，trace 与 QuickFill 诊断开关关闭。整体透明度图像混合、填充面积阶梯和 TDE/软件分派检查通过；六页 MCP、短 Motion 窗口和正常退出资源已复验。详见 [填充/混合报告](../../../docs/nx5-fill-blend.md)。
+当前为 `d34f436` + Slint `22804ff`，路径 `/tmp/slint-bridge-shared-final/showcase`，观测 PID 6670，无退出定时器，trace 与 QuickFill 诊断开关关闭。CPU/TDE 共享 cached MMZ，真实物理页像素、NEON 边界及正常退出通过；六页/十张 MCP 截图和短列表 29.00 FPS 复验通过。详见 [共享画布报告](../../../docs/nx5-shared-canvas.md)。
 
-恢复版本为 `/tmp/slint-bridge-ring-0e8516d/showcase` 及其 `start-live.sh`；圆环修复结果保留在 [原报告](../../../docs/nx5-controls-ring.md)。更早的 `acab18a` 图片优化二进制已校验归档，其列表 29.00 FPS、RSS 和物理页结果仍属于 [图片优化报告](../../../docs/nx5-image-optimization.md) 的构建范围。当前路径以 [保留策略](deploy-retain.json) 为准。
+恢复版本为 `/tmp/slint-bridge-fill-fdb0f0e/showcase` 及其 `start-live.sh`；上一轮填充与整体透明度验证保留在 [原报告](../../../docs/nx5-fill-blend.md)。更早的圆环与图片优化二进制均已校验归档，历史性能和像素结果仍属于各自报告的构建范围。当前路径以 [保留策略](deploy-retain.json) 为准。
 
 纯色版本的 [性能报告](../../../docs/nx5-showcase-performance.md) 和 [首次部署报告](../../../docs/nx5-showcase.md) 保留原场景与提交的数据，不改记为图片背景成绩。
 

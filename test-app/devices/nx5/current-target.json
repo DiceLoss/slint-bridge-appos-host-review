@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-13T07:58:50.726312+00:00",
+  "checked_at_utc": "2026-10-13T09:52:57.200847+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -129,8 +129,8 @@
     }
   ],
   "running_ui": {
-    "path": "/tmp/slint-bridge-fill-fdb0f0e/showcase",
-    "pid": 25632,
+    "path": "/tmp/slint-bridge-shared-final/showcase",
+    "pid": 6670,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -140,54 +140,59 @@
       "--framebuffer=/tmp/slint-bridge-c03c3bb/dev/panel",
       "--touch=/tmp/slint-bridge-c03c3bb/dev/touch"
     ],
-    "sha256": "f1693d2533472cc2435ccd6a039aacc41d76d2daea903e39ad71c99cb358426b",
+    "sha256": "255226ed8d7362878b20a1d926d8dde07a06ea6864731f43805a0f2e3908bb40",
     "frame_interval_us": 16667,
     "trace_enabled": false,
-    "last_observed_fps": 28.962,
-    "fps_evidence": "evidence/nx5-fill-blend/2026-10-13/showcase/motion-batches.json",
-    "fps_note": "Short Motion smoke window only: 30 seconds, five complete 150-presentation batches after discarding the cross-boundary batch, 28.81..29.00 FPS. No new list/full-scene performance or physical touch timing measurement.",
+    "last_observed_fps": 29.0,
+    "fps_evidence": "evidence/nx5-shared-canvas/2026-10-13/list-window/result.json",
+    "fps_note": "35.7-second list scrolling window after 8-second warmup, six complete 150-presentation batches; all 29.00 FPS. CPU 76.8% of one core, final RSS 15660 KiB. No new full-scene or physical touch latency measurement.",
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
       "transport": "streamable-http",
       "forward": "adb -s 192.168.1.151:5555 forward tcp:19315 tcp:9315",
       "tools_available": 18,
-      "tools_exercised": 6,
-      "verification": "evidence/nx5-fill-blend/2026-10-13/showcase/ui.json",
+      "tools_exercised": 11,
+      "verification": "evidence/nx5-shared-canvas/2026-10-13/device-ui/summary.json",
       "exercised_tools": [
         "list_windows",
         "get_window_properties",
         "find_elements_by_id",
         "get_element_tree",
         "click_element",
-        "set_element_value"
+        "set_element_value",
+        "take_screenshot",
+        "start_event_recording",
+        "stop_event_recording",
+        "get_element_properties",
+        "drag_element"
       ],
-      "screenshot_status": "No new screenshots in this run. Six pages, opacity and transparent cutout checked through native MCP; hardware pixels checked by separate TDE tests.",
-      "restored_properties": "evidence/nx5-fill-blend/2026-10-13/showcase/resident-ui.json"
+      "screenshot_status": "Six pages and ten guarded snapshots passed, 227 events with no dropped/unknown events. MCP bypasses hardware pixels and evdev.",
+      "restored_properties": "evidence/nx5-shared-canvas/2026-10-13/resident-ui.json"
     },
-    "log": "/tmp/slint-bridge-fill-fdb0f0e/live.log",
-    "source_commit": "fdb0f0e2bc93e2a1243de890a74d3c2948d68508",
+    "log": "/tmp/slint-bridge-shared-final/live.log",
+    "source_commit": "d34f436a8c2a8ba00a2c3a18a4c7a621fd0af182",
     "fault_injection_enabled": false,
-    "source_state": "QuickFill available with explicit diagnostic opt-in; default CPU fill after 22-group area comparison. Opacity-aware image TDE with source cache invalidation. Six-page native MCP smoke and finite clean exit passed; current resident has no exit timer.",
-    "source_manifest": "evidence/nx5-fill-blend/2026-10-13/manifest.json",
+    "source_state": "Shared cached MMZ retained canvas; CPU and synchronous TDE use one allocation with cache ownership transfers. No MMZ-to-heap readback. Known completion failure repaints full frame; unknown DMA forbids access. Default CPU fill, NEON transparent output block. Resident has no exit timer.",
+    "source_manifest": "evidence/nx5-shared-canvas/2026-10-13/manifest.json",
     "resources": {
-      "rss_kib": 15988,
-      "vm_hwm_kib": 16884,
-      "vm_peak_kib": 36008,
+      "rss_kib": 14848,
+      "vm_hwm_kib": 15132,
+      "vm_peak_kib": 33608,
       "threads": 3,
       "mmz_used_kib": 12100,
       "mmz_blocks": 5,
       "wbc_running": false,
-      "mem_available_kib": 42424
+      "mem_available_kib": 45044
     },
     "runtime_source_sha256": "4a37dda144d41ef5b7a1fe12420952fbae22dfebc51fb95171b43334fef31abb",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "wake_source_sha256": "4c67e34b31870b5254b093ee17181bad74d0dda6b86a3af9bb5cc6bebda8256a",
-    "performance_manifest": "evidence/nx5-fill-blend/2026-10-13/manifest.json",
+    "performance_manifest": "evidence/nx5-shared-canvas/2026-10-13/manifest.json",
     "slint_source_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
     "tde_fill_enabled": false
   },
-  "status": "fill_and_opacity_tde_verified_resident",
+  "status": "shared_mmz_canvas_verified_resident",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -202,7 +207,8 @@
     "2026-10-13 showcase deployment: old f963558 PID 22475 paused and fb-present idle before SIGTERM; new 308afe5 PID 30541 running. f963558 retained and host-verified for recovery; older 2de9168 and 22 diagnostic files archived and removed. No SDK, firmware, driver, network or boot-service changes.",
     "2026-10-13 performance: same 308afe5 binary, native MCP automatic windows then physical evdev/MCP pairing. First long recording evicted 245 events; complete 240-event short window used. Restore PID 3765 safely rejected while old lock was retiring; after full owner/VO release PID 3782 started normally. Diagnostic files archived; f963558 recovery retained.",
     "2026-10-13 image background: 41f87b2 deployed and performance tested. List FPS fell to 20.365 while other dynamic scenes remained 29.00. Timed process 11893 expired while waiting for physical operation; resident PID 12090 restored without --seconds. User confirmed normal response. 308afe5 is recovery; older f963558 and diagnostics archived after verification.",
-    "2026-10-13 fdb0f0e: QuickFill and global-opacity texture preparation verified. Twenty-two fill groups show CPU faster through 1024x600; QuickFill remains explicit opt-in. Native callback audit confirms accepted TDE primitives do not fall through to software rendering. Finite process 25598 exited cleanly; resident 25632 uses default fill with trace off. Kernel ring overlap, rather than whole-prefix matching, identifies the complete test window. Prior ring binary retained for recovery."
+    "2026-10-13 fdb0f0e: QuickFill and global-opacity texture preparation verified. Twenty-two fill groups show CPU faster through 1024x600; QuickFill remains explicit opt-in. Native callback audit confirms accepted TDE primitives do not fall through to software rendering. Finite process 25598 exited cleanly; resident 25632 uses default fill with trace off. Kernel ring overlap, rather than whole-prefix matching, identifies the complete test window. Prior ring binary retained for recovery.",
+    "2026-10-13 shared MMZ: d34f436 resident PID 6670, no timer/trace/observer/WBC. Old staged fdb0f0e kept for recovery. Ring recovery and 16 other unused test/log files archived with SHA256 before cleanup. Finite shared run 3893 exited normally; signal-driven reclamation of old residents recorded separately."
   ],
   "previous_serial_device": "/dev/ttyUSB2",
   "serial_recheck_evidence": "evidence/nx5-showcase/2026-10-13/build-manifest.json",
@@ -218,7 +224,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "Real SDK fill/opacity comparison and callback audit; 22 fill area/shape/color groups; 100 alternating memory pages with hardware TDE. No software row rendering after accepted TDE operations in controlled scene. Six-page MCP and short Motion smoke, finite clean exit. No new physical framebuffer capture, WBC, video or evdev latency measurement.",
+  "observation_scope": "Real SDK shared MMZ rendering, independent fill area correctness and three-path timing, 100 hardware-TDE memory pages; CPU NEON exact boundaries; 210 real framebuffer presentations with six full final-page readbacks (3686400 pixels exact). Six-page/ten-snapshot native MCP check and short list window, finite clean exit. No new WBC, video, full-scene performance or evdev latency measurement.",
   "hardware_regression": {
     "report": "docs/nx5-hardware.md",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -351,12 +357,12 @@
     }
   },
   "recovery_ui": {
-    "path": "/tmp/slint-bridge-ring-0e8516d/showcase",
-    "source_commit": "0e8516decb8a82b6eb31d2246d877001f8f3ab38",
+    "path": "/tmp/slint-bridge-fill-fdb0f0e/showcase",
+    "source_commit": "fdb0f0e2bc93e2a1243de890a74d3c2948d68508",
     "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
-    "sha256": "ed17b5242a781b84d8242d2633e809c283ef902a3a16f5b7d57a6be72454a7ae",
-    "startup_script": "/tmp/slint-bridge-ring-0e8516d/start-live.sh",
-    "procedure": "docs/nx5-fill-blend.md#常驻与回退"
+    "sha256": "f1693d2533472cc2435ccd6a039aacc41d76d2daea903e39ad71c99cb358426b",
+    "startup_script": "/tmp/slint-bridge-fill-fdb0f0e/start-live.sh",
+    "procedure": "docs/nx5-shared-canvas.md#常驻与回退"
   },
   "alpha_validation": {
     "report": "docs/nx5-alpha.md",
@@ -513,5 +519,25 @@
     "finite_forced_mmz_cleanup": false,
     "motion_completed_presentations": 750,
     "motion_fps": 28.962
+  },
+  "shared_canvas_validation": {
+    "report": "docs/nx5-shared-canvas.md",
+    "manifest": "evidence/nx5-shared-canvas/2026-10-13/manifest.json",
+    "source_commit": "d34f436a8c2a8ba00a2c3a18a4c7a621fd0af182",
+    "physical_pixels_compared": 3686400,
+    "physical_max_channel_error": 0,
+    "fill_area_groups": 22,
+    "fill_area_tde_wins": 0,
+    "full_screen_fill_tde_ms": 2.856178,
+    "full_screen_fill_cpu_mmz_ms": 1.685782,
+    "full_screen_opaque_write_us": 6647.874,
+    "full_screen_clear_write_us": 7108.724,
+    "finite_process_pid": 3893,
+    "finite_exit_mmz_kib": 4900,
+    "finite_exit_mmz_blocks": 2,
+    "finite_forced_mmz_cleanup": false,
+    "list_completed_presentations": 900,
+    "list_fps": 29.0,
+    "list_cpu_percent": 76.83859071814604
   }
 }

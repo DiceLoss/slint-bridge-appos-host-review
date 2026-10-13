@@ -1,5 +1,13 @@
 # NX5 最近环境记录
 
+2026-10-13 共享 MMZ 画布验证收尾：当前程序为 `d34f436` + Slint `22804ff`，路径 `/tmp/slint-bridge-shared-final/showcase`，观测 PID **6670**。无退出定时器，trace、QuickFill 诊断开关、WBC 和观察器关闭。恢复程序为 `/tmp/slint-bridge-fill-fdb0f0e/showcase`。身份、PID 和显示所有者在操作前仍须重新核对。
+
+CPU/TDE 已共用 SDK 的 cached MMZ 映射。真实物理页最终六组全幅共 3686400 像素完全一致；不透明全屏写页约 6.65 ms，旧式暂存对照约 14.69 ms。列表短窗口 900 次有效完成提交均为 29.00 FPS，CPU 约 76.8% 单核。六页 MCP 与十张截图通过，180 秒有限进程正常退出、MMZ 回到基线，无对应进程强制回收。
+
+最终常驻 RSS 14848 KiB、VmHWM 15132 KiB、3 线程，MMZ 12100 KiB / 5 块；归档校验后清理 17 个不用文件，`/tmp` 使用 21096 KiB、剩余 24748 KiB，系统可用内存 45044 KiB。旧报告的 WBC、实体触摸及全场景长期性能成绩未重记为当前版本。完整范围见 [共享画布报告](nx5-shared-canvas.md)，快照见 [current-target.json](../test-app/devices/nx5/current-target.json)。
+
+## 2026-10-13 填充与整体透明度收尾（历史）
+
 2026-10-13 填充与整体透明度验证收尾：当前程序为 `fdb0f0e` + Slint `22804ff`，路径 `/tmp/slint-bridge-fill-fdb0f0e/showcase`，观测 PID **25632**。无退出定时器，trace、QuickFill 诊断开关、WBC 和观察器关闭；普通填充继续使用 CPU。整体透明度已接入符合条件的 TDE 图像混合。恢复程序为 `/tmp/slint-bridge-ring-0e8516d/showcase`。
 
 22 组面积/形状/颜色对照均未发现本面板范围内的 TDE 填充优势；真实 SDK 调用链检查中，TDE 成功后同一操作的软件绘制行数为 0。六页 MCP、短 Motion 窗口（750 次有效完成提交，约 28.96 FPS）和正常退出资源检查通过。此次未重测物理显示页、WBC 或实体触摸时延；完整范围见 [填充/混合报告](nx5-fill-blend.md)，实际快照见 [current-target.json](../test-app/devices/nx5/current-target.json)。
