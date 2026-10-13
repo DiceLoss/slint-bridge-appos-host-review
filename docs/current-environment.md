@@ -1,5 +1,11 @@
 # NX5 最近环境记录
 
+2026-10-13 NEON 反预乘优化收尾：当前为 `4a2eda2` + Slint `22804ff`，路径 `/tmp/slint-bridge-neon-final/showcase`，观测 PID **6818**。无退出定时器，trace、WBC 和观察器关闭；恢复为 `/tmp/slint-bridge-shared-final/showcase`（`d34f436`）。
+
+真实探针的半透明整屏写页由 52.75 ms 降至 19.34 ms，alpha 渐变由 51.61 ms 降至 22.89 ms；生产 Rust 写页独立测得半透明 19.13 ms。两组最后页读回合计 8601600 像素完全一致，另有 100 帧真实 TDE＋内存双页对照通过。六页/十张 MCP 截图和短列表 29.00 FPS 通过；相邻无 trace CPU 对照为新版 76.35%、旧版 77.14%。首次带 trace 窗口的较高 CPU 值保留，不用于归因。有限进程正常退出并释放资源。完整范围见 [NEON 报告](nx5-neon-unpremultiply.md) 和 [设备快照](../test-app/devices/nx5/current-target.json)。
+
+## 2026-10-13 TDE 写页调查收尾（历史）
+
 2026-10-13 TDE 写页调查收尾：常驻仍为 `d34f436` + Slint `22804ff`，路径 `/tmp/slint-bridge-shared-final/showcase`，重新启动后观测 PID **20127**。本轮只新增诊断工具与报告，生产路径未改；无退出定时器，trace、WBC 和观察器关闭。恢复版本仍为 `fdb0f0e`。
 
 所需单次 TDE 转换未通过；CPU 转换 MMZ 后 TDE 拷贝的 4915200 个实际页像素完全一致，但四种图案均比 CPU/NEON 直接写页更慢。不透明全屏为 11.39 ms 对 6.61 ms，半透明为 66.36 ms 对 52.75 ms。独占探针正常退出并释放 VO/MMZ，随后原生 MCP 确认常驻恢复。完整范围与原始证据见 [TDE 写页调查](nx5-tde-writeback.md)，资源快照见 [current-target.json](../test-app/devices/nx5/current-target.json)。本轮没有新增展示 FPS、WBC 或实体触摸测量。

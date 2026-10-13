@@ -1,6 +1,6 @@
 {
-  "current_binary": "/tmp/slint-bridge-shared-final/showcase",
-  "recovery_binary": "/tmp/slint-bridge-fill-fdb0f0e/showcase",
+  "current_binary": "/tmp/slint-bridge-neon-final/showcase",
+  "recovery_binary": "/tmp/slint-bridge-shared-final/showcase",
   "keep": [
     "/tmp/slint-bridge-c03c3bb/start-live.sh",
     "/tmp/slint-bridge-c03c3bb/lib",
@@ -9,9 +9,9 @@
     "/run/slint-bridge-display/DejaVu-font-license.txt",
     "/run/slint-bridge-display/adbd.log",
     "/run/slint-bridge-display/dhcp.log",
-    "/tmp/slint-bridge-fill-fdb0f0e/start-live.sh",
-    "/tmp/slint-bridge-fill-fdb0f0e/live.log",
     "/tmp/slint-bridge-shared-final/start-live.sh",
-    "/tmp/slint-bridge-shared-final/live-after-writeback-final.log"
+    "/tmp/slint-bridge-shared-final/live-after-writeback-final.log",
+    "/tmp/slint-bridge-neon-final/start-live.sh",
+    "/tmp/slint-bridge-neon-final/live-final.log"
   ]
 }

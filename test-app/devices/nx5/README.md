@@ -1,12 +1,10 @@
 # NX5 测试目标
 
-本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中路径相对于仓库根目录；最近收尾记录为 2026-10-13 的 TDE 写页调查（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
+本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中路径相对于仓库根目录；最近收尾记录为 2026-10-13 的 NEON 反预乘优化（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
 
-当前为 `d34f436` + Slint `22804ff`，路径 `/tmp/slint-bridge-shared-final/showcase`，观测 PID 20127，无退出定时器，trace 与 QuickFill 诊断开关关闭。CPU/TDE 共享 cached MMZ，真实物理页像素、NEON 边界及正常退出通过；六页/十张 MCP 截图和短列表 29.00 FPS 复验通过。详见 [共享画布报告](../../../docs/nx5-shared-canvas.md)。
+当前为 `4a2eda2` + Slint `22804ff`，路径 `/tmp/slint-bridge-neon-final/showcase`，观测 PID 6818，无退出定时器，trace 与 QuickFill 诊断开关关闭。半透明反预乘已用精确整数 NEON 加速，生产 Rust 整屏写页约 19.13 ms；累计 8601600 个实际页像素完全一致，六页/十张 MCP 截图、短列表 29.00 FPS 和正常退出通过。详见 [NEON 报告](../../../docs/nx5-neon-unpremultiply.md)。
 
-本轮另行验证单次 TDE 格式转换及真实 framebuffer 拷贝：未找到正确的单次转换；CPU 转换后 TDE 搬运像素完全正确，但四种图案均更慢，故运行程序保持上述版本。原生 MCP 恢复检查通过，之前的列表 FPS 与十张截图不是本轮重新测量。详见 [TDE 写页调查](../../../docs/nx5-tde-writeback.md)。
-
-恢复版本为 `/tmp/slint-bridge-fill-fdb0f0e/showcase` 及其 `start-live.sh`；上一轮填充与整体透明度验证保留在 [原报告](../../../docs/nx5-fill-blend.md)。更早的圆环与图片优化二进制均已校验归档，历史性能和像素结果仍属于各自报告的构建范围。当前路径以 [保留策略](deploy-retain.json) 为准。
+恢复版本为 `/tmp/slint-bridge-shared-final/showcase`（`d34f436`）及其 `start-live.sh`。当前和恢复版本都使用共享 MMZ；新版只优化 CPU 转换，没有增加 MMZ 块或生产 TDE 写页。此前 TDE 格式转换调查与成绩保留在 [原报告](../../../docs/nx5-tde-writeback.md)。更早的 `fdb0f0e` 已校验归档；当前路径以 [保留策略](deploy-retain.json) 为准。
 
 纯色版本的 [性能报告](../../../docs/nx5-showcase-performance.md) 和 [首次部署报告](../../../docs/nx5-showcase.md) 保留原场景与提交的数据，不改记为图片背景成绩。
 
