@@ -35,3 +35,44 @@ cargo run --locked --offline -p slint-bridge-test-app --features fbdev \
 ```
 
 输出目录必须不存在。将设备 BGRA 的 R/B 通道交换，与参考 RGBA 逐字节比较，无需再旋转。与逻辑方向 MCP 截图直接比较会混入 Slint 曲线/圆角在不同扫描方向下的栅格边缘差异；物理页验证使用同旋转独立参考，MCP 用于界面和交互检查。
+
+## 富列表性能采样
+
+`profile-rich-list.py` 用原生 MCP 驱动同一正式 `showcase`：静态 Controls、富列表纵向、横向、停止滑动及返回 Controls。每个方向先在列表内部定位、预热至少 10 秒，再连续拖动至少 60 秒；每次核对内容位移大于视口的 40%、轴不漂移且未停在端点。MCP 查询和手势插值的开销包含在负载中。采样不截图、不录制输入，不把 UI ticks 当作 FPS。
+
+`observe-resources.c PID MAX_SECONDS PHASE_FILE` 每秒只读 `/proc`，记录单调时钟、进程 CPU ticks、RSS/VmHWM、major faults、线程数、CPU 频率、MemFree/Shmem 以及观察器自身 CPU ticks。绑定进程 starttime，PID 被复用或进程退出会失败；phase 为 `done` 时正常结束。编译方法同本目录其他普通 C 工具。
+
+`count-flips.c` 用相同交叉编译器加 `-shared -fPIC -ldl` 构建。仅测 FPS 的独立进程设置 `LD_PRELOAD=计数库.so SLINT_BRIDGE_X9_FPS_FILE=新文件`；探针转发原 ioctl/read，核对成功 page-flip 的 fd、cookie 和 32 字节 FLIP_COMPLETE，然后记录单调时间。不改变返回值、事件或翻页顺序，不加载 SDK。固定映射为 262,160 字节，最多 32,768 条事件，溢出、错配或提交错误会被分析器拒绝。CPU/RSS 主结果使用**无此探针的新进程**，避免混入额外映射和计数开销。
+
+重新核对目标、所有者、程序摘要与恢复工具后，按设备说明切换到同一正式二进制的新进程。临时目录必须新建为 `/tmp/slint-bridge-x9-perf-...`，由 ADB 用户创建可写的 `phase` 文件；仅这个工作目录用于阶段标记。root 启动外部观察器，将 CSV 保存到该目录：
+
+```sh
+observe-resources ACTUAL_PID 420 WORK_DIR/phase > WORK_DIR/resources.csv
+```
+
+观察器与应用启动后，在主机运行；输出目录必须不存在：
+
+```sh
+python3 test-app/tools/x9/profile-rich-list.py --serial 192.168.1.143:5555 \
+  --remote /tmp/slint-bridge-x9-perf-本次目录 --output evidence/本次目录/resources
+```
+
+对无探针和带计数探针的两个新进程各执行一次，保存各自 CSV / 应用日志，后者另外取回 `flips.bin`。结束后按恢复流程启动不含探针的常驻程序，确认其 maps 没有计数库，再归档并清理本轮诊断文件。分析命令：
+
+```sh
+python3 test-app/tools/x9/analyze-performance.py --samples resources.csv \
+  --phases resources/phases.json --output resources-summary.json
+python3 test-app/tools/x9/analyze-performance.py --samples fps-resources.csv \
+  --phases fps/phases.json --flips flips.bin --output fps-summary.json
+```
+
+分析使用设备单调时钟，以单核 100% 计算 CPU；FPS 为同窗口中匹配完成事件数除以时长。统一丢弃首个样本，并将末端限制在主机动作窗口内部，排除阶段边界和导航设置。动态有效窗口至少 45 秒。VmHWM 属于该次进程生命周期，不能当作每个阶段独立峰值；RSS 不包含 tmpfs 部署文件，也不等于整机或独立扫描缓冲的总占用。
+
+主机检查：
+
+```sh
+cc -std=c11 -O2 -Wall -Wextra -Werror -DPROBE_TEST \
+  test-app/tools/x9/count-flips.c -o target/x9-count-test
+./target/x9-count-test
+python3 -m unittest discover -s test-app/tools/x9 -p 'test_performance.py' -v
+```

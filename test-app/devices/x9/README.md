@@ -1,6 +1,6 @@
 # X9 / Lombo N7 测试目标
 
-2026-10-14 当前常驻 `/tmp/slint-bridge-x9-20261014/showcase-06`，观测 PID **2029**，无退出定时器。最终 Controls 与 PNG/SVG 缩放两张真实前台页共 2,048,000 像素，与同条件 CPU 参考全部一致；完整 MCP 与故障验证范围见接入报告。操作前须重新识别进程，不能直接使用这里的 PID。
+2026-10-14 当前常驻 `/tmp/slint-bridge-x9-20261014/showcase-06`，观测 PID **2367**，无退出定时器；性能采样后已恢复无探针进程，停在富列表纵向起点。最终 Controls 与 PNG/SVG 缩放两张真实前台页共 2,048,000 像素，与同条件 CPU 参考全部一致；完整 MCP 与故障验证范围见接入报告。富列表纵向 **6.64 FPS / 98.14% CPU / 17.53 MiB RSS**，横向 **10.73 FPS / 98.31% / 17.75 MiB**；CPU 为单核口径，详见 [性能报告](../../../docs/x9-performance.md)。操作前须重新识别进程，不能直接使用这里的 PID。
 
 本目录与 NX5 独立。当前设备为 ADB `192.168.1.143:5555`、双 Cortex-A7、Linux `3.10.100 #452 SMP PREEMPT Mon Dec 12 11:32:50 CST 2022`，显示驱动 `lombo-drm`。身份与运行进程均须在每次操作前重新核对；[current-target.json](current-target.json) 是观测快照，不能直接沿用其中的 PID。
 

@@ -1,5 +1,5 @@
 {
-  "observed_at_utc": "2026-10-14T14:13:47Z",
+  "observed_at_utc": "2026-10-14T15:16:59Z",
   "scope": "observation only; recheck identity, PID, and ownership before operation",
   "adb_serial": "192.168.1.143:5555",
   "hostname": "virgo",
@@ -15,7 +15,7 @@
     "slint/mcp"
   ],
   "slint_commit": "ea7d0aec488caf3acaf61a2ab275a23cae201088",
-  "library_source": "X9 implementation committed with this snapshot",
+  "library_source": "8604707793738eba90eb04bd3fb8d0b38460e427",
   "display": {
     "driver": "lombo-drm",
     "drm": "lombo 1.0.0",
@@ -55,7 +55,7 @@
     }
   },
   "process": {
-    "pid": 2029,
+    "pid": 2367,
     "executable": "/tmp/slint-bridge-x9-20261014/showcase-06",
     "sha256": "568791f1c3e64c23154ae537af46f882023c346a58be6e15205d24732f1cb289",
     "bytes": 13697892,
@@ -68,11 +68,12 @@
       "SLINT_DEFAULT_FONT": "/tmp/slint-bridge-x9-20261014/DejaVuSans.ttf"
     },
     "font_sha256": "ae7b7855e115a5966d8b1b3f80f254ccc117ec86f9965e202ee2940453837280",
-    "log": "/tmp/slint-bridge-x9-20261014/showcase-06.log",
-    "rss_kib": 15020,
-    "peak_rss_kib": 22104,
+    "log": "/tmp/slint-bridge-x9-20261014/showcase-06-resumed.log",
+    "rss_kib": 17840,
+    "peak_rss_kib": 17840,
     "threads": 3,
-    "console_mode": "KD_GRAPHICS"
+    "console_mode": "KD_GRAPHICS",
+    "page": "Rich list, vertical start, no selection"
   },
   "mcp": {
     "host_port": 19316,
@@ -85,5 +86,6 @@
     "initial_pixels": "/tmp/slint-bridge-x9-probe/before.fb",
     "recover_console": "/tmp/slint-bridge-x9-probe/recover-console"
   },
-  "evidence": "evidence/x9-framebuffer/2026-10-14 (local ignored archive, acquired separately)"
+  "evidence": "evidence/x9-framebuffer/2026-10-14 and evidence/x9-performance/2026-10-14 (local ignored archives, acquired separately)",
+  "performance_report": "docs/x9-performance.md"
 }
