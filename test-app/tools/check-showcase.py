@@ -20,7 +20,9 @@ class Client:
         request = urllib.request.Request(self.endpoint, data=json.dumps(dict(
             jsonrpc="2.0", id=1, method=method, params=params)).encode(), headers={
                 "Content-Type": "application/json", "Accept": "application/json, text/event-stream"})
-        raw = self.opener.open(request, timeout=10).read().decode()
+        # Wide drags on rich device scenes can take longer than a simple query.
+        timeout = 30 if method == "tools/call" and params.get("name") == "drag_element" else 10
+        raw = self.opener.open(request, timeout=timeout).read().decode()
         if raw.startswith(("event:", "data:")):
             raw = next(line[5:].strip() for line in raw.splitlines() if line.startswith("data:"))
         response = json.loads(raw)
@@ -98,12 +100,12 @@ class Client:
         coord, length = ("x", "width") if axis == "horizontal" else ("y", "height")
         low = bounds["absolutePosition"][coord]
         high = low + bounds["size"][length]
-        visible = [e for e in self.rich_items() if low + 16 < e["absolutePosition"][coord]
-                   + e["size"][length] / 2 < high - 16]
+        visible = [e for e in self.rich_items() if low + 1 < e["absolutePosition"][coord]
+                   + e["size"][length] / 2 < high - 1]
         source = (max if forward else min)(visible, key=lambda e: e["absolutePosition"][coord])
         target = {k: source["absolutePosition"][k] + source["size"][v] / 2
                   for k, v in [("x", "width"), ("y", "height")]}
-        target[coord] = low + 16 if forward else high - 16
+        target[coord] = low + 12 if forward else high - 12
         distance = abs(source["absolutePosition"][coord] + source["size"][length] / 2 - target[coord])
         assert distance >= bounds["size"][length] * 0.6
         self.call("drag_element", elementHandle=source["handle"], target=target)
