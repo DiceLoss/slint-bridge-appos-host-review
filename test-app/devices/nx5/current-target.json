@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-14T04:16:01.391597+00:00",
+  "checked_at_utc": "2026-10-14T06:06:53.998155+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -141,7 +141,7 @@
   ],
   "running_ui": {
     "path": "/tmp/slint-bridge-scaling-abb2e33/showcase",
-    "pid": 31614,
+    "pid": 7333,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -179,21 +179,27 @@
         "drag_element"
       ],
       "screenshot_status": "Seven pages / 17 guarded native MCP snapshots; 291 base and 1994 horizontal events, zero dropped/unknown. Runtime PNG/SVG 50/100/125/200%, pixels/transparency/clip passed. No new evdev or finger test.",
-      "restored_properties": "evidence/nx5-runtime-scaling/2026-10-14/resident-ui.json"
+      "restored_properties": "evidence/nx5-scaling-formats/2026-10-14/resident-ui.json",
+      "latest_restore_verification": {
+        "screenshot": "evidence/nx5-scaling-formats/2026-10-14/restored-100.png",
+        "physical_patches": "evidence/nx5-scaling-formats/2026-10-14/physical-patches.json",
+        "physical_page_samples": 16,
+        "full_frame_validation": false
+      }
     },
-    "log": "/tmp/slint-bridge-scaling-abb2e33/live-final.log",
+    "log": "/tmp/slint-bridge-scaling-abb2e33/live-after-format-profile.log",
     "source_commit": "abb2e334b2e9f29af2521f5dd12166a17e9f10cd",
     "fault_injection_enabled": false,
     "source_state": "Runtime unchanged from a0e880c; dedicated seventh Image scaling page, raw PNG/SVG loaded at runtime. Resident zoom 100%, Controls level 48; no timer, trace, recording, replay or WBC.",
     "source_manifest": "evidence/nx5-runtime-scaling/2026-10-14/manifest.json",
     "resources": {
-      "rss_kib": 15360,
-      "vm_hwm_kib": 15360,
-      "vm_peak_kib": 33852,
+      "rss_kib": 15284,
+      "vm_hwm_kib": 20004,
+      "vm_peak_kib": 38156,
       "threads": 3,
       "mmz_used_kib": 12100,
       "mmz_blocks": 5,
-      "mem_available_kib": 23784,
+      "mem_available_kib": 23532,
       "wbc_running": false
     },
     "runtime_source_sha256": "da7e30859b9dd07a76ade3a549bd35f028df85b0f1a9209d61b2ada8b3d0ab22",
@@ -227,8 +233,8 @@
     "2026-10-14 input-latency deployment: a0e880c resident PID 7241, c087071 kept for rollback. Full-alpha automatic input P95 16.88 -> 0.86 ms (1 ms MCP quantization); final showcase list 900 completed presentations at 29 FPS. Ordinary scene render/layout stalls remain. Initial slow replay and rejected initial-axis sample retained separately. Runtime instrumentation/prototype removed, 24 device artifacts archived/cleaned. No firmware, SDK, driver, Slint or boot-service change."
   ],
   "previous_serial_device": "/dev/ttyUSB2",
-  "serial_recheck_evidence": "evidence/nx5-runtime-scaling/2026-10-14/manifest.json",
-  "serial_rechecked_at_utc": "2026-10-14T04:16:01.391597+00:00",
+  "serial_recheck_evidence": "evidence/nx5-scaling-formats/2026-10-14/manifest.json",
+  "serial_rechecked_at_utc": "2026-10-14T06:06:53.998155+00:00",
   "scheduling": {
     "timer_quantum_us": 10000,
     "policy": "block before the final timer quantum, then poll events and the monotonic deadline",
@@ -240,7 +246,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "abb2e33 dedicated runtime PNG/SVG scaling page; host retained-buffer regression, seven-page native MCP, trace-off resources and separate completed-presentation FPS. Three clean finite exits. No new evdev, physical-pixel, WBC or scanout measurements.",
+  "observation_scope": "Temporary diagnostic PNG/SVG single-format CPU/RSS/FPS comparison; original abb2e33 restored with both images at 100%. Eight normal finite exits. Sixteen selected color pixels on both physical pages match restored native screenshot; no full-frame, WBC, evdev or LCD scanout validation.",
   "hardware_regression": {
     "report": "docs/nx5-hardware.md",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -771,5 +777,62 @@
     "new_evdev_test": false,
     "new_physical_pixels": false,
     "new_wbc_test": false
+  },
+  "scaling_formats_validation": {
+    "report": "docs/nx5-scaling-formats.md",
+    "manifest": "evidence/nx5-scaling-formats/2026-10-14/manifest.json",
+    "diagnostic_base_commit": "cb94371b6872a2ba6b58e61fd40d7b6f0c301f4a",
+    "diagnostic_binary_sha256": "ddb7523ed922ef96593db3851f043558290bb76026207c797251dab86edb8a15",
+    "production_code_changed": false,
+    "normal_exit_processes": 8,
+    "physical_page_color_samples": 16,
+    "physical_full_frame_comparison": false,
+    "cleanup_archived_files": 71,
+    "results": [
+      {
+        "case": "none",
+        "fps": 28.958402744046868,
+        "completed_presentations": 1050,
+        "cpu_percent_one_core": 57.70252324038076,
+        "rss_mean_kib": 13640,
+        "rss_range_kib": [
+          13640,
+          13640
+        ]
+      },
+      {
+        "case": "png",
+        "fps": 28.987462170341548,
+        "completed_presentations": 1200,
+        "cpu_percent_one_core": 65.22781774580999,
+        "rss_mean_kib": 13816,
+        "rss_range_kib": [
+          13816,
+          13816
+        ]
+      },
+      {
+        "case": "svg",
+        "fps": 28.057210066705757,
+        "completed_presentations": 1200,
+        "cpu_percent_one_core": 84.38049209146178,
+        "rss_mean_kib": 15185.6,
+        "rss_range_kib": [
+          15132,
+          15776
+        ]
+      },
+      {
+        "case": "both",
+        "fps": 25.99414377555602,
+        "completed_presentations": 1050,
+        "cpu_percent_one_core": 88.142638372307,
+        "rss_mean_kib": 15409.68888888889,
+        "rss_range_kib": [
+          15356,
+          15980
+        ]
+      }
+    ]
   }
 }

@@ -1,5 +1,13 @@
 # NX5 最近环境记录
 
+2026-10-14 PNG / SVG 单独缩放测量收尾：正式程序仍为 `abb2e33` + Slint `22804ff`，路径 `/tmp/slint-bridge-scaling-abb2e33/showcase`，恢复后观测 PID **7333**，日志 `live-after-format-profile.log`。Image scaling 恢复为左右双图 100%，Controls 保留 48%；无退出定时器、trace、录制、回放或 WBC。
+
+单 PNG 为 **28.99 FPS / 65.23% CPU / 13.49 MiB 平均 RSS**，单 SVG 为 **28.06 FPS / 84.38% CPU / 14.83 MiB 平均 RSS**；同一诊断构建的双图为 25.99 FPS，空图对照为 28.96 FPS。CPU 为关闭 trace 的单核占比，FPS 使用独立进程。临时诊断仅改变图片选择与测试文案，正式源码已恢复；方法与归因限制见[单格式缩放报告](nx5-scaling-formats.md)。
+
+八个有限进程正常退出并释放 VO/MMZ；71 个诊断文件校验归档清理，原常驻和三个恢复二进制均保留。针对测试中 SVG 未显示的反馈，核对当时为 `none` 空图对照；恢复后原生截图与两张物理页的 16 个四色点一致，未做整帧、WBC 或 LCD 扫描验证。恢复后 RSS 15284 KiB、VmHWM 20004 KiB（含恢复截图峰值）、MMZ 12100 KiB / 5 块，可用内存 23532 KiB。下次操作前重新核对身份、实际 PID 和显示所有者。
+
+## 2026-10-14 双图运行时缩放收尾（历史）
+
 2026-10-14 PNG / SVG 运行时缩放验证收尾：当前为 `abb2e33` + Slint `22804ff`，路径 `/tmp/slint-bridge-scaling-abb2e33/showcase`，观测 PID **31614**，无退出定时器、trace、QuickFill、录制、回放或 WBC。界面停留独立第七页 Image scaling，缩放 100%，Controls 保留 48%。
 
 主机保留缓冲 1420342 像素对照、NX5 七页/17 张原生 MCP 截图及四档缩放检查通过。独立关闭 trace 的缩放窗口 CPU **88.35%** 单核，RSS 15488–15612 KiB；另一个窗口的 900 次有效完成提交为 **25.87 FPS**。三个有限进程均正常退出，VO 关闭、MMZ 回到 4900 KiB / 2 块。方法及限制见[运行时缩放报告](nx5-runtime-scaling.md)。
