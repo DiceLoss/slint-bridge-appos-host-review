@@ -1,12 +1,13 @@
 import { LineEdit, Switch } from "std-widgets.slint";
 import { DeviceRow } from "models.slint";
-import { Label, Caption, Heading, Card, Action, Palette } from "widgets.slint";
+import { Label, Caption, Heading, Card, Action, Meter, Palette } from "widgets.slint";
 
 export component Devices inherits VerticalLayout {
     in property <[DeviceRow]> rows;
     in-out property <string> query;
     in-out property <bool> online-only;
     in property <string> selected-name;
+    private property <bool> horizontal: false;
     callback filter();
     callback keyboard();
     callback select(int);
@@ -21,9 +22,14 @@ export component Devices inherits VerticalLayout {
     Card {
         VerticalLayout {
             padding: 16px; spacing: 8px;
-            HorizontalLayout { Heading { text: "Demo device directory"; } Caption { text: root.rows.length + " results"; horizontal-alignment: right; } }
-            Caption { text: "Touch a row for details. Drag the list to discover all devices."; }
-            device-list := Flickable {
+            HorizontalLayout {
+                spacing: 12px;
+                Heading { text: "Demo device directory"; }
+                Caption { text: root.rows.length + " results"; horizontal-alignment: right; }
+                orientation-toggle := Action { text: root.horizontal ? "Vertical list" : "Horizontal cards"; clicked => { root.horizontal = !root.horizontal; } }
+            }
+            Caption { text: root.horizontal ? "Swipe left and right to discover all devices. Touch a card for details." : "Touch a row for details. Drag the list to discover all devices."; }
+            if !root.horizontal: device-list := Flickable {
                 mouse-drag-pan-enabled: true;
                 content-width: self.width;
                 VerticalLayout {
@@ -44,6 +50,33 @@ export component Devices inherits VerticalLayout {
                     }
                     if root.rows.length == 0: Label { height: 110px; text: "No matching devices. Clear the filters to start again."; horizontal-alignment: center; }
                 }
+            }
+            if root.horizontal: horizontal-list := Flickable {
+                mouse-drag-pan-enabled: true;
+                content-height: self.height;
+                content-width: max(self.width, root.rows.length * 244px - 12px);
+                for device[index] in root.rows: device-card := Rectangle {
+                    x: index * 244px;
+                    width: 232px; height: horizontal-list.height;
+                    border-radius: 8px; background: card-touch.pressed ? #ccece7e6 : #f2f6f8aa;
+                    accessible-role: button; accessible-label: device.name;
+                    accessible-action-default => { root.select(device.id); }
+                    VerticalLayout {
+                        padding: 16px; spacing: 8px;
+                        HorizontalLayout {
+                            Caption { text: "DEVICE " + device.id; }
+                            Caption { text: device.online ? "Online" : "Offline"; horizontal-alignment: right; color: device.online ? Palette.teal : Palette.muted; }
+                        }
+                        Label { text: device.name; font-size: 17px; font-weight: 700; }
+                        Caption { text: device.location; }
+                        Heading { text: device.level + "%"; font-size: 40px; vertical-stretch: 1; }
+                        Caption { text: "Output level"; }
+                        Meter { value: device.level; }
+                        Caption { text: "Touch for details  ›"; }
+                    }
+                    card-touch := TouchArea { clicked => { root.select(device.id); } }
+                }
+                if root.rows.length == 0: Label { width: horizontal-list.width; height: horizontal-list.height; text: "No matching devices. Clear the filters to start again."; horizontal-alignment: center; }
             }
         }
     }

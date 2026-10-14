@@ -71,6 +71,109 @@ class Client:
             next(b["data"] for b in result["content"] if b["type"] == "image"), validate=True))
         output.joinpath(f"{name}.json").write_text(json.dumps(self.tree(), indent=2))
 
+    def device_cards(self):
+        # Native MCP searches omit cards clipped outside the current viewport.
+        return [e for e in self.tree() if any(
+            item.get("id") == "Devices::device-card" for item in e["typeNamesAndIds"])]
+
+    def drag_horizontal(self, bounds, direction):
+        left = bounds["absolutePosition"]["x"]
+        right = left + bounds["size"]["width"]
+        visible = [e for e in self.device_cards() if left + 16 < e["absolutePosition"]["x"]
+                   + e["size"]["width"] / 2 < right - 16]
+        source = max(visible, key=lambda e: e["absolutePosition"]["x"]) if direction == "left" else min(
+            visible, key=lambda e: e["absolutePosition"]["x"])
+        target = dict(x=left + 16 if direction == "left" else right - 16,
+                      y=source["absolutePosition"]["y"] + source["size"]["height"] / 2)
+        distance = abs(source["absolutePosition"]["x"] + source["size"]["width"] / 2 - target["x"])
+        assert distance >= bounds["size"]["width"] * 0.6, "Expected a wide horizontal gesture"
+        self.call("drag_element", elementHandle=source["handle"], target=target)
+        return distance
+
+
+def exercise_horizontal(client, output):
+    client.click("Showcase::nav-devices")
+    client.click("Devices::clear-filter")
+    client.click("Devices::orientation-toggle")
+    listing = client.find("Devices::horizontal-list")
+    bounds = client.data("get_element_properties", elementHandle=listing)
+    left = bounds["absolutePosition"]["x"]
+    right = left + bounds["size"]["width"]
+
+    initial = client.device_cards()
+    client.expect_text("18 results")
+    assert initial[0]["accessibleLabel"] == "Light panel 01"
+    first = initial[0]["handle"]
+    seen = set()
+    start = client.data("get_element_properties", elementHandle=first)["absolutePosition"]
+    client.screenshot(output, "11-horizontal-start")
+    results = []
+    for direction in ("left", "right"):
+        gestures = []
+        recordings = []
+
+        def swipe():
+            # A long traversal can exceed the native recorder's 1024-event ring.
+            client.call("start_event_recording", windowHandle=client.window)
+            distance = client.drag_horizontal(bounds, direction)
+            time.sleep(0.4)
+            events = client.data("stop_event_recording", windowHandle=client.window)
+            assert not int(events.get("droppedCount", 0)) and not int(events.get("unknownEventCount", 0))
+            recordings.append(events)
+            output.joinpath(f"horizontal-{direction}-events.json").write_text(json.dumps(recordings, indent=2))
+            dialogs = client.data("find_elements_by_id", windowHandle=client.window,
+                                  elementsId="Showcase::dialog-cancel")
+            assert not dialogs.get("elementHandles"), "Dragging a card opened its details"
+            position = client.data("get_element_properties", elementHandle=first)["absolutePosition"]
+            assert abs(position["y"] - start["y"]) < 1, "Horizontal scrolling drifted vertically"
+            gestures.append(dict(distance=distance, first_x=position["x"]))
+
+        for _ in range(20):
+            visible = client.device_cards()
+            seen.update(e["accessibleLabel"] for e in visible)
+            endpoint = next((e for e in visible if e["accessibleLabel"] == (
+                "Room controller 18" if direction == "left" else "Light panel 01")), None)
+            if endpoint is None:
+                swipe()
+                continue
+            edge = client.data("get_element_properties", elementHandle=endpoint["handle"])
+            position = edge["absolutePosition"]["x"] + (edge["size"]["width"] if direction == "left" else 0)
+            if abs(position - (right if direction == "left" else left)) < 1:
+                break
+            swipe()
+        else:
+            raise AssertionError(f"Horizontal {direction} boundary was not reached")
+        boundary = client.data("get_element_properties", elementHandle=first)["absolutePosition"]["x"]
+        if direction == "left":
+            assert start["x"] - boundary > 4 * bounds["size"]["width"], "Expected multiple screen widths"
+        swipe()
+        assert abs(gestures[-1]["first_x"] - boundary) < 1, "Horizontal boundary did not clamp"
+        results.append(dict(direction=direction, gestures=gestures, boundary_first_x=boundary,
+                            recorded_events=sum(len(r["events"]) for r in recordings)))
+        if direction == "left":
+            client.screenshot(output, "12-horizontal-end")
+            client.call("click_element", elementHandle=endpoint["handle"])
+            client.expect_text("Selected: Room controller 18")
+            client.click("Showcase::dialog-cancel")
+    client.screenshot(output, "13-horizontal-return")
+    client.set("Devices::search-input", "Room controller 18")
+    filtered = client.device_cards()
+    assert len(filtered) == 1 and filtered[0]["accessibleLabel"] == "Room controller 18"
+    client.call("click_element", elementHandle=filtered[0]["handle"])
+    client.expect_text("Selected: Room controller 18")
+    client.click("Showcase::dialog-cancel")
+    client.set("Devices::search-input", "no-such-device")
+    assert not client.device_cards()
+    client.expect_text("No matching devices")
+    client.click("Devices::clear-filter")
+    client.click("Devices::orientation-toggle")
+    client.find("Devices::device-list")
+    client.click("Showcase::nav-overview")
+    result = dict(cards=18, observed_cards=sorted(seen), viewport_width=bounds["size"]["width"],
+                  directions=results)
+    output.joinpath("horizontal.json").write_text(json.dumps(result, indent=2))
+    return result
+
 
 def exercise(client, output):
     client.window, = client.data("list_windows")["windowHandles"]
@@ -179,6 +282,7 @@ def exercise(client, output):
     client.expect_text("NX5 Studio")
     client.expect_text("No profile applied yet")
     client.click("Showcase::nav-overview")
+    return exercise_horizontal(client, output)
 
 
 def main():
@@ -206,9 +310,9 @@ def main():
                     time.sleep(0.1)
             else:
                 raise RuntimeError("Preview MCP did not start")
-            exercise(client, args.output)
+            horizontal = exercise(client, args.output)
             summary = dict(result="passed", scope="host native Slint MCP; no device or evdev validation",
-                           pages=6, screenshots=10)
+                           pages=6, screenshots=13, horizontal=horizontal)
             args.output.joinpath("summary.json").write_text(json.dumps(summary, indent=2) + "\n")
             print(json.dumps(summary, indent=2))
         finally:

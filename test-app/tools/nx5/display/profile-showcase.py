@@ -103,6 +103,15 @@ def main():
     run("list-warmup", 8, scroll, measure=False)
     run("list", 60, scroll)
 
+    client.click("Devices::orientation-toggle")
+    horizontal = client.data("get_element_properties", elementHandle=client.find("Devices::horizontal-list"))
+
+    def swipe(index):
+        client.drag_horizontal(horizontal, "left" if (index // 6) % 2 == 0 else "right")
+
+    run("horizontal-warmup", 8, swipe, measure=False)
+    run("horizontal", 60, swipe)
+
     client.click("Showcase::nav-media")
     slider = client.find("Media::alpha-slider")
     props = client.data("get_element_properties", elementHandle=slider)

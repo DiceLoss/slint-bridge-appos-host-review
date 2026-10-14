@@ -75,7 +75,7 @@ sh -n test-app/tools/nx5/deploy-control.sh
 
 ## 展示应用性能采样
 
-`display/profile-showcase.py` 通过 Slint **原生 MCP** 驱动已启动的六页应用，依次测静态页、动画、列表往返滑动、两种透明混合状态和结束静态页。动态页预热约 8 秒、测量约 60 秒，测量期间不截图、不录制 MCP 事件。它使用已有 `SLINT_BRIDGE_TRACE` 的每 150 次成功提交日志，丢弃跨阶段开始边界的首批，不修改运行时或应用；MCP 手势节奏包含在测量负载中。
+`display/profile-showcase.py` 通过 Slint **原生 MCP** 驱动已启动的六页应用，依次测静态页、动画、纵向列表、横向多屏卡片往返滑动、两种透明混合状态和结束静态页。动态页预热约 8 秒、测量约 60 秒，测量期间不截图、不录制 MCP 事件。它使用已有 `SLINT_BRIDGE_TRACE` 的每 150 次成功提交日志，丢弃跨阶段开始边界的首批，不修改运行时或应用；MCP 手势节奏包含在测量负载中。横向阶段每六次改变方向，每次从可见边缘卡片向另一侧拖动；定位可见卡片的原生 MCP 查询也包含在该阶段负载中。
 
 只读 `display/observe-performance.c` 同时按约 1 秒间隔记录指定进程的 RSS/VmHWM、CPU ticks、系统可用内存，并读取真实 evdev 时间戳；不独占或注入输入、不访问 framebuffer、不加载 SDK。它仅为自身 evdev 句柄设置 `CLOCK_REALTIME`，便于与原生 MCP 毫秒时间戳配对。就绪行保存 ioctl 查询到的初始 X/Y 轴值，分析器用其恢复未变化、因而没有再次上报的坐标；旧日志仍按原有零初值解析并进行完整性检查。
 

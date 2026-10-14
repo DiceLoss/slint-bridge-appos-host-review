@@ -97,12 +97,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | --- | --- | --- |
 | Overview | 实时模拟柱图、快捷入口、会话计数 | 布局、渐变、模型更新、导航 |
 | Controls | 名称输入、触屏字母/数字键盘、滑块、开关、复选框、下拉框、应用与重置确认 | 双向绑定、百分比圆环、输入校验、取消不改值、跨页状态保留 |
-| Devices | 18 条模拟设备、名称/房间搜索、触屏搜索键盘、在线筛选、空状态、滚动和详情弹窗 | 列表模型、触摸滚动、筛选后按稳定 ID 选择 |
+| Devices | 18 条模拟设备、搜索/筛选、纵向列表、横向多屏卡片和详情弹窗 | 双方向滚动、边界、拖动不误触、筛选后按稳定 ID 选择 |
 | Motion | 六个运动图形、暂停/恢复、速度滑块、原生缓动状态切换 | 位置、透明度、裁剪、颜色和圆角动画 |
 | Layers | 全屏图片背景、每像素 alpha 纹理、透明度滑块、透明窗口开口 | 图像缩放、混合、关闭底图后的真实透明像素 |
 | Interaction lab | 三个点击目标、拖动面板、六项交互练习、最近 24 条操作记录 | 点击/拖动区别、页面回调、清空记录 |
 
 Controls 预览圆环从顶部顺时针显示配置百分比：0% 只显示底轨，100% 显示完整着色环。关闭输出时仍保留配置进度，并改用灰色；下方线性 Meter 显示关闭后的零输出。修复与设备验证见 [圆环报告](../docs/nx5-controls-ring.md)。
+
+Devices 默认显示纵向列表，点击 `Horizontal cards` 切为横向卡片，左右连续滑动可查看全部 18 项；点击 `Vertical list` 切回。两种模式共用搜索、在线筛选和详情回调，切换后从对应列表的起点开始。重新进入 Devices 页默认恢复纵向模式。
 
 设备数据和图表均为本地模拟，配置仅在本次进程中保存，不改变设备硬件设置。`UI ticks` 是应用动画更新次数，不是 framebuffer 完成数或显示 FPS；静态页面不更新动画数据。练习完成表示对应 UI 操作已发生，不表示硬件测试通过。打开透明区域时不绘制全屏底色，没有连接视频源；实机下层可能仍是黑色，视频合成仍须独立验收。
 
@@ -123,9 +125,11 @@ python3 test-app/tools/check-showcase.py --output target/showcase-check
 SLINT_MCP_PORT=19316 target/debug/showcase --preview --seconds=300
 ```
 
-原生 MCP 地址为 `http://127.0.0.1:19316/mcp`，连接方式见 [MCP 指南](../docs/slint-mcp.md)。自动检查脚本通过原生 MCP 实际操作六页，保存六页及四种附加状态的 PNG、元素树、事件记录和检查摘要；它只启动自己的主机进程，不接受设备 endpoint。截图应进一步人工检查排版，脚本通过不等于像素视觉验收。脚本终止自己创建的主机进程，不作为 NX5 SDK 正常退出验证。
+原生 MCP 地址为 `http://127.0.0.1:19316/mcp`，连接方式见 [MCP 指南](../docs/slint-mcp.md)。自动检查脚本通过原生 MCP 实际操作六页，保存六页及七种附加状态的 PNG（共 13 张，含横向起点、末端和返回）、元素树、事件记录和检查摘要；它只启动自己的主机进程，不接受设备 endpoint。截图应进一步人工检查排版，脚本通过不等于像素视觉验收。脚本终止自己创建的主机进程，不作为 NX5 SDK 正常退出验证。
 
-导航 ID 为 `Showcase::nav-overview`、`nav-controls`、`nav-devices`、`nav-motion`、`nav-media`、`nav-lab`（各 ID 均带 `Showcase::` 前缀）；页面控件例如 `Controls::level-slider`、`Devices::search-input`、`Motion::motion-toggle`、`Media::alpha-slider`、`Lab::drag-pad`。弹窗关闭/确认 ID 为 `Showcase::dialog-cancel` / `Showcase::dialog-confirm`。重建页面后重新查询元素句柄。
+导航 ID 为 `Showcase::nav-overview`、`nav-controls`、`nav-devices`、`nav-motion`、`nav-media`、`nav-lab`（各 ID 均带 `Showcase::` 前缀）；页面控件例如 `Controls::level-slider`、`Devices::search-input`、`Motion::motion-toggle`、`Media::alpha-slider`、`Lab::drag-pad`。弹窗关闭/确认 ID 为 `Showcase::dialog-cancel` / `Showcase::dialog-confirm`。横向模式入口为 `Devices::orientation-toggle`，滚动区为 `Devices::horizontal-list`，卡片重复使用 `Devices::device-card`；原生 MCP 只枚举当前可见卡片。重建页面或切换模式后重新查询元素句柄。
+
+自动横向用例从首项连续滑到末项再返回，在 1024×600 下验证累计移动超过四个可视宽度、单次手势至少跨过 60% 可视宽度、两端夹紧、无纵向漂移及拖动不打开详情，并检查末项/筛选后的稳定 ID 和空状态。横向每次手势单独录制，避免长距离遍历超过原生 MCP 的 1024 条事件环形缓冲。
 
 `tests/showcase.rs` 使用 Slint 内存软件窗口检查表单校验、状态保留、重置取消、键盘编辑、列表筛选、稳定 ID、日志上限及透明开口的实际 RGBA 像素。`tests/showcase_repaint.rs` 另外通过确定性的文字模型更新和独立参考 renderer，验证缓存淘汰后切页标题仍刷新；不会用截图清空被测 renderer 的缓存。默认 feature 矩阵包含这些测试；MCP 交互检查单独运行。两者均不代替 evdev、TDE/DMA、物理双页和扫描输出验证。
 
