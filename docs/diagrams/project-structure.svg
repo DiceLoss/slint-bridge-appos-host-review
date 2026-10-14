@@ -83,7 +83,7 @@
   <g id="node-runtime" data-graph-role="node" data-node-id="runtime" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,280,460,350">
   <rect x="60.0" y="280.0" width="400.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8"/>
   <text data-text-role="title" data-full-text="runtime.rs" data-text-max-width="376.0" x="260.0" y="315.0" text-anchor="middle" class="node-title" font-size="18">runtime.rs</text>
-  <text data-text-role="subtitle" data-full-text="UI 线程 · Slint 事件循环" data-text-max-width="376.0" x="260.0" y="337.0" text-anchor="middle" class="node-sub" font-size="12">UI 线程 · Slint 事件循环</text>
+  <text data-text-role="subtitle" data-full-text="UI 线程 · 输入 / 任务 · 帧调度" data-text-max-width="376.0" x="260.0" y="337.0" text-anchor="middle" class="node-sub" font-size="12">UI 线程 · 输入 / 任务 · 帧调度</text>
   </g>
   <g id="node-input" data-graph-role="node" data-node-id="input" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,390,460,460">
   <rect x="60.0" y="390.0" width="400.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8"/>
@@ -98,7 +98,7 @@
   <g id="node-framebuffer" data-graph-role="node" data-node-id="framebuffer" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="550,280,950,350">
   <rect x="550.0" y="280.0" width="400.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.8"/>
   <text data-text-role="title" data-full-text="framebuffer.rs" data-text-max-width="376.0" x="750.0" y="315.0" text-anchor="middle" class="node-title" font-size="18">framebuffer.rs</text>
-  <text data-text-role="subtitle" data-full-text="保留画布 · 双 framebuffer · 脏区" data-text-max-width="376.0" x="750.0" y="337.0" text-anchor="middle" class="node-sub" font-size="12">保留画布 · 双 framebuffer · 脏区</text>
+  <text data-text-role="subtitle" data-full-text="保留画布 · 双页脏区 · 分段写页" data-text-max-width="376.0" x="750.0" y="337.0" text-anchor="middle" class="node-sub" font-size="12">保留画布 · 双页脏区 · 分段写页</text>
   </g>
   <g id="node-presentation" data-graph-role="node" data-node-id="presentation" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="550,390,950,460">
   <rect x="550.0" y="390.0" width="400.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.8"/>
@@ -138,7 +138,7 @@
   <g id="node-examples" data-graph-role="node" data-node-id="examples" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="760,704,1070,774">
   <rect x="760.0" y="704.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
   <text data-text-role="title" data-full-text="test-app/" data-text-max-width="286.0" x="915.0" y="739.0" text-anchor="middle" class="node-title" font-size="18">test-app/</text>
-  <text data-text-role="subtitle" data-full-text="独立 Cargo · .slint 界面 · 接入示例" data-text-max-width="286.0" x="915.0" y="761.0" text-anchor="middle" class="node-sub" font-size="12">独立 Cargo · .slint 界面 · 接入示例</text>
+  <text data-text-role="subtitle" data-full-text="独立 Cargo · .slint · 纵横向交互" data-text-max-width="286.0" x="915.0" y="761.0" text-anchor="middle" class="node-sub" font-size="12">独立 Cargo · .slint · 纵横向交互</text>
   </g>
   <g id="node-tests" data-graph-role="node" data-node-id="tests" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1110,704,1420,774">
   <rect x="1110.0" y="704.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
@@ -153,7 +153,7 @@
   <g id="node-tools" data-graph-role="node" data-node-id="tools" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="410,818,720,888">
   <rect x="410.0" y="818.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
   <text data-text-role="title" data-full-text="test-app/tools/" data-text-max-width="286.0" x="565.0" y="853.0" text-anchor="middle" class="node-title" font-size="18">test-app/tools/</text>
-  <text data-text-role="subtitle" data-full-text="feature 检查 · 分设备诊断与重放" data-text-max-width="286.0" x="565.0" y="875.0" text-anchor="middle" class="node-sub" font-size="12">feature 检查 · 分设备诊断与重放</text>
+  <text data-text-role="subtitle" data-full-text="feature · 原生 MCP · 设备诊断" data-text-max-width="286.0" x="565.0" y="875.0" text-anchor="middle" class="node-sub" font-size="12">feature · 原生 MCP · 设备诊断</text>
   </g>
   <g id="node-evidence" data-graph-role="node" data-node-id="evidence" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="760,818,1070,888">
   <rect x="760.0" y="818.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>
@@ -168,12 +168,12 @@
   <g id="node-flow_rt" data-graph-role="node" data-node-id="flow_rt" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,1026,280,1096">
   <rect x="60.0" y="1026.0" width="220.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8"/>
   <text data-text-role="title" data-full-text="runtime.rs" data-text-max-width="196.0" x="170.0" y="1061.0" text-anchor="middle" class="node-title" font-size="18">runtime.rs</text>
-  <text data-text-role="subtitle" data-full-text="调度绘制与提交" data-text-max-width="196.0" x="170.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">调度绘制与提交</text>
+  <text data-text-role="subtitle" data-full-text="渲染 / 写段后处理输入" data-text-max-width="196.0" x="170.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">渲染 / 写段后处理输入</text>
   </g>
   <g id="node-flow_fb" data-graph-role="node" data-node-id="flow_fb" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="350,1026,570,1096">
   <rect x="350.0" y="1026.0" width="220.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8"/>
   <text data-text-role="title" data-full-text="framebuffer.rs" data-text-max-width="196.0" x="460.0" y="1061.0" text-anchor="middle" class="node-title" font-size="18">framebuffer.rs</text>
-  <text data-text-role="subtitle" data-full-text="仅写可用后台页" data-text-max-width="196.0" x="460.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">仅写可用后台页</text>
+  <text data-text-role="subtitle" data-full-text="约 1 ms 分段写后台页" data-text-max-width="196.0" x="460.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">约 1 ms 分段写后台页</text>
   </g>
   <g id="node-flow_pr" data-graph-role="node" data-node-id="flow_pr" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="640,1026,860,1096">
   <rect x="640.0" y="1026.0" width="220.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8"/>
@@ -187,8 +187,8 @@
   </g>
   <g id="node-flow_dev" data-graph-role="node" data-node-id="flow_dev" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1220,1026,1440,1096">
   <rect x="1220.0" y="1026.0" width="220.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fdba74" stroke-width="1.8"/>
-  <text data-text-role="title" data-full-text="/dev/fb0" data-text-max-width="196.0" x="1330.0" y="1061.0" text-anchor="middle" class="node-title" font-size="18">/dev/fb0</text>
-  <text data-text-role="subtitle" data-full-text="两张显示页" data-text-max-width="196.0" x="1330.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">两张显示页</text>
+  <text data-text-role="title" data-full-text="framebuffer 设备" data-text-max-width="196.0" x="1330.0" y="1061.0" text-anchor="middle" class="node-title" font-size="18">framebuffer 设备</text>
+  <text data-text-role="subtitle" data-full-text="Config.framebuffer 指定路径" data-text-max-width="196.0" x="1330.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">Config.framebuffer 指定路径</text>
   </g>
   <g id="footer" data-graph-role="reserved" data-graph-bounds="48,1174,461,1190">
   <text x="48.0" y="1186.0" class="footnote">特性：fbdev 与 nx5 互斥；nx5-tde 包含 nx5。外部依赖：Slint 1.18.1、NX5 SDK。</text>

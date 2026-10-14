@@ -10,7 +10,7 @@ INK, MUTED = '#111827', '#475569'
 parts = [f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}"
  data-generator="fireworks-tech-graph" data-style-id="1" data-diagram-type="sequence" data-quality-profile="showcase">
 <title>Slint Bridge · 双 framebuffer 并行运行时序</title>
-<desc>依据 src/runtime.rs、framebuffer.rs、presentation.rs、backends/mod.rs、backends/nx5/mod.rs。仅展示成功路径；初始 A 为前台、B 为后台。渲染后及写页分段之间处理输入，写页期间冻结保留画布，整页完成后才提交。UI 预渲染 N+1 可与后台提交 N 的阻塞 PAN 并行。完成成功后才允许复用旧前台页。NX5 回调与通用提交器属于同一个后台线程。</desc>
+<desc>依据 src/runtime.rs、framebuffer.rs、presentation.rs、backends/mod.rs、backends/nx5/mod.rs。仅展示有脏区的成功提交路径；初始 A 为前台、B 为后台。渲染后及写页分段之间处理输入，写页期间冻结保留画布，整页完成后才提交。UI 预渲染 N+1 可与后台提交 N 的阻塞 PAN 并行。完成成功后才允许复用旧前台页。NX5 回调与通用提交器属于同一个后台线程。</desc>
 <style>text {{font-family:'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',sans-serif;}}</style>
 <defs>''']
 for name, color in [('call', BLUE), ('async', PURPLE), ('return', GREEN), ('driver', ORANGE)]:
@@ -123,7 +123,7 @@ rect(82,774,73,32,'#dcfce7','#86efac')
 text(118,796,'PAR',18,GREEN,700,'middle',role='content')
 msg('render-next','ui','canvas',790,'render(N+1) → 画布',size=18)
 note('ui-work',96,857,498,77,'最多预渲染一帧，然后暂停后续绘制',['任务每批约 2 ms / 最多 128 个；继续处理输入'],BLUE,'#eff6ff')
-note('frozen-pages',638,766,284,167,'pending 期间两页均不可写',['A：旧前台，等待释放','B：提交中，禁止修改','此时仅允许写保留画布'],GREEN,'#ffffff')
+note('frozen-pages',638,766,284,167,'pending 期间两页均不可写',['A：旧前台，等待释放','B：提交中，禁止修改','画布最多再渲染一帧'],GREEN,'#ffffff')
 note('blocked-worker',990,801,735,106,'后台线程阻塞于 complete → NX5 PAN',['等待驱动完成；通用层没有发起第二次页面提交'],ORANGE,'#fff7ed')
 
 msg('pan-done','driver','nx5',1010,'⑥ PAN 成功返回','return',18)
@@ -138,7 +138,7 @@ msg('submit-a','ui','worker',1425,'⑩ submit(0)：提交 N+1；随后可预渲�
 
 rect(60,1490,1720,44,'#f0fdf4')
 text(80,1520,'循环：A 提交后两页再次冻结；UI 在保留画布渲染 N+2，后台等待 A 的翻页完成。',19,GREEN,500)
-note('capacity',60,1565,540,143,'并行与容量',['最多 1 次提交进行中 + 1 帧等待提交','保留画布不是第三张物理 framebuffer','写页约 1 ms 让出；画布冻结至整页提交'],BLUE,'#eff6ff')
+note('capacity',60,1565,540,143,'并行与容量',['最多 1 次提交进行中 + 1 帧等待提交','画布冻结至整页提交；不是第三张物理页','约 1 ms 是写页软预算；Slint 渲染不抢占'],BLUE,'#eff6ff')
 note('generic-contract',640,1565,540,143,'通用层负责',['事件 / 帧期限、脏区复制、前后台角色','提交线程、完成队列、eventfd 与错误传播','通过私有 PresentationContract 调用板级实现'],PURPLE,'#faf5ff')
 note('board-contract',1220,1565,560,143,'NX5 适配负责',['布局、SYS/VO、MMZ 与缓存同步','阻塞 PAN 的完成语义及 yoffset 校验','读回或定时器精度均不能单独证明页面已释放'],ORANGE,'#fff7ed')
 
@@ -147,7 +147,8 @@ for x,name,color,label,dash in [(70,'call',BLUE,'同步调用 / UI 复制',False
     dash_attr = ' stroke-dasharray="7 4"' if dash else ''
     parts.append(f'<line data-graph-role="decoration" x1="{x}" y1="1748" x2="{x+43}" y2="1748" stroke="{color}" stroke-width="2.3"{dash_attr} marker-end="url(#arrow-{name})"/>')
     text(x+56,1754,label,17,MUTED)
-text(60,1794,'失败时不复用页面；退出时等待提交完成并 join，再释放映射和板级资源。此图展示当前实现的成功路径。',17,MUTED)
+text(60,1794,'图示有脏区的成功路径。空脏区不提交；提交失败后禁止继续写页；写页期间保留画布冻结。',17,MUTED)
+text(60,1823,'退出事件循环：等待提交并丢弃未提交帧；销毁 Framebuffer：join 后释放资源，未知 DMA 时保留隔离。',17,MUTED)
 parts.append('</svg>')
 OUT.write_text('\n'.join(parts)+'\n',encoding='utf-8')
 print(f'{OUT}: {W} × {H}; all {text_count} text runs fit their declared width')

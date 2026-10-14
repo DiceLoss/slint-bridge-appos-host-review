@@ -33,7 +33,7 @@
       "width": 400,
       "height": 70,
       "label": "runtime.rs",
-      "sublabel": "UI 线程 · Slint 事件循环",
+      "sublabel": "UI 线程 · 输入 / 任务 · 帧调度",
       "fill": "#eff6ff",
       "stroke": "#93c5fd",
       "flat": true
@@ -72,7 +72,7 @@
       "width": 400,
       "height": 70,
       "label": "framebuffer.rs",
-      "sublabel": "保留画布 · 双 framebuffer · 脏区",
+      "sublabel": "保留画布 · 双页脏区 · 分段写页",
       "fill": "#f0fdfa",
       "stroke": "#5eead4",
       "flat": true
@@ -176,7 +176,7 @@
       "width": 310,
       "height": 70,
       "label": "test-app/",
-      "sublabel": "独立 Cargo · .slint 界面 · 接入示例",
+      "sublabel": "独立 Cargo · .slint · 纵横向交互",
       "fill": "#f8fafc",
       "stroke": "#cbd5e1",
       "flat": true
@@ -215,7 +215,7 @@
       "width": 310,
       "height": 70,
       "label": "test-app/tools/",
-      "sublabel": "feature 检查 · 分设备诊断与重放",
+      "sublabel": "feature · 原生 MCP · 设备诊断",
       "fill": "#f8fafc",
       "stroke": "#cbd5e1",
       "flat": true
@@ -254,7 +254,7 @@
       "width": 220,
       "height": 70,
       "label": "runtime.rs",
-      "sublabel": "调度绘制与提交",
+      "sublabel": "渲染 / 写段后处理输入",
       "fill": "#eff6ff",
       "stroke": "#93c5fd",
       "flat": true
@@ -267,7 +267,7 @@
       "width": 220,
       "height": 70,
       "label": "framebuffer.rs",
-      "sublabel": "仅写可用后台页",
+      "sublabel": "约 1 ms 分段写后台页",
       "fill": "#eff6ff",
       "stroke": "#93c5fd",
       "flat": true
@@ -305,8 +305,8 @@
       "y": 1026,
       "width": 220,
       "height": 70,
-      "label": "/dev/fb0",
-      "sublabel": "两张显示页",
+      "label": "framebuffer 设备",
+      "sublabel": "Config.framebuffer 指定路径",
       "fill": "#fff7ed",
       "stroke": "#fdba74",
       "flat": true

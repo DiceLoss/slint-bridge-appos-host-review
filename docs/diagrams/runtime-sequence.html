@@ -40,7 +40,7 @@
   <main id="stage" tabindex="0" aria-label="Interactive diagram. Drag to pan; use plus and minus to zoom.">
     <div id="canvas"><svg xmlns="http://www.w3.org/2000/svg" width="1840" height="1840" viewBox="0 0 1840 1840" data-generator="fireworks-tech-graph" data-style-id="1" data-diagram-type="sequence" data-quality-profile="showcase" role="img" focusable="false">
 <title>Slint Bridge · 双 framebuffer 并行运行时序</title>
-<desc>依据 src/runtime.rs、framebuffer.rs、presentation.rs、backends/mod.rs、backends/nx5/mod.rs。仅展示成功路径；初始 A 为前台、B 为后台。渲染后及写页分段之间处理输入，写页期间冻结保留画布，整页完成后才提交。UI 预渲染 N+1 可与后台提交 N 的阻塞 PAN 并行。完成成功后才允许复用旧前台页。NX5 回调与通用提交器属于同一个后台线程。</desc>
+<desc>依据 src/runtime.rs、framebuffer.rs、presentation.rs、backends/mod.rs、backends/nx5/mod.rs。仅展示有脏区的成功提交路径；初始 A 为前台、B 为后台。渲染后及写页分段之间处理输入，写页期间冻结保留画布，整页完成后才提交。UI 预渲染 N+1 可与后台提交 N 的阻塞 PAN 并行。完成成功后才允许复用旧前台页。NX5 回调与通用提交器属于同一个后台线程。</desc>
 <style>text {font-family:'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',sans-serif;}</style>
 <defs>
 <marker id="arrow-call" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="#2563eb" /></marker>
@@ -134,7 +134,7 @@
 <text id="text-33" data-graph-role="content" x="780.0" y="794" text-anchor="middle" font-size="19" font-weight="600" fill="#15803d">pending 期间两页均不可写</text>
 <text id="text-34" data-graph-role="content" x="780.0" y="823" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">A：旧前台，等待释放</text>
 <text id="text-35" data-graph-role="content" x="780.0" y="851" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">B：提交中，禁止修改</text>
-<text id="text-36" data-graph-role="content" x="780.0" y="879" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">此时仅允许写保留画布</text>
+<text id="text-36" data-graph-role="content" x="780.0" y="879" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">画布最多再渲染一帧</text>
 <rect id="blocked-worker" data-graph-bounds="990,801,1725,907" data-graph-role="reserved" x="990" y="801" width="735" height="106" rx="9" fill="#fff7ed" stroke="#c2410c" stroke-width="1.6" />
 <text id="text-37" data-graph-role="content" x="1357.5" y="829" text-anchor="middle" font-size="19" font-weight="600" fill="#c2410c">后台线程阻塞于 complete → NX5 PAN</text>
 <text id="text-38" data-graph-role="content" x="1357.5" y="858" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">等待驱动完成；通用层没有发起第二次页面提交</text>
@@ -161,8 +161,8 @@
 <rect id="capacity" data-graph-bounds="60,1565,600,1708" data-graph-role="reserved" x="60" y="1565" width="540" height="143" rx="9" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6" />
 <text id="text-49" data-graph-role="content" x="330.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#2563eb">并行与容量</text>
 <text id="text-50" data-graph-role="content" x="330.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">最多 1 次提交进行中 + 1 帧等待提交</text>
-<text id="text-51" data-graph-role="content" x="330.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">保留画布不是第三张物理 framebuffer</text>
-<text id="text-52" data-graph-role="content" x="330.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">写页约 1 ms 让出；画布冻结至整页提交</text>
+<text id="text-51" data-graph-role="content" x="330.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">画布冻结至整页提交；不是第三张物理页</text>
+<text id="text-52" data-graph-role="content" x="330.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">约 1 ms 是写页软预算；Slint 渲染不抢占</text>
 <rect id="generic-contract" data-graph-bounds="640,1565,1180,1708" data-graph-role="reserved" x="640" y="1565" width="540" height="143" rx="9" fill="#faf5ff" stroke="#7c3aed" stroke-width="1.6" />
 <text id="text-53" data-graph-role="content" x="910.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#7c3aed">通用层负责</text>
 <text id="text-54" data-graph-role="content" x="910.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">事件 / 帧期限、脏区复制、前后台角色</text>
@@ -181,7 +181,8 @@
 <text id="text-63" data-graph-role="label" data-graph-bounds="956.00,1737,1024.00,1758" x="956" y="1754" text-anchor="start" font-size="17" font-weight="400" fill="#475569">成功返回</text>
 <line data-graph-role="decoration" x1="1215" y1="1748" x2="1258" y2="1748" stroke="#c2410c" stroke-width="2.3" marker-end="url(#arrow-driver)" />
 <text id="text-64" data-graph-role="label" data-graph-bounds="1271.00,1737,1374.28,1758" x="1271" y="1754" text-anchor="start" font-size="17" font-weight="400" fill="#475569">NX5 驱动调用</text>
-<text id="text-65" data-graph-role="label" data-graph-bounds="60.00,1777,858.83,1798" x="60" y="1794" text-anchor="start" font-size="17" font-weight="400" fill="#475569">失败时不复用页面；退出时等待提交完成并 join，再释放映射和板级资源。此图展示当前实现的成功路径。</text>
+<text id="text-65" data-graph-role="label" data-graph-bounds="60.00,1777,757.00,1798" x="60" y="1794" text-anchor="start" font-size="17" font-weight="400" fill="#475569">图示有脏区的成功路径。空脏区不提交；提交失败后禁止继续写页；写页期间保留画布冻结。</text>
+<text id="text-66" data-graph-role="label" data-graph-bounds="60.00,1806,850.58,1827" x="60" y="1823" text-anchor="start" font-size="17" font-weight="400" fill="#475569">退出事件循环：等待提交并丢弃未提交帧；销毁 Framebuffer：join 后释放资源，未知 DMA 时保留隔离。</text>
 </svg></div>
     <p class="sr-only">Keyboard shortcuts: plus and minus zoom, zero resets, T toggles theme, S exports.</p>
   </main>
