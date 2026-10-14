@@ -39,6 +39,8 @@ TDE 混合量纵向约为旧版 2.42 倍、横向约 2.02 倍，两个方向错�
 
 本轮解决了奇数坐标触发整张大纹理软件回退的问题，但端到端帧率只小幅变化：纵向约 +1.19%，横向约 +0.16%，横向变化处于本轮批次波动范围内。文字、小纹理、源准备及其他页面工作仍存在；本轮未分项计时，不据此声称已定位剩余瓶颈。性能原始窗口见 `*-resources/`、`*-fps/`，汇总见 `results.json` 和 `tde-counters.json`。
 
+后续分段计时定位到重复全屏源准备，并优化了两槽替换策略，见[源缓存瓶颈报告](nx5-rich-bottleneck.md)。本报告保留本阶段的原始性能与部署口径。
+
 ## 常驻与证据
 
 最终常驻为 `/tmp/slint-bridge-odd-b1164e4/showcase`，SHA256 `d7224ea8ba92447ccb7d62aec918fa7d574f78e8a37a3cebef223e5eaad1e245`，观测 PID **14933**；启动脚本为同目录 `start.sh`，日志 `live.log`。无退出定时器、trace、事件录制、WBC 或临时性能插桩。Rich list 恢复为纵向起点，Controls 48%。直接回退为 `/run/slint-bridge-rich-8d6bd47/showcase` 及其 `start-live.sh`；更早的 `abb2e33` 程序、启动脚本及原保留日志继续保留。回退前必须重新核对设备与实际显示所有者，结束当前进程并确认 VO 关闭、MMZ 基线和独占锁释放，不能照抄观测 PID 或同时启动两个 SDK 显示进程。

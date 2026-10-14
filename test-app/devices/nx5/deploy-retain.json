@@ -1,6 +1,6 @@
 {
-  "current_binary": "/tmp/slint-bridge-odd-b1164e4/showcase",
-  "recovery_binary": "/run/slint-bridge-rich-8d6bd47/showcase",
+  "current_binary": "/tmp/slint-bridge-rich-cache-1225593/showcase",
+  "recovery_binary": "/tmp/slint-bridge-odd-b1164e4/showcase",
   "keep": [
     "/tmp/slint-bridge-c03c3bb/lib",
     "/tmp/slint-bridge-c03c3bb/dev",
@@ -11,6 +11,9 @@
     "/run/slint-bridge-rich-8d6bd47/live-final.log",
     "/tmp/slint-bridge-scaling-abb2e33/showcase",
     "/tmp/slint-bridge-odd-b1164e4/start.sh",
-    "/tmp/slint-bridge-odd-b1164e4/live.log"
+    "/tmp/slint-bridge-odd-b1164e4/live.log",
+    "/run/slint-bridge-rich-8d6bd47/showcase",
+    "/tmp/slint-bridge-rich-cache-1225593/start.sh",
+    "/tmp/slint-bridge-rich-cache-1225593/live.log"
   ]
 }

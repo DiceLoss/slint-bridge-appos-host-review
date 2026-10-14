@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-14T08:37:12.982031+00:00",
+  "checked_at_utc": "2026-10-14T09:26:45.379992+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -140,8 +140,8 @@
     }
   ],
   "running_ui": {
-    "path": "/tmp/slint-bridge-odd-b1164e4/showcase",
-    "pid": 14933,
+    "path": "/tmp/slint-bridge-rich-cache-1225593/showcase",
+    "pid": 3102,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -151,12 +151,12 @@
       "--framebuffer=/tmp/slint-bridge-c03c3bb/dev/panel",
       "--touch=/tmp/slint-bridge-c03c3bb/dev/touch"
     ],
-    "sha256": "d7224ea8ba92447ccb7d62aec918fa7d574f78e8a37a3cebef223e5eaad1e245",
+    "sha256": "7ede47e1555804ba075fc5697c93b03d6778e8b71ad4152dc594396e344b4b3b",
     "frame_interval_us": 16667,
     "trace_enabled": false,
-    "last_observed_fps": 12.579824775749241,
-    "fps_evidence": "evidence/nx5-odd-blend/2026-10-14/results.json",
-    "fps_note": "Same-boot 100-item rich-list native MCP comparison; separate trace-off CPU/RSS and completed-PAN FPS; see docs/nx5-odd-blend.md.",
+    "last_observed_fps": 17.523713458508972,
+    "fps_evidence": "evidence/nx5-rich-bottleneck/2026-10-14/results.json",
+    "fps_note": "Same-boot 100-item rich-list native MCP comparison against b1164e4; separate trace-off CPU/RSS and completed-PAN FPS. Diagnostic phase timings are separate.",
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
@@ -164,7 +164,7 @@
       "forward": "adb -s 192.168.1.151:5555 forward tcp:19315 tcp:9315",
       "tools_available": 18,
       "tools_exercised": 10,
-      "verification": "evidence/nx5-odd-blend/2026-10-14/ui-full-02/summary.json",
+      "verification": "evidence/nx5-rich-bottleneck/2026-10-14/ui-full/summary.json",
       "exercised_tools": [
         "list_windows",
         "get_window_properties",
@@ -177,44 +177,44 @@
         "take_screenshot",
         "set_element_value"
       ],
-      "screenshot_status": "Optimized NX5 both axes all 100 IDs, full traversal, wide drags, boundaries and stable-ID selection; six guarded screenshots. Physical strips captured at odd positions before same-device references.",
-      "restored_properties": "evidence/nx5-odd-blend/2026-10-14/resident-restore-ui.json",
+      "screenshot_status": "Clean optimized NX5: both axes all 100 IDs, wide drags, full traversal, boundaries, stable-ID selection; guarded native snapshots. Physical strips captured at odd positions before same-device references.",
+      "restored_properties": "evidence/nx5-rich-bottleneck/2026-10-14/resident-restore-ui.json",
       "latest_restore_verification": {
         "screenshots": [
-          "evidence/nx5-odd-blend/2026-10-14/device-vertical.png",
-          "evidence/nx5-odd-blend/2026-10-14/device-horizontal.png"
+          "evidence/nx5-rich-bottleneck/2026-10-14/device-vertical.png",
+          "evidence/nx5-rich-bottleneck/2026-10-14/device-horizontal.png"
         ],
-        "physical_comparison": "evidence/nx5-odd-blend/2026-10-14/physical-comparison.json",
+        "physical_comparison": "evidence/nx5-rich-bottleneck/2026-10-14/physical-comparison.json",
         "physical_strip_pixels": 102400,
         "maximum_channel_error": 1,
         "full_frame_validation": false
       }
     },
-    "log": "/tmp/slint-bridge-odd-b1164e4/live.log",
-    "source_commit": "b1164e431cce33a394ec08bd020e4b8131d20327",
+    "log": "/tmp/slint-bridge-rich-cache-1225593/live.log",
+    "source_commit": "1225593a9478746fec908707671f7219e520cc20",
     "fault_injection_enabled": false,
-    "source_state": "NX5 odd-coordinate alpha blend uses aligned padded source, TDE interior and post-completion CPU fringe. Generic runtime/UI/Slint/SDK unchanged. Rich list vertical start, Controls 48, no timer/trace/recording/WBC.",
-    "source_manifest": "evidence/nx5-odd-blend/2026-10-14/manifest.json",
+    "source_state": "Two TDE source slots replace older-frame entries first, then smaller same-frame sources. Static large background stays cached; no additional MMZ. Generic runtime/UI/Slint/native TDE/SDK unchanged; all temporary profiling removed. Rich list vertical start, Controls 48; no timer/trace/recording/WBC.",
+    "source_manifest": "evidence/nx5-rich-bottleneck/2026-10-14/manifest.json",
     "resources": {
-      "rss_kib": 18760,
-      "vm_hwm_kib": 23524,
+      "rss_kib": 18824,
+      "vm_hwm_kib": 23588,
       "vm_peak_kib": 41624,
       "threads": 3,
       "mmz_used_kib": 12140,
       "mmz_blocks": 5,
-      "mem_available_kib": 27944,
+      "mem_available_kib": 17364,
       "wbc_running": false
     },
     "runtime_source_sha256": "da7e30859b9dd07a76ade3a549bd35f028df85b0f1a9209d61b2ada8b3d0ab22",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "wake_source_sha256": "4c67e34b31870b5254b093ee17181bad74d0dda6b86a3af9bb5cc6bebda8256a",
-    "performance_manifest": "evidence/nx5-odd-blend/2026-10-14/manifest.json",
+    "performance_manifest": "evidence/nx5-rich-bottleneck/2026-10-14/manifest.json",
     "slint_source_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
     "tde_fill_enabled": false,
     "native_source_sha256": "a516057e1566dd31016e7ef9e64e0319f9ff4afb024154df291da0504028c6a0",
     "sdk_mapping": "same SHA256 system SDK via libVideoDec.so/SONAME links in configured library path"
   },
-  "status": "odd_blend_validated_resident",
+  "status": "rich_source_cache_validated_resident",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -250,7 +250,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "Odd-coordinate TDE blend implementation: host pixel/fault/cache regressions, two independent hardware tests, rich-list both-axis traversal and separate CPU/RSS/FPS. Two odd-position physical front-page strips; no new WBC, evdev or full LCD scanout validation.",
+  "observation_scope": "Frame-aware and size-aware two-slot TDE source-cache replacement; host cache regression, independent hardware pixel and 100-frame double-page tests, rich-list both-axis traversal and separate CPU/RSS/FPS. Odd-position front-page strips; no new WBC, evdev or LCD scanout validation.",
   "hardware_regression": {
     "report": "docs/nx5-hardware.md",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -383,12 +383,12 @@
     }
   },
   "recovery_ui": {
-    "path": "/run/slint-bridge-rich-8d6bd47/showcase",
-    "source_commit": "8d6bd47493ca21fe17105df71f20c4679976431a",
+    "path": "/tmp/slint-bridge-odd-b1164e4/showcase",
+    "source_commit": "b1164e431cce33a394ec08bd020e4b8131d20327",
     "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
-    "sha256": "46c3ba46a0aeba6d5f664e197acfeada30b9f7ef699623aaf065e054249d6901",
-    "startup_script": "/run/slint-bridge-rich-8d6bd47/start-live.sh",
-    "procedure": "docs/nx5-odd-blend.md#常驻与证据"
+    "sha256": "d7224ea8ba92447ccb7d62aec918fa7d574f78e8a37a3cebef223e5eaad1e245",
+    "startup_script": "/tmp/slint-bridge-odd-b1164e4/start.sh",
+    "procedure": "docs/nx5-rich-bottleneck.md#常驻与证据"
   },
   "alpha_validation": {
     "report": "docs/nx5-alpha.md",
@@ -956,6 +956,14 @@
       "sha256": "f5518f6e9bae9e49aa528f94a132675f9fec7e25aa46bb86195a509e1fb68dbf",
       "startup_script": "/tmp/slint-bridge-scaling-abb2e33/start-live.sh",
       "procedure": "docs/nx5-rich-list.md#常驻与证据"
+    },
+    {
+      "path": "/run/slint-bridge-rich-8d6bd47/showcase",
+      "source_commit": "8d6bd47493ca21fe17105df71f20c4679976431a",
+      "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
+      "sha256": "46c3ba46a0aeba6d5f664e197acfeada30b9f7ef699623aaf065e054249d6901",
+      "startup_script": "/run/slint-bridge-rich-8d6bd47/start-live.sh",
+      "procedure": "docs/nx5-odd-blend.md#常驻与证据"
     }
   ],
   "odd_blend_validation": {
@@ -1169,6 +1177,114 @@
     ],
     "cleanup_archived_files": 51,
     "kernel_delta_lines": 107,
+    "kernel_new_oom_or_forced_reclaims": 0,
+    "resource_snapshot_phase": "before final diagnostic cleanup"
+  },
+  "rich_source_cache_validation": {
+    "report": "docs/nx5-rich-bottleneck.md",
+    "source_commit": "1225593a9478746fec908707671f7219e520cc20",
+    "manifest": "evidence/nx5-rich-bottleneck/2026-10-14/manifest.json",
+    "boot": "4aa4f5d2-8de2-42cb-9c2b-44c3e74d6e2b",
+    "baseline_report": "docs/nx5-odd-blend.md",
+    "hardware_tests_passed": 2,
+    "double_page_frames": 100,
+    "max_hardware_channel_error": 1,
+    "device_snapshots": 6,
+    "final_finite_processes": 7,
+    "physical_strip_pixels": 102400,
+    "physical_max_channel_error": 1,
+    "mmz_kib": 12140,
+    "mmz_blocks": 5,
+    "results": [
+      {
+        "axis": "vertical",
+        "cpu_percent_one_core": 89.53084274543706,
+        "rss_mean_kib": 18465.777777777777,
+        "rss_range_kib": [
+          18452,
+          18496
+        ],
+        "fps": 17.523713458508972,
+        "completed_presentations": 1500,
+        "tde_counters": {
+          "axis": "vertical",
+          "frames": 1500,
+          "copy": 1469,
+          "blend": 4559,
+          "software": 267884,
+          "cache_hits": 1581,
+          "errors": 0,
+          "fill": 0,
+          "first": [
+            300,
+            294,
+            713,
+            49741,
+            313,
+            0,
+            0
+          ],
+          "last": [
+            1800,
+            1763,
+            5272,
+            317625,
+            1894,
+            0,
+            0
+          ],
+          "copy_per_frame": 0.9793333333333333,
+          "blend_per_frame": 3.0393333333333334,
+          "software_per_frame": 178.58933333333334,
+          "cache_hit_percent": 26.227604512276045
+        }
+      },
+      {
+        "axis": "horizontal",
+        "cpu_percent_one_core": 91.71549808042069,
+        "rss_mean_kib": 18718.333333333332,
+        "rss_range_kib": [
+          18584,
+          18780
+        ],
+        "fps": 15.507677983177729,
+        "completed_presentations": 1500,
+        "tde_counters": {
+          "axis": "horizontal",
+          "frames": 1500,
+          "copy": 1491,
+          "blend": 4917,
+          "software": 332513,
+          "cache_hits": 1520,
+          "errors": 0,
+          "fill": 0,
+          "first": [
+            300,
+            297,
+            508,
+            51790,
+            303,
+            0,
+            0
+          ],
+          "last": [
+            1800,
+            1788,
+            5425,
+            384303,
+            1823,
+            0,
+            0
+          ],
+          "copy_per_frame": 0.994,
+          "blend_per_frame": 3.278,
+          "software_per_frame": 221.67533333333333,
+          "cache_hit_percent": 23.72034956304619
+        }
+      }
+    ],
+    "cleanup_archived_files": 51,
+    "kernel_delta_lines": 100,
     "kernel_new_oom_or_forced_reclaims": 0,
     "resource_snapshot_phase": "before final diagnostic cleanup"
   }
