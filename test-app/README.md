@@ -11,7 +11,7 @@ test-app/
 ├── src/
 │   ├── lib.rs                 # 生成的界面类型、设备路径配置
 │   ├── main.rs                # display：运动、纹理、暂停/恢复
-│   ├── bin/showcase.rs        # showcase：六页触屏展示与交互测试
+│   ├── bin/showcase.rs        # showcase：七页触屏展示与交互测试
 │   ├── showcase.rs            # 模拟数据、跨页状态、回调与动画时钟
 │   ├── bin/basic.rs           # basic：最小接入示例
 │   ├── bin/init-retry.rs      # NX5 同进程初始化失败与资源清理验证
@@ -30,6 +30,7 @@ test-app/
 ├── fixtures/textures.rs       # 确定性的纹理素材；底层 TDE 比较也复用它
 ├── tests/public_api.rs        # 仅使用适配库公开接口的回归
 ├── tests/showcase.rs          # 展示应用状态、筛选、表单及透明像素回归
+├── tests/showcase_scaling.rs  # PNG/SVG 运行时缩放及保留缓冲像素回归
 ├── tests/showcase_repaint.rs  # 文字缓存淘汰后的保留缓冲标题刷新回归
 ├── devices/nx5/               # 当前设备记录与构建/运行说明
 └── tools/
@@ -77,7 +78,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | 用例 | 运行选择 | 验证内容 |
 | --- | --- | --- |
 | 最小显示 | `--bin basic` | 从公开接口初始化平台并创建窗口 |
-| 完整界面展示 | `--bin showcase -- --touch=/dev/input/event0` | 六页导航、表单、列表、动画、透明区域、交互记录 |
+| 完整界面展示 | `--bin showcase -- --touch=/dev/input/event0` | 七页导航、表单、列表、动画、透明区域、交互记录、运行时图片缩放 |
 | 运动与触摸 | `--bin display -- --touch=/dev/input/event0` | 连续更新；点击暂停、再次点击恢复 |
 | 纹理与透明混合 | `--bin display -- --textures` | 大图、透明图和运动组合；是否实际使用硬件加速由板级统计确认 |
 | MCP 交互 | `display` 加 MCP 构建和运行环境 | 元素树、截图、点击/拖动、输入事件录制 |
@@ -89,7 +90,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 `basic` 只使用 `--framebuffer` 和 `--touch` 路径配置。`display` 另外支持 `--textures`、`--pattern`、`--split`、`--observe=N` 和 `--seconds=N`；这些选项使用表中所示的 `--name=value` 或独立开关格式。旋转、按键映射和帧间隔通过 Rust `Config` 配置，当前没有对应命令行参数。
 
-## 六页展示应用 showcase
+<a id="六页展示应用-showcase"></a>
+
+## 展示应用 showcase
 
 `showcase` 是独立的触屏应用，使用图片背景、半透明浅色卡片、深色导航和蓝绿色强调色；原来的 `display` 继续用于固定运动/纹理和 WBC 诊断。新界面面向 NX5 的 1024×600 屏幕，最低布局尺寸为 960×600，大屏随窗口扩展。使用英文标签以兼容现有 DejaVu Sans 字体，未引入中文字体依赖。
 
@@ -101,6 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | Motion | 六个运动图形、暂停/恢复、速度滑块、原生缓动状态切换 | 位置、透明度、裁剪、颜色和圆角动画 |
 | Layers | 全屏图片背景、每像素 alpha 纹理、透明度滑块、透明窗口开口 | 图像缩放、混合、关闭底图后的真实透明像素 |
 | Interaction lab | 三个点击目标、拖动面板、六项交互练习、最近 24 条操作记录 | 点击/拖动区别、页面回调、清空记录 |
+| Image scaling | SVG/PNG 并排预览、50%～200% 缩放滑块、100% 复位 | 运行时尺寸与像素变化、非整数比例、透明边缘、放大裁剪、缩小后脏区清理 |
 
 Controls 预览圆环从顶部顺时针显示配置百分比：0% 只显示底轨，100% 显示完整着色环。关闭输出时仍保留配置进度，并改用灰色；下方线性 Meter 显示关闭后的零输出。修复与设备验证见 [圆环报告](../docs/nx5-controls-ring.md)。
 
@@ -125,15 +129,15 @@ python3 test-app/tools/check-showcase.py --output target/showcase-check
 SLINT_MCP_PORT=19316 target/debug/showcase --preview --seconds=300
 ```
 
-原生 MCP 地址为 `http://127.0.0.1:19316/mcp`，连接方式见 [MCP 指南](../docs/slint-mcp.md)。自动检查脚本通过原生 MCP 实际操作六页，保存六页及七种附加状态的 PNG（共 13 张，含横向起点、末端和返回）、元素树、事件记录和检查摘要；它只启动自己的主机进程，不接受设备 endpoint。截图应进一步人工检查排版，脚本通过不等于像素视觉验收。脚本终止自己创建的主机进程，不作为 NX5 SDK 正常退出验证。
+原生 MCP 地址为 `http://127.0.0.1:19316/mcp`，连接方式见 [MCP 指南](../docs/slint-mcp.md)。自动检查脚本通过原生 MCP 实际操作七页，保存 17 张 PNG（含横向起点/末端/返回，以及图片 50%、125%、200%、100% 缩放）、元素树、事件记录和检查摘要；它只启动自己的主机进程，不接受设备 endpoint。截图应进一步人工检查排版，脚本通过不等于像素视觉验收。脚本终止自己创建的主机进程，不作为 NX5 SDK 正常退出验证。
 
-导航 ID 为 `Showcase::nav-overview`、`nav-controls`、`nav-devices`、`nav-motion`、`nav-media`、`nav-lab`（各 ID 均带 `Showcase::` 前缀）；页面控件例如 `Controls::level-slider`、`Devices::search-input`、`Motion::motion-toggle`、`Media::alpha-slider`、`Lab::drag-pad`。弹窗关闭/确认 ID 为 `Showcase::dialog-cancel` / `Showcase::dialog-confirm`。横向模式入口为 `Devices::orientation-toggle`，滚动区为 `Devices::horizontal-list`，卡片重复使用 `Devices::device-card`；原生 MCP 只枚举当前可见卡片。重建页面或切换模式后重新查询元素句柄。
+导航 ID 为 `Showcase::nav-overview`、`nav-controls`、`nav-devices`、`nav-motion`、`nav-media`、`nav-lab`、`nav-scaling`（各 ID 均带 `Showcase::` 前缀）；页面控件例如 `Controls::level-slider`、`Devices::search-input`、`Motion::motion-toggle`、`Media::alpha-slider`、`Lab::drag-pad`、`Scaling::zoom-slider` 和 `Scaling::zoom-reset`。弹窗关闭/确认 ID 为 `Showcase::dialog-cancel` / `Showcase::dialog-confirm`。横向模式入口为 `Devices::orientation-toggle`，滚动区为 `Devices::horizontal-list`，卡片重复使用 `Devices::device-card`；原生 MCP 只枚举当前可见卡片。重建页面或切换模式后重新查询元素句柄。
 
 自动横向用例从首项连续滑到末项再返回，在 1024×600 下验证累计移动超过四个可视宽度、单次手势至少跨过 60% 可视宽度、两端夹紧、无纵向漂移及拖动不打开详情，并检查末项/筛选后的稳定 ID 和空状态。横向每次手势单独录制，避免长距离遍历超过原生 MCP 的 1024 条事件环形缓冲。
 
-`tests/showcase.rs` 使用 Slint 内存软件窗口检查表单校验、状态保留、重置取消、键盘编辑、列表筛选、稳定 ID、日志上限及透明开口的实际 RGBA 像素。`tests/showcase_repaint.rs` 另外通过确定性的文字模型更新和独立参考 renderer，验证缓存淘汰后切页标题仍刷新；不会用截图清空被测 renderer 的缓存。默认 feature 矩阵包含这些测试；MCP 交互检查单独运行。两者均不代替 evdev、TDE/DMA、物理双页和扫描输出验证。
+`tests/showcase.rs` 使用 Slint 内存软件窗口检查表单校验、状态保留、重置取消、键盘编辑、列表筛选、稳定 ID、日志上限及透明开口的实际 RGBA 像素。`tests/showcase_scaling.rs` 在同一个保留缓冲 renderer 中依次切换 50%→100%→125%→200%→125%→50%→100%，检查原始素材尺寸固定、PNG/SVG 实际色块随缩放变化，并与独立全量重绘逐像素对照，覆盖缩小后的残留清除。`tests/showcase_repaint.rs` 另外通过确定性的文字模型更新和独立参考 renderer，验证缓存淘汰后切页标题仍刷新；不会用截图清空被测 renderer 的缓存。默认 feature 矩阵包含这些测试；MCP 交互检查单独运行。两者均不代替 evdev、TDE/DMA、物理双页和扫描输出验证。
 
-界面固定使用 Fluent 标准控件，图标以 SVG 数据嵌入二进制；测试工程启用同源 `i-slint-core` 的图像/SVG 解码能力，不引入桌面或 GPU 后端。图片背景使用编译时嵌入的 [coastal-background.png](ui/assets/coastal-background.png)，保留的源图为 1638×960 PNG；构建脚本在主机将它转换为 1024×600 RGBA PNG 后嵌入，默认面板不再反复缩放背景，且满足 TDE 复制的尺寸/格式条件。其他窗口尺寸仍按 `cover` 适配；生成来源与提示词见 [素材说明](ui/assets/README.md)。动画区复用同一图片，卡片与列表行采用半透明底色，保证动画/滚动时图片实际参与绘制。径向 alpha 叠加图仍由 Rust 生成；Layers 透明开口会隐藏背景图片。无需另行部署素材文件，字体仍按设备说明提供。
+界面固定使用 Fluent 标准控件，图标以 SVG 数据嵌入二进制；测试工程启用同源 `i-slint-core` 的图像/SVG 解码能力，不引入桌面或 GPU 后端。图片背景使用编译时嵌入的 [coastal-background.png](ui/assets/coastal-background.png)，保留的源图为 1638×960 PNG；构建脚本在主机将它转换为 1024×600 RGBA PNG 后嵌入，默认面板不再反复缩放背景，且满足 TDE 复制的尺寸/格式条件。独立 Image scaling 页另用两份未经构建期变换的 256×160 原始 PNG/SVG，运行时加载后由同一尺寸滑块缩放；它与背景优化分开。其他窗口尺寸仍按 `cover` 适配；生成来源与提示词见 [素材说明](ui/assets/README.md)。动画区复用同一图片，卡片与列表行采用半透明底色，保证动画/滚动时图片实际参与绘制。径向 alpha 叠加图仍由 Rust 生成；Layers 透明开口会隐藏背景图片。无需另行部署素材文件，字体仍按设备说明提供。
 
 ## 专用诊断说明
 

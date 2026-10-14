@@ -7,3 +7,16 @@
 生成提示词：
 
 > Use case: photorealistic-natural. Asset type: an opaque raster wallpaper for a 1024×600 landscape embedded touch-screen control console, not a UI mockup. Create a calm misty coastal landscape photograph, broad layered blue-green hills and softly textured teal water, atmospheric pale blue daylight, fine natural photographic detail and gentle tonal variation across the entire frame. Tasteful low contrast so dark interface text and translucent pale panels will remain readable. Wide landscape composition close to a 1.707:1 aspect ratio, no dominant foreground object. Output only the background image, ideally 1024×600 pixels. No words, labels, logos, frames, UI controls, people, buildings, or watermark. This is the actual image background to be rendered beneath moving and scrolling Slint controls, so it must have real image detail rather than a flat color or simple gradient.
+
+
+## 运行时缩放基准素材
+
+`scaling-reference.svg` 与 `scaling-reference.png` 是 256×160 的确定性测试图，包含四个纯色象限、细线、圆和透明外边缘。PNG 在原始尺寸下由同目录 SVG 栅格化生成；两者均不经过 `build.rs` 的背景预处理。
+
+`showcase::configure()` 通过 `Image::load_from_data(..., Some("png"))` 和 `Image::load_from_svg_data()` 在应用运行时加载嵌入的原始字节。独立 Image scaling 页只改变同一 Image 的显示尺寸，测试 50%～200%（128×80～512×320）及 125% 非整数比例；没有为各缩放档位生成预缩放文件。
+
+需要重建原始 PNG 时，从仓库根运行（输出仍为 SVG 固有的 256×160）：
+
+```sh
+python3 -c 'import cairosvg; cairosvg.svg2png(url="test-app/ui/assets/scaling-reference.svg", write_to="test-app/ui/assets/scaling-reference.png")'
+```

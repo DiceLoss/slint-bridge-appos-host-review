@@ -255,6 +255,7 @@ def exercise(client, output):
     client.screenshot(output, "10-transparent")
     client.click("Media::cutout-button")
 
+    exercise_scaling(client, output)
     client.click("Showcase::nav-lab")
     for label in ("Tap 1", "Tap 2", "Tap 3"):
         client.button(label)
@@ -285,6 +286,52 @@ def exercise(client, output):
     return exercise_horizontal(client, output)
 
 
+def exercise_scaling(client, output):
+    from PIL import Image
+
+    client.click("Showcase::nav-scaling")
+    sizes = []
+    colors = [(0.25, 0.25, (217, 75, 64)), (0.75, 0.25, (21, 158, 138)),
+              (0.25, 0.75, (57, 122, 208)), (0.75, 0.75, (232, 180, 66))]
+    for number, zoom in enumerate([50, 125, 200, 100], 14):
+        if zoom == 200:
+            slider = client.find("Scaling::zoom-slider")
+            props = client.data("get_element_properties", elementHandle=slider)
+            client.call("drag_element", elementHandle=slider, target=dict(
+                x=props["absolutePosition"]["x"] + props["size"]["width"] - 1,
+                y=props["absolutePosition"]["y"] + props["size"]["height"] / 2))
+        elif zoom == 100:
+            client.click("Scaling::zoom-reset")
+        else:
+            client.set("Scaling::zoom-slider", zoom)
+        name = f"{number:02}-scaling-{zoom}"
+        client.screenshot(output, name)
+        pixels = Image.open(output / (name + ".png")).convert("RGBA")
+        for kind in ["png", "svg"]:
+            picture = client.data("get_element_properties", elementHandle=client.find(f"Scaling::{kind}-image"))
+            viewport = client.data("get_element_properties", elementHandle=client.find(f"Scaling::{kind}-viewport"))
+            assert abs(picture["size"]["width"] - 256 * zoom / 100) < 0.1
+            assert abs(picture["size"]["height"] - 160 * zoom / 100) < 0.1
+            x, y = picture["absolutePosition"]["x"], picture["absolutePosition"]["y"]
+            w, h = picture["size"]["width"], picture["size"]["height"]
+            vx, vy = viewport["absolutePosition"]["x"], viewport["absolutePosition"]["y"]
+            vw, vh = viewport["size"]["width"], viewport["size"]["height"]
+            for fx, fy, color in colors:
+                px, py = round(x + fx * w), round(y + fy * h)
+                assert vx <= px < vx + vw and vy <= py < vy + vh
+                assert pixels.getpixel((px, py)) == (*color, 255), (kind, zoom, px, py)
+            if zoom <= 125:
+                assert pixels.getpixel((round(x + 2), round(y + 2))) == (220, 229, 235, 255)
+            if zoom == 200:
+                assert x < vx and y < vy, "Expected enlarged content to exercise clipping"
+                assert pixels.getpixel((round(vx - 4), round(y + h / 4)))[:3] != colors[0][2]
+                assert pixels.getpixel((round(vx + vw + 4), round(y + h / 4)))[:3] != colors[1][2]
+                assert pixels.getpixel((round(x + w / 4), round(vy - 4)))[:3] != colors[0][2]
+                assert pixels.getpixel((round(x + w / 4), round(vy + vh + 4)))[:3] != colors[2][2]
+            sizes.append(dict(format=kind, zoom=zoom, image=picture, viewport=viewport))
+    output.joinpath("scaling.json").write_text(json.dumps(sizes, indent=2))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, default=Path("target/debug/showcase"))
@@ -296,7 +343,7 @@ def main():
         port = listener.getsockname()[1]
     client = Client(port)
     with args.output.joinpath("preview.log").open("w") as log:
-        process = subprocess.Popen([str(args.binary.resolve()), "--preview", "--seconds=120"],
+        process = subprocess.Popen([str(args.binary.resolve()), "--preview", "--seconds=180"],
                                    env=dict(os.environ, SLINT_MCP_PORT=str(port)), stdout=log, stderr=log)
         try:
             for _ in range(100):
@@ -312,7 +359,8 @@ def main():
                 raise RuntimeError("Preview MCP did not start")
             horizontal = exercise(client, args.output)
             summary = dict(result="passed", scope="host native Slint MCP; no device or evdev validation",
-                           pages=6, screenshots=13, horizontal=horizontal)
+                           pages=7, screenshots=17, horizontal=horizontal,
+                           runtime_image_scales=[50, 125, 200, 100])
             args.output.joinpath("summary.json").write_text(json.dumps(summary, indent=2) + "\n")
             print(json.dumps(summary, indent=2))
         finally:

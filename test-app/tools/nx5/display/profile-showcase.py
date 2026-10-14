@@ -129,6 +129,20 @@ def main():
     run("cutout-warmup", 8, blend, measure=False)
     run("cutout", 60, blend)
     client.click("Media::cutout-button")
+    client.click("Showcase::nav-scaling")
+    zoom = client.find("Scaling::zoom-slider")
+    props = client.data("get_element_properties", elementHandle=zoom)
+    x = props["absolutePosition"]["x"]
+    y = props["absolutePosition"]["y"] + props["size"]["height"] / 2
+    width = props["size"]["width"]
+
+    def resize(index):
+        client.call("drag_element", elementHandle=zoom,
+                    target=dict(x=x + 1 if index % 2 == 0 else x + width - 1, y=y))
+
+    run("scaling-warmup", 8, resize, measure=False)
+    run("scaling", 60, resize)
+    client.click("Scaling::zoom-reset")
     client.click("Showcase::nav-controls")
     run("idle-after", 20, measure=False)
     mark("ready-for-physical")

@@ -4,6 +4,7 @@ import { Controls } from "showcase/controls.slint";
 import { Devices } from "showcase/devices.slint";
 import { Motion } from "showcase/motion.slint";
 import { Media } from "showcase/media.slint";
+import { Scaling } from "showcase/scaling.slint";
 import { Lab } from "showcase/lab.slint";
 import { DeviceRow, EventRow } from "showcase/models.slint";
 import { ShowcaseAssets } from "showcase-assets.slint";
@@ -39,6 +40,9 @@ export component Showcase inherits Window {
     in property <image> overlay;
     in-out property <float> alpha: 75;
     in property <bool> cutout;
+    in-out property <float> image-zoom: 100;
+    in property <image> scaling-png;
+    in property <image> scaling-svg;
     in property <[EventRow]> events;
     in property <[bool]> exercised;
     in property <int> completed;
@@ -83,6 +87,7 @@ export component Showcase inherits Window {
             nav-motion := NavItem { text: "Motion"; number: "04"; selected: root.page == 3; clicked => { root.navigate(3); } }
             nav-media := NavItem { text: "Layers"; number: "05"; selected: root.page == 4; clicked => { root.navigate(4); } }
             nav-lab := NavItem { text: "Interaction lab"; number: "06"; selected: root.page == 5; clicked => { root.navigate(5); } }
+            nav-scaling := NavItem { text: "Image scaling"; number: "07"; selected: root.page == 6; clicked => { root.navigate(6); } }
             Rectangle { vertical-stretch: 1; }
             Rectangle { height: 66px; border-radius: 8px; background: #1b3546;
                 Text { x: 12px; y: 12px; text: "●  DEMO SESSION"; font-size: 11px; color: #67dfc5; }
@@ -95,8 +100,8 @@ export component Showcase inherits Window {
         Rectangle { y: parent.height - 1px; height: 1px; width: 100%; background: Palette.line; }
         VerticalLayout {
             padding-left: 24px; padding-top: 15px; padding-bottom: 15px;
-            Caption { text: "SLINT SHOWCASE   /   " + (root.page + 1) + " OF 6"; font-size: 10px; }
-            Heading { text: ["The interface, in motion", "Controls & forms", "A connected workspace", "Animation studio", "Images & transparency", "Interaction lab"][root.page]; font-size: 25px; }
+            Caption { text: "SLINT SHOWCASE   /   " + (root.page + 1) + " OF 7"; font-size: 10px; }
+            Heading { text: ["The interface, in motion", "Controls & forms", "A connected workspace", "Animation studio", "Images & transparency", "Interaction lab", "Image scaling"][root.page]; font-size: 25px; }
         }
         if root.width >= 950px: Rectangle { x: parent.width - 163px; y: 25px; width: 140px; height: 30px; border-radius: 15px; background: #e9f4f0;
             Label { text: "●  Interactive demo"; font-size: 11px; color: Palette.teal; horizontal-alignment: center; }
@@ -110,6 +115,7 @@ export component Showcase inherits Window {
         if root.page == 3: Motion { wallpaper: root.wallpaper; phase: root.phase; ticks: root.ticks; running <=> root.running; speed <=> root.speed; expanded: root.expanded; toggle => { root.toggle-motion(); } replay => { root.replay(); } }
         if root.page == 4: Media { overlay: root.overlay; alpha <=> root.alpha; cutout: root.cutout; toggle-cutout => { root.toggle-cutout(); } blend-changed => { root.blend-changed(); } }
         if root.page == 5: Lab { events: root.events; exercised: root.exercised; completed: root.completed; taps: root.taps; drag-count: root.drag-count; drag-x <=> root.drag-x; drag-y <=> root.drag-y; tap(i) => { root.tap(i); } dragged => { root.dragged(); } clear => { root.clear-journal(); } }
+        if root.page == 6: Scaling { zoom <=> root.image-zoom; png: root.scaling-png; svg: root.scaling-svg; }
     }
     footer := Rectangle {
         x: 198px; y: parent.height - 29px; width: parent.width - 222px; height: 22px;

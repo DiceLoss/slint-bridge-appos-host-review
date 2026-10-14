@@ -1,0 +1,50 @@
+import { Slider } from "std-widgets.slint";
+import { Label, Caption, Heading, Card, Action } from "widgets.slint";
+
+export component Scaling inherits VerticalLayout {
+    in-out property <float> zoom;
+    in property <image> png;
+    in property <image> svg;
+    spacing: 14px;
+    Card {
+        height: 91px;
+        VerticalLayout {
+            padding: 16px; spacing: 8px;
+            Heading { text: "Runtime image scaling"; }
+            Caption { text: "Resize both images with the slider. Large images are clipped to the preview."; }
+        }
+    }
+    HorizontalLayout {
+        spacing: 14px;
+        Card {
+            VerticalLayout {
+                padding: 12px; spacing: 8px;
+                Label { text: "PNG  ·  256 × 160"; font-weight: 600; }
+                png-viewport := Rectangle {
+                    background: #dce5eb; clip: true;
+                    png-image := Image { source: root.png; width: 256px * root.zoom / 100; height: 160px * root.zoom / 100; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; image-fit: contain; }
+                }
+            }
+        }
+        Card {
+            VerticalLayout {
+                padding: 12px; spacing: 8px;
+                Label { text: "SVG  ·  256 × 160"; font-weight: 600; }
+                svg-viewport := Rectangle {
+                    background: #dce5eb; clip: true;
+                    svg-image := Image { source: root.svg; width: 256px * root.zoom / 100; height: 160px * root.zoom / 100; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; image-fit: contain; }
+                }
+            }
+        }
+    }
+    Card {
+        height: 88px;
+        HorizontalLayout {
+            padding: 16px; spacing: 12px;
+            Label { text: "Zoom"; width: 50px; }
+            zoom-slider := Slider { minimum: 50; maximum: 200; step: 1; value <=> root.zoom; height: 44px; }
+            Label { text: round(root.zoom) + "%"; width: 55px; }
+            zoom-reset := Action { text: "100%"; width: 90px; clicked => { root.zoom = 100; } }
+        }
+    }
+}

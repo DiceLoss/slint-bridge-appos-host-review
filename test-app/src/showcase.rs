@@ -2,13 +2,14 @@ use crate::{DeviceRow, EventRow, Showcase};
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use std::{cell::RefCell, rc::Rc, time::Instant};
 
-const PAGES: [&str; 6] = [
+const PAGES: [&str; 7] = [
     "Overview",
     "Controls",
     "Devices",
     "Motion",
     "Layers",
     "Interaction lab",
+    "Image scaling",
 ];
 
 struct Session {
@@ -109,6 +110,18 @@ pub fn configure(app: &Showcase) -> slint::Timer {
     app.set_exercised(ModelRc::new(VecModel::from(vec![false; 6])));
     filter_devices(app);
     configure_overlay(app);
+    // Keep encoded originals: decoding and every requested scale happen at runtime.
+    app.set_scaling_png(
+        slint::Image::load_from_data(
+            include_bytes!("../ui/assets/scaling-reference.png"),
+            Some("png"),
+        )
+        .expect("decode PNG scaling fixture"),
+    );
+    app.set_scaling_svg(
+        slint::Image::load_from_svg_data(include_bytes!("../ui/assets/scaling-reference.svg"))
+            .expect("decode SVG scaling fixture"),
+    );
     session.borrow_mut().log(app, "Session started");
 
     let (weak, state) = (app.as_weak(), session.clone());
@@ -120,7 +133,7 @@ pub fn configure(app: &Showcase) -> slint::Timer {
         app.set_page(page);
         let mut state = state.borrow_mut();
         state.visited |= 1 << page;
-        if state.visited == 63 {
+        if state.visited == 127 {
             state.exercise(&app, 0);
         }
         state.log(&app, format!("Opened {name}"));
