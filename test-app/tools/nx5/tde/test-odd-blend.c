@@ -10,7 +10,7 @@ static FY_S32 odd_end(TDE_HANDLE j, FY_BOOL s, FY_BOOL b, FY_U32 t) {
 static FY_S32 odd_blit(TDE_HANDLE j, TDE2_SURFACE_S *bg, TDE2_RECT_S *br,
     TDE2_SURFACE_S *fg, TDE2_RECT_S *fr, TDE2_SURFACE_S *dst, TDE2_RECT_S *dr, TDE2_OPT_S *opt) {
     (void)bg; (void)br; assert(j==11);
-    assert(opt->enOutAlphaFrom == TDE2_OUTALPHA_FROM_BACKGROUND);
+    assert(opt->enOutAlphaFrom == TDE2_OUTALPHA_FROM_NORM);
     assert(!((fr->s32Xpos | fr->s32Ypos | dr->s32Xpos | dr->s32Ypos | fr->u32Width | fr->u32Height) & 1));
     assert(fr->u32Width==dr->u32Width && fr->u32Height==dr->u32Height);
     ++odd_blits;

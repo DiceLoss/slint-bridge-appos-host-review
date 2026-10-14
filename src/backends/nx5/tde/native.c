@@ -302,13 +302,33 @@ static int pixels_are_opaque(const uint8_t *pixels, size_t count) {
     return 1;
 }
 
+static void make_pixels_opaque(uint8_t *pixels, size_t count) {
+#ifdef __ARM_NEON
+    const uint8x16_t alpha = {0,0,0,255,0,0,0,255,0,0,0,255,0,0,0,255};
+    while (count >= 4) {
+        vst1q_u8(pixels, vorrq_u8(vld1q_u8(pixels), alpha));
+        pixels += 16; count -= 4;
+    }
+#endif
+    for (size_t i = 0; i < count; ++i) pixels[i * 4 + 3] = 255;
+}
+
 /* Return the shared canvas to CPU only after successful wait and cache sync. */
 static int finish_job(Engine *e, TDE_HANDLE job,
-    uint32_t first, uint32_t last, int *error) {
+    const BridgeRect *rects, unsigned count, uint32_t first, uint32_t last,
+    int opaque, int *error) {
     *error = e->api.FY_TDE2_EndJob(job, FY_TRUE, FY_TRUE, 100); /* 1 second */
     if (*error) { e->quarantined = 1; return -2; } /* Cancel is invalid after EndJob. */
     *error = e->api.FY_MPI_SYS_MmzFlushCache(e->target.phy + first, (uint8_t *)e->target.ptr + first, last - first);
     if (*error) return -1; /* Retired, but the whole frame must be repainted. */
+    uint8_t *pixels = e->target.ptr;
+    for (unsigned i = 0; opaque && i < count; ++i) {
+        const BridgeRect *r = &rects[i];
+        for (uint32_t y = 0; y < r->height; ++y) {
+            size_t at = ((size_t)(r->dy + y) * e->width + r->dx) * 4;
+            make_pixels_opaque(pixels + at, r->width);
+        }
+    }
     return 0;
 }
 
@@ -345,7 +365,7 @@ int bridge_tde_fill(Engine *e, uint32_t color,
             return -1;
         }
     }
-    return finish_job(e, job, first, last, error);
+    return finish_job(e, job, rects, count, first, last, 0, error);
 }
 
 /* At most a one-pixel fringe on each side; source is already premultiplied.
@@ -462,8 +482,9 @@ int bridge_tde_draw(Engine *e, const uint8_t *data,
              * path does not match Slint's premultiplied RGB semantics. */
             opt.stBlendOpt.bSrc2AlphaPremulti = FY_FALSE;
             opt.bClutReload = FY_TRUE;
-            /* The admitted background is opaque; preserve its alpha in hardware. */
-            opt.enOutAlphaFrom = TDE2_OUTALPHA_FROM_BACKGROUND;
+            /* The SDK can round opaque alpha to 254. Restore it only after
+             * completion and cache sync; framebuffer unpremultiplication needs 255. */
+            opt.enOutAlphaFrom = TDE2_OUTALPHA_FROM_NORM;
             *error = e->api.FY_TDE2_Bitblit(job, &d, &dr, &s, &sr, &d, &dr, &opt);
         }
         if (*error) {
@@ -471,7 +492,7 @@ int bridge_tde_draw(Engine *e, const uint8_t *data,
             return -1;
         }
     }
-    int result = finish_job(e, job, first, last, error);
+    int result = finish_job(e, job, gpu, gpu_count, first, last, blend, error);
     if (result < 0) return result;
     for (unsigned i = 0; blend && i < count; ++i) {
         const BridgeRect *r = &rects[i], *inner = &interiors[i];

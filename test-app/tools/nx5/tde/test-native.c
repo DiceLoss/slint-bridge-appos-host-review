@@ -28,10 +28,8 @@ static FY_S32 blend(TDE_HANDLE job, TDE2_SURFACE_S *bg, TDE2_RECT_S *br,
     assert(opt->stBlendOpt.bPixelAlphaEnable && !opt->stBlendOpt.bGlobalAlphaEnable);
     assert(!opt->stBlendOpt.bSrc2AlphaPremulti);
     for (unsigned i = 0; i < 64; ++i) assert(((uint8_t *)current->source[0].ptr)[i] == 127);
-    assert(opt->enOutAlphaFrom == TDE2_OUTALPHA_FROM_BACKGROUND);
-    int result = copy(job, fg, fr, d, dr);
-    if (!fault) for (unsigned i=3;i<current->bytes;i+=4) ((uint8_t *)current->target.ptr)[i]=255;
-    return result;
+    assert(opt->enOutAlphaFrom == TDE2_OUTALPHA_FROM_NORM);
+    return copy(job, fg, fr, d, dr);
 }
 static FY_S32 flush(FY_U32 p,FY_VOID *v,FY_U32 n) {
     (void)p;(void)v;assert(n); ++flushes;
@@ -61,6 +59,9 @@ static void test_alpha_spans(void) {
             }
             actual[shift + at * 4 + 3] = 255;
         }
+        assert(!memcmp(actual, expected, sizeof actual));
+        for (unsigned i = 0; i < count; ++i) actual[shift + i * 4 + 3] = (i * 37 + shift) % 256;
+        make_pixels_opaque(actual + shift, count);
         assert(!memcmp(actual, expected, sizeof actual));
         uint8_t source[65 * 4 + 32];
         for (unsigned i = 0; i < sizeof source; ++i) source[i] = (i * 31 + shift) % 256;

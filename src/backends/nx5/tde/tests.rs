@@ -604,11 +604,16 @@ fn nx5_hardware_compare() {
             "correctness name={name} max_channel_error={maximum} differing_channels={differing} submitted={submitted}"
         );
         assert!(maximum <= 1, "{name}: mismatch {maximum}");
+        assert!(
+            hardware.pixels().iter().all(|pixel| pixel.alpha == 255),
+            "{name}: opaque canvas alpha must remain exact before framebuffer conversion"
+        );
         assert_eq!(submitted > 0, accelerated, "{name}: dispatch");
         for _ in 0..3 {
             draw(&window, &mut hardware).unwrap();
         }
         assert!(difference(hardware.pixels(), software.pixels()).0 <= 1);
+        assert!(hardware.pixels().iter().all(|pixel| pixel.alpha == 255));
         if accelerated {
             assert!(hardware.stats.cache_hits > before.cache_hits);
         }
