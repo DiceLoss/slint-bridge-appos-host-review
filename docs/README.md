@@ -17,6 +17,7 @@
 
 | 记录 | 内容 |
 | --- | --- |
+| [新旧正式版资源对照](nx5-release-overhead.md) | 无阶段计时的旧→新→新→旧 CPU/RSS 对照，独立完成提交帧率与 MMZ 检查 |
 | [输入延迟与分段写页](nx5-input-latency.md) | 渲染/写页占用诊断、约 1 ms 写页预算、自动 evdev 对照及物理页验证 |
 | [清理版部署与触摸验证](nx5-cleanup-deploy.md) | `c087071` 部署、六页 MCP、实体 evdev 配对、正常退出及上一版回退 |
 | [NEON 反预乘与写页优化](nx5-neon-unpremultiply.md) | 精确整数向量化、连续块快路径、真实半透明写页耗时与像素对照 |

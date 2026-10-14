@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-13T16:17:44.333393+00:00",
+  "checked_at_utc": "2026-10-14T01:55:40.256021+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -46,7 +46,7 @@
     ],
     "pan": [
       0,
-      600
+      0
     ],
     "vo_device_enabled": true,
     "initialization_error_observed": "gui layer region(0,0,1024,600) cannot exceed frame region(0,0)",
@@ -141,7 +141,7 @@
   ],
   "running_ui": {
     "path": "/tmp/slint-bridge-input-a0e880c/showcase",
-    "pid": 7241,
+    "pid": 13408,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -154,9 +154,9 @@
     "sha256": "71582ca6f70b8ab5aec9b0408b43429743bf5cb7491486cd6da09bed837fd584",
     "frame_interval_us": 16667,
     "trace_enabled": false,
-    "last_observed_fps": 29.0,
-    "fps_evidence": "evidence/nx5-input-latency/2026-10-13/final-list/result.json",
-    "fps_note": "Final uninstrumented build: 8-second warmup plus 35.7-second list window; 43 native MCP drags, six complete 150-presentation batches at 29 FPS. This is separate from the alpha=127 full-frame pressure workload (~19.3 FPS).",
+    "last_observed_fps": 28.98328530259366,
+    "fps_evidence": "evidence/nx5-release-overhead/2026-10-14/results.json",
+    "fps_note": "Separate same-binary low-frequency trace pass: Motion 29.00, list 29.00, Layers alpha slider 28.983 FPS in both versions; 4500 total completed presentations. CPU/RSS comparison used trace-off ABBA runs.",
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
@@ -179,32 +179,32 @@
         "drag_element"
       ],
       "screenshot_status": "Six pages and ten guarded native snapshots passed; 227 events with zero dropped/unknown. Separate automated evdev replay: 112 contacts, 1104 Accepted events; no new finger test.",
-      "restored_properties": "evidence/nx5-input-latency/2026-10-13/resident-ui.json"
+      "restored_properties": "evidence/nx5-release-overhead/2026-10-14/resident-ui.json"
     },
-    "log": "/tmp/slint-bridge-input-a0e880c/live-final.log",
+    "log": "/tmp/slint-bridge-input-a0e880c/live-after-release-ab.log",
     "source_commit": "a0e880cfea5761c21b3ed570c1bde46136b6bae5",
     "fault_injection_enabled": false,
-    "source_state": "Input handled after rendering and between approximately 1 ms CPU framebuffer write slices. Retained canvas frozen until the page is complete; no partial page submission. Cancelled writes preserve damage and reinitialize the back page. Temporary diagnostic instrumentation removed; resident has no timer or trace.",
+    "source_state": "Input handled after rendering and between approximately 1 ms CPU framebuffer write slices. Retained canvas frozen until the page is complete; no partial page submission. Cancelled writes preserve damage and reinitialize the back page. Temporary diagnostic instrumentation removed; resident has no exit timer or trace.",
     "source_manifest": "evidence/nx5-input-latency/2026-10-13/manifest.json",
     "resources": {
-      "rss_kib": 14820,
-      "vm_hwm_kib": 15104,
+      "rss_kib": 14860,
+      "vm_hwm_kib": 15208,
       "vm_peak_kib": 33608,
       "threads": 3,
       "mmz_used_kib": 12100,
       "mmz_blocks": 5,
-      "mem_available_kib": 44968,
+      "mem_available_kib": 44528,
       "wbc_running": false
     },
     "runtime_source_sha256": "da7e30859b9dd07a76ade3a549bd35f028df85b0f1a9209d61b2ada8b3d0ab22",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "wake_source_sha256": "4c67e34b31870b5254b093ee17181bad74d0dda6b86a3af9bb5cc6bebda8256a",
-    "performance_manifest": "evidence/nx5-input-latency/2026-10-13/manifest.json",
+    "performance_manifest": "evidence/nx5-release-overhead/2026-10-14/manifest.json",
     "slint_source_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
     "tde_fill_enabled": false,
     "native_source_sha256": "23386d5cf76b17ab0e57653fc01b0a0540d3ac07eac8d3c946ba7d87888052f2"
   },
-  "status": "input_latency_optimized_automated_validation_resident",
+  "status": "release_overhead_compared_resident",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -227,8 +227,8 @@
     "2026-10-14 input-latency deployment: a0e880c resident PID 7241, c087071 kept for rollback. Full-alpha automatic input P95 16.88 -> 0.86 ms (1 ms MCP quantization); final showcase list 900 completed presentations at 29 FPS. Ordinary scene render/layout stalls remain. Initial slow replay and rejected initial-axis sample retained separately. Runtime instrumentation/prototype removed, 24 device artifacts archived/cleaned. No firmware, SDK, driver, Slint or boot-service change."
   ],
   "previous_serial_device": "/dev/ttyUSB2",
-  "serial_recheck_evidence": "evidence/nx5-input-latency/2026-10-13/manifest.json",
-  "serial_rechecked_at_utc": "2026-10-13T16:22:33.407681+00:00",
+  "serial_recheck_evidence": "evidence/nx5-release-overhead/2026-10-14/manifest.json",
+  "serial_rechecked_at_utc": "2026-10-14T01:55:40.256021+00:00",
   "scheduling": {
     "timer_quantum_us": 10000,
     "policy": "block before the final timer quantum, then poll events and the monotonic deadline",
@@ -240,7 +240,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "a0e880c: automatic evdev latency comparison, 1 ms budgeted framebuffer writes, 3686400 exact physical page pixels, 100 TDE/memfd pages max error 1, ARM input regression, six-page MCP and final list 29 FPS, normal exits. No new finger, WBC or optical scanout measurement.",
+  "observation_scope": "Same deployed c087071 and a0e880c showcase binaries, trace-off old/new/new/old CPU and RSS windows; separate native low-frequency completion statistics for 4500 presentations. Six clean finite exits. No binary changes or new physical-finger/pixel/WBC/scanout validation.",
   "hardware_regression": {
     "report": "docs/nx5-hardware.md",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -637,5 +637,69 @@
     "list_completed_presentations": 900,
     "physical_finger_test_repeated": false,
     "runtime_instrumentation_removed": true
+  },
+  "release_overhead_validation": {
+    "report": "docs/nx5-release-overhead.md",
+    "manifest": "evidence/nx5-release-overhead/2026-10-14/manifest.json",
+    "old_commit": "c0870718920558ee1dc6259fd34a4410adfa3ebd",
+    "new_commit": "a0e880cfea5761c21b3ed570c1bde46136b6bae5",
+    "same_deployed_binaries": true,
+    "resource_order": [
+      "old-1",
+      "new-1",
+      "new-2",
+      "old-2"
+    ],
+    "resource_comparison": [
+      {
+        "phase": "idle",
+        "old_cpu_percent": 15.223796662275102,
+        "new_cpu_percent": 15.18924302792015,
+        "cpu_delta_percentage_points": -0.03455363435495329,
+        "old_rss_kib": 14376,
+        "new_rss_kib": 14356,
+        "rss_delta_kib": -20
+      },
+      {
+        "phase": "motion",
+        "old_cpu_percent": 67.1926929275146,
+        "new_cpu_percent": 67.95741432612306,
+        "cpu_delta_percentage_points": 0.764721398608458,
+        "old_rss_kib": 15085.2,
+        "new_rss_kib": 15102,
+        "rss_delta_kib": 16.799999999999272
+      },
+      {
+        "phase": "list",
+        "old_cpu_percent": 87.87925339495848,
+        "new_cpu_percent": 78.84234489220009,
+        "cpu_delta_percentage_points": -9.036908502758394,
+        "old_rss_kib": 15104,
+        "new_rss_kib": 15108,
+        "rss_delta_kib": 4
+      },
+      {
+        "phase": "blend",
+        "old_cpu_percent": 60.40886884139657,
+        "new_cpu_percent": 60.328183536827424,
+        "cpu_delta_percentage_points": -0.08068530456914402,
+        "old_rss_kib": 15108,
+        "new_rss_kib": 15144,
+        "rss_delta_kib": 36
+      }
+    ],
+    "mmz_used_kib": 12100,
+    "mmz_blocks": 5,
+    "threads": 3,
+    "fps_trace_separate": true,
+    "fps_completed_presentations": 4500,
+    "fps_by_scene": {
+      "motion": 29.0,
+      "list": 29.0,
+      "blend": 28.98328530259366
+    },
+    "normal_exit_runs": 6,
+    "kernel_new_mmz_forced_reclaims": 0,
+    "cleanup_archived_files": 55
   }
 }
