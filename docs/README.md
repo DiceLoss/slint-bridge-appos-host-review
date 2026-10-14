@@ -17,6 +17,7 @@
 
 | 记录 | 内容 |
 | --- | --- |
+| [PNG / SVG 运行时缩放](nx5-runtime-scaling.md) | 独立第七页、运行时原图缩放、透明/裁剪与保留缓冲回归、NX5 实测 |
 | [横向多屏滑动测试](nx5-horizontal-scroll.md) | 18 张横向卡片、双向边界与误触回归、自动 evdev、当前版 CPU/RSS 与持续运动帧率 |
 | [新旧正式版资源对照](nx5-release-overhead.md) | 无阶段计时的旧→新→新→旧 CPU/RSS 对照，独立完成提交帧率与 MMZ 检查 |
 | [输入延迟与分段写页](nx5-input-latency.md) | 渲染/写页占用诊断、约 1 ms 写页预算、自动 evdev 对照及物理页验证 |

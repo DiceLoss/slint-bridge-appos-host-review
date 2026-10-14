@@ -1,12 +1,14 @@
 # NX5 测试目标
 
-本目录保存 NX5 目标的 [current-target.json](current-target.json)。其中路径相对于仓库根目录；最近收尾记录为 2026-10-14 的横向多屏滑动验证（北京时间）。设备 PID、端口、启动 ID 和部署摘要属于该次观测，运行前需重新核对。
+本目录保存 [current-target.json](current-target.json)；路径相对于仓库根。以下 PID、摘要和资源为 2026-10-14 观测，操作前须重新核对。
 
-当前为 `3892780` + Slint `22804ff`，路径 `/tmp/slint-bridge-horizontal-3892780/showcase`，观测 PID 24320，无退出定时器，trace、QuickFill、事件录制和回放器关闭。界面停留在 Devices 的横向卡片起点，可直接左右滑动；Controls 配置值保留为 48%。
+2026-10-14 PNG / SVG 运行时缩放验证收尾：当前为 `abb2e33` + Slint `22804ff`，路径 `/tmp/slint-bridge-scaling-abb2e33/showcase`，观测 PID **31614**，无退出定时器、trace、QuickFill、录制、回放或 WBC。界面停留独立第七页 Image scaling，缩放 100%，Controls 保留 48%。
 
-本轮六页/13 张原生 MCP 截图、跨 3610 px 的横向往返/边界/误触检查，以及 12 次自动 evdev 接触通过。持续运动无 trace CPU 为 85.43%，RSS 14136–14396 KiB；独立完成提交帧率为 28.64 FPS。包含端点停留的往返负载综合为 22.84 FPS，分别保留在[横向测试报告](../../../docs/nx5-horizontal-scroll.md)。本轮只测当前版，没有新增手指、物理页像素或 WBC 验证。
+主机保留缓冲 1420342 像素对照、NX5 七页/17 张原生 MCP 截图及四档缩放检查通过。独立关闭 trace 的缩放窗口 CPU **88.35%** 单核，RSS 15488–15612 KiB；另一个窗口的 900 次有效完成提交为 **25.87 FPS**。三个有限进程均正常退出，VO 关闭、MMZ 回到 4900 KiB / 2 块。方法及限制见[运行时缩放报告](../../../docs/nx5-runtime-scaling.md)。
 
-上一版 `/tmp/slint-bridge-input-a0e880c/showcase`（`a0e880c`）及 `start-live.sh` 保留回退，更早的 `/tmp/slint-bridge-clean-c087071/showcase`（`c087071`）和对应脚本/日志也显式保留。当前路径以[保留策略](deploy-retain.json)为准。
+`3892780` 为直接恢复版本，`a0e880c` 和 `c087071` 的程序、脚本及原保留日志继续保存。收尾 RSS 15360 KiB、VmHWM 15360 KiB、MMZ 12100 KiB / 5 块、可用内存 23784 KiB。未修改库运行时、SDK、驱动或开机服务，没有新增物理页、WBC、自动 evdev 或手指验证。下次操作仍须重新核对身份、实际 PID 和显示所有者。
+
+当前保留项见 [deploy-retain.json](deploy-retain.json)。
 
 此前关闭 trace 的新旧正式版资源对照见[资源报告](../../../docs/nx5-release-overhead.md)，输入延迟及真实页像素验证见[输入延迟报告](../../../docs/nx5-input-latency.md)；清理版实体触摸确认和 NEON 性能保留在[部署报告](../../../docs/nx5-cleanup-deploy.md)、[NEON 报告](../../../docs/nx5-neon-unpremultiply.md)。
 

@@ -1,5 +1,13 @@
 # NX5 最近环境记录
 
+2026-10-14 PNG / SVG 运行时缩放验证收尾：当前为 `abb2e33` + Slint `22804ff`，路径 `/tmp/slint-bridge-scaling-abb2e33/showcase`，观测 PID **31614**，无退出定时器、trace、QuickFill、录制、回放或 WBC。界面停留独立第七页 Image scaling，缩放 100%，Controls 保留 48%。
+
+主机保留缓冲 1420342 像素对照、NX5 七页/17 张原生 MCP 截图及四档缩放检查通过。独立关闭 trace 的缩放窗口 CPU **88.35%** 单核，RSS 15488–15612 KiB；另一个窗口的 900 次有效完成提交为 **25.87 FPS**。三个有限进程均正常退出，VO 关闭、MMZ 回到 4900 KiB / 2 块。方法及限制见[运行时缩放报告](nx5-runtime-scaling.md)。
+
+`3892780` 为直接恢复版本，`a0e880c` 和 `c087071` 的程序、脚本及原保留日志继续保存。收尾 RSS 15360 KiB、VmHWM 15360 KiB、MMZ 12100 KiB / 5 块、可用内存 23784 KiB。未修改库运行时、SDK、驱动或开机服务，没有新增物理页、WBC、自动 evdev 或手指验证。下次操作仍须重新核对身份、实际 PID 和显示所有者。
+
+## 2026-10-14 横向多屏滑动收尾（历史）
+
 2026-10-14 横向多屏滑动验证收尾：当前为 `3892780` + Slint `22804ff`，路径 `/tmp/slint-bridge-horizontal-3892780/showcase`，观测 PID **24320**，日志 `live-final.log`。无退出定时器，trace、QuickFill、事件录制、回放器和 WBC 关闭。界面停留 Devices 横向卡片起点，Controls 配置值保留为 48%。
 
 新增 18 张横向卡片，实际滚动距离 3610 px；六页/13 张原生 MCP 截图、14 次宽幅手势的边界/误触检查及 12 次自动 evdev 接触通过。持续运动的独立窗口测得 CPU 85.43%、RSS 14136–14396 KiB、28.64 FPS；包含端点停留的往返负载综合为 22.84 FPS。两次因定时退出截断的性能窗口已排除。完整方法与范围见[横向测试报告](nx5-horizontal-scroll.md)。

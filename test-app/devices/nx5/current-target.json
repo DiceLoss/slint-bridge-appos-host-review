@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-14T03:12:41.609514+00:00",
+  "checked_at_utc": "2026-10-14T04:16:01.391597+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -28,7 +28,7 @@
     "mem_total_kib": 91688,
     "mmz_total_kib": 32768,
     "previous_boot_id": "f636e7cf-7beb-46f3-98aa-53c651f96572",
-    "serial_adb_boot_id_match_note": "Rechecked through USB1 root and ADB on 2026-10-13 before showcase deployment; same boot, no reboot."
+    "serial_adb_boot_id_match_note": "Rechecked through USB1 root and ADB on 2026-10-14 before runtime-scaling deployment; same boot, no reboot."
   },
   "display": {
     "driver": "fyfb",
@@ -140,8 +140,8 @@
     }
   ],
   "running_ui": {
-    "path": "/tmp/slint-bridge-horizontal-3892780/showcase",
-    "pid": 24320,
+    "path": "/tmp/slint-bridge-scaling-abb2e33/showcase",
+    "pid": 31614,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -151,12 +151,12 @@
       "--framebuffer=/tmp/slint-bridge-c03c3bb/dev/panel",
       "--touch=/tmp/slint-bridge-c03c3bb/dev/touch"
     ],
-    "sha256": "824812d68d7f5c8c2c2d52a27d19fb56972a8eadb4a99bef76662fe222d0ff41",
+    "sha256": "f5518f6e9bae9e49aa528f94a132675f9fec7e25aa46bb86195a509e1fb68dbf",
     "frame_interval_us": 16667,
     "trace_enabled": false,
-    "last_observed_fps": 28.63508275659737,
-    "fps_evidence": "evidence/nx5-horizontal/2026-10-14/results.json",
-    "fps_note": "Current release horizontal only. Continuous movement: 28.635 FPS over 1650 completed presentations; separate trace-off CPU 85.431%, RSS 14136..14396 KiB. Fixed six-gesture reversal including boundary dwell: 22.839 FPS over 1200 presentations, separate trace-off CPU 79.277%.",
+    "last_observed_fps": 25.86870283202139,
+    "fps_evidence": "evidence/nx5-runtime-scaling/2026-10-14/fps/results.json",
+    "fps_note": "Current release, combined PNG/SVG runtime scaling. Trace-off resource sample and independent completed-presentation FPS sample; no old-version comparison.",
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
@@ -164,7 +164,7 @@
       "forward": "adb -s 192.168.1.151:5555 forward tcp:19315 tcp:9315",
       "tools_available": 18,
       "tools_exercised": 11,
-      "verification": "evidence/nx5-horizontal/2026-10-14/device-ui/summary.json",
+      "verification": "evidence/nx5-runtime-scaling/2026-10-14/device-ui/summary.json",
       "exercised_tools": [
         "list_windows",
         "get_window_properties",
@@ -178,33 +178,33 @@
         "get_element_properties",
         "drag_element"
       ],
-      "screenshot_status": "Six pages and 13 guarded snapshots passed; 226 base plus 1994 horizontal MCP events, zero dropped/unknown. Separate automated evdev: 12 contacts, 324 Accepted events, full horizontal endpoints; no new finger test.",
-      "restored_properties": "evidence/nx5-horizontal/2026-10-14/resident-ui.json"
+      "screenshot_status": "Seven pages / 17 guarded native MCP snapshots; 291 base and 1994 horizontal events, zero dropped/unknown. Runtime PNG/SVG 50/100/125/200%, pixels/transparency/clip passed. No new evdev or finger test.",
+      "restored_properties": "evidence/nx5-runtime-scaling/2026-10-14/resident-ui.json"
     },
-    "log": "/tmp/slint-bridge-horizontal-3892780/live-final.log",
-    "source_commit": "38927806ed3766d991b0de28d04c024151c708ab",
+    "log": "/tmp/slint-bridge-scaling-abb2e33/live-final.log",
+    "source_commit": "abb2e334b2e9f29af2521f5dd12166a17e9f10cd",
     "fault_injection_enabled": false,
-    "source_state": "Runtime unchanged from a0e880c; showcase adds horizontal multi-screen device cards and automated coverage. Resident on Devices horizontal first card, Controls level 48 retained; no exit timer, trace, event recording, replay or WBC.",
-    "source_manifest": "evidence/nx5-horizontal/2026-10-14/manifest.json",
+    "source_state": "Runtime unchanged from a0e880c; dedicated seventh Image scaling page, raw PNG/SVG loaded at runtime. Resident zoom 100%, Controls level 48; no timer, trace, recording, replay or WBC.",
+    "source_manifest": "evidence/nx5-runtime-scaling/2026-10-14/manifest.json",
     "resources": {
-      "rss_kib": 15388,
-      "vm_hwm_kib": 15704,
-      "vm_peak_kib": 33716,
+      "rss_kib": 15360,
+      "vm_hwm_kib": 15360,
+      "vm_peak_kib": 33852,
       "threads": 3,
       "mmz_used_kib": 12100,
       "mmz_blocks": 5,
-      "mem_available_kib": 34064,
+      "mem_available_kib": 23784,
       "wbc_running": false
     },
     "runtime_source_sha256": "da7e30859b9dd07a76ade3a549bd35f028df85b0f1a9209d61b2ada8b3d0ab22",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "wake_source_sha256": "4c67e34b31870b5254b093ee17181bad74d0dda6b86a3af9bb5cc6bebda8256a",
-    "performance_manifest": "evidence/nx5-horizontal/2026-10-14/manifest.json",
+    "performance_manifest": "evidence/nx5-runtime-scaling/2026-10-14/manifest.json",
     "slint_source_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
     "tde_fill_enabled": false,
     "native_source_sha256": "23386d5cf76b17ab0e57653fc01b0a0540d3ac07eac8d3c946ba7d87888052f2"
   },
-  "status": "horizontal_scroll_validated_resident",
+  "status": "runtime_scaling_validated_resident",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -227,8 +227,8 @@
     "2026-10-14 input-latency deployment: a0e880c resident PID 7241, c087071 kept for rollback. Full-alpha automatic input P95 16.88 -> 0.86 ms (1 ms MCP quantization); final showcase list 900 completed presentations at 29 FPS. Ordinary scene render/layout stalls remain. Initial slow replay and rejected initial-axis sample retained separately. Runtime instrumentation/prototype removed, 24 device artifacts archived/cleaned. No firmware, SDK, driver, Slint or boot-service change."
   ],
   "previous_serial_device": "/dev/ttyUSB2",
-  "serial_recheck_evidence": "evidence/nx5-horizontal/2026-10-14/manifest.json",
-  "serial_rechecked_at_utc": "2026-10-14T03:12:41.609514+00:00",
+  "serial_recheck_evidence": "evidence/nx5-runtime-scaling/2026-10-14/manifest.json",
+  "serial_rechecked_at_utc": "2026-10-14T04:16:01.391597+00:00",
   "scheduling": {
     "timer_quantum_us": 10000,
     "policy": "block before the final timer quantum, then poll events and the monotonic deadline",
@@ -240,7 +240,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "3892780 current-version horizontal functional and CPU/RSS/FPS validation; runtime unchanged from a0e880c. Six pages/13 native snapshots; 14 wide MCP gestures; 12 automatic evdev contacts. Seven clean finite exits including two excluded incomplete performance windows. No new physical-pixel, WBC or optical scanout measurements.",
+  "observation_scope": "abb2e33 dedicated runtime PNG/SVG scaling page; host retained-buffer regression, seven-page native MCP, trace-off resources and separate completed-presentation FPS. Three clean finite exits. No new evdev, physical-pixel, WBC or scanout measurements.",
   "hardware_regression": {
     "report": "docs/nx5-hardware.md",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -373,12 +373,12 @@
     }
   },
   "recovery_ui": {
-    "path": "/tmp/slint-bridge-input-a0e880c/showcase",
-    "source_commit": "a0e880cfea5761c21b3ed570c1bde46136b6bae5",
+    "path": "/tmp/slint-bridge-horizontal-3892780/showcase",
+    "source_commit": "38927806ed3766d991b0de28d04c024151c708ab",
+    "sha256": "824812d68d7f5c8c2c2d52a27d19fb56972a8eadb4a99bef76662fe222d0ff41",
     "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
-    "sha256": "71582ca6f70b8ab5aec9b0408b43429743bf5cb7491486cd6da09bed837fd584",
-    "startup_script": "/tmp/slint-bridge-input-a0e880c/start-live.sh",
-    "procedure": "docs/nx5-horizontal-scroll.md#常驻与回退"
+    "startup_script": "/tmp/slint-bridge-horizontal-3892780/start-live.sh",
+    "procedure": "docs/nx5-runtime-scaling.md#证据与恢复"
   },
   "alpha_validation": {
     "report": "docs/nx5-alpha.md",
@@ -711,6 +711,15 @@
       "startup_script": "/tmp/slint-bridge-clean-c087071/start-live.sh",
       "procedure": "docs/nx5-input-latency.md#常驻与回退",
       "explicitly_retained_in_keep": true
+    },
+    {
+      "path": "/tmp/slint-bridge-input-a0e880c/showcase",
+      "source_commit": "a0e880cfea5761c21b3ed570c1bde46136b6bae5",
+      "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
+      "sha256": "71582ca6f70b8ab5aec9b0408b43429743bf5cb7491486cd6da09bed837fd584",
+      "startup_script": "/tmp/slint-bridge-input-a0e880c/start-live.sh",
+      "procedure": "docs/nx5-horizontal-scroll.md#常驻与回退",
+      "explicitly_retained_in_keep": true
     }
   ],
   "horizontal_scroll_validation": {
@@ -737,5 +746,30 @@
     "excluded_performance_windows": 2,
     "physical_finger_test": false,
     "cleanup_archived_files": 63
+  },
+  "runtime_scaling_validation": {
+    "source_commit": "abb2e334b2e9f29af2521f5dd12166a17e9f10cd",
+    "report": "docs/nx5-runtime-scaling.md",
+    "manifest": "evidence/nx5-runtime-scaling/2026-10-14/manifest.json",
+    "pages": 7,
+    "snapshots": 17,
+    "zoom_percentages": [
+      50,
+      100,
+      125,
+      200
+    ],
+    "host_retained_pixels": 1420342,
+    "cpu_percent_one_core": 88.35497835495609,
+    "rss_range_kib": [
+      15488,
+      15612
+    ],
+    "fps": 25.86870283202139,
+    "completed_presentations": 900,
+    "normal_exit_processes": 3,
+    "new_evdev_test": false,
+    "new_physical_pixels": false,
+    "new_wbc_test": false
   }
 }

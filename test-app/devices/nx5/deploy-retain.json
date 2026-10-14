@@ -1,6 +1,6 @@
 {
-  "current_binary": "/tmp/slint-bridge-horizontal-3892780/showcase",
-  "recovery_binary": "/tmp/slint-bridge-input-a0e880c/showcase",
+  "current_binary": "/tmp/slint-bridge-scaling-abb2e33/showcase",
+  "recovery_binary": "/tmp/slint-bridge-horizontal-3892780/showcase",
   "keep": [
     "/tmp/slint-bridge-c03c3bb/start-live.sh",
     "/tmp/slint-bridge-c03c3bb/lib",
@@ -15,6 +15,9 @@
     "/tmp/slint-bridge-input-a0e880c/live-after-release-ab.log",
     "/tmp/slint-bridge-clean-c087071/showcase",
     "/tmp/slint-bridge-horizontal-3892780/start-live.sh",
-    "/tmp/slint-bridge-horizontal-3892780/live-final.log"
+    "/tmp/slint-bridge-horizontal-3892780/live-final.log",
+    "/tmp/slint-bridge-input-a0e880c/showcase",
+    "/tmp/slint-bridge-scaling-abb2e33/start-live.sh",
+    "/tmp/slint-bridge-scaling-abb2e33/live-final.log"
   ]
 }

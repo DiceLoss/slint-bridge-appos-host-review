@@ -135,7 +135,7 @@ SLINT_MCP_PORT=19316 target/debug/showcase --preview --seconds=300
 
 自动横向用例从首项连续滑到末项再返回，在 1024×600 下验证累计移动超过四个可视宽度、单次手势至少跨过 60% 可视宽度、两端夹紧、无纵向漂移及拖动不打开详情，并检查末项/筛选后的稳定 ID 和空状态。横向每次手势单独录制，避免长距离遍历超过原生 MCP 的 1024 条事件环形缓冲。
 
-`tests/showcase.rs` 使用 Slint 内存软件窗口检查表单校验、状态保留、重置取消、键盘编辑、列表筛选、稳定 ID、日志上限及透明开口的实际 RGBA 像素。`tests/showcase_scaling.rs` 在同一个保留缓冲 renderer 中依次切换 50%→100%→125%→200%→125%→50%→100%，检查原始素材尺寸固定、PNG/SVG 实际色块随缩放变化，并与独立全量重绘逐像素对照，覆盖缩小后的残留清除。`tests/showcase_repaint.rs` 另外通过确定性的文字模型更新和独立参考 renderer，验证缓存淘汰后切页标题仍刷新；不会用截图清空被测 renderer 的缓存。默认 feature 矩阵包含这些测试；MCP 交互检查单独运行。两者均不代替 evdev、TDE/DMA、物理双页和扫描输出验证。
+`tests/showcase.rs` 使用 Slint 内存软件窗口检查表单校验、状态保留、重置取消、键盘编辑、列表筛选、稳定 ID、日志上限及透明开口的实际 RGBA 像素。`tests/showcase_scaling.rs` 在同一个保留缓冲 renderer 中依次切换 50%→100%→125%→200%→125%→50%→100%，检查原始素材尺寸固定、PNG/SVG 实际色块随缩放变化，并与独立全量重绘逐像素对照，覆盖缩小后的残留清除。`tests/showcase_repaint.rs` 另外通过确定性的文字模型更新和独立参考 renderer，验证缓存淘汰后切页标题仍刷新；不会用截图清空被测 renderer 的缓存。默认 feature 矩阵包含这些测试；MCP 交互检查单独运行。这些检查均不代替 evdev、TDE/DMA、物理双页和扫描输出验证。
 
 界面固定使用 Fluent 标准控件，图标以 SVG 数据嵌入二进制；测试工程启用同源 `i-slint-core` 的图像/SVG 解码能力，不引入桌面或 GPU 后端。图片背景使用编译时嵌入的 [coastal-background.png](ui/assets/coastal-background.png)，保留的源图为 1638×960 PNG；构建脚本在主机将它转换为 1024×600 RGBA PNG 后嵌入，默认面板不再反复缩放背景，且满足 TDE 复制的尺寸/格式条件。独立 Image scaling 页另用两份未经构建期变换的 256×160 原始 PNG/SVG，运行时加载后由同一尺寸滑块缩放；它与背景优化分开。其他窗口尺寸仍按 `cover` 适配；生成来源与提示词见 [素材说明](ui/assets/README.md)。动画区复用同一图片，卡片与列表行采用半透明底色，保证动画/滚动时图片实际参与绘制。径向 alpha 叠加图仍由 Rust 生成；Layers 透明开口会隐藏背景图片。无需另行部署素材文件，字体仍按设备说明提供。
 
