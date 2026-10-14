@@ -8,7 +8,7 @@
 - [独立测试工程](../test-app/README.md)：用例、`.slint` 界面、应用代码及多设备选择方式。
 - [平台实现说明](software-platform.md)：事件循环、输入、双 framebuffer 和板级契约。
 - [Slint MCP](slint-mcp.md)：原生 UI 检查和交互工具、连接步骤及覆盖限制。
-- [X9 设备说明](../test-app/devices/x9/README.md)、[纯 CPU framebuffer 接入报告](x9-framebuffer.md) 与 [富列表性能测量](x9-performance.md)。
+- [X9 设备说明](../test-app/devices/x9/README.md)、[纯 CPU framebuffer 接入报告](x9-framebuffer.md)、[富列表性能测量](x9-performance.md) 与 [绘制/写页优化](x9-optimization.md)。
 - [NX5 设备说明](../test-app/devices/nx5/README.md) 与 [当前环境](current-environment.md)。
 - [项目结构图](diagrams/project-structure.html) 与 [运行时序图](diagrams/runtime-sequence.html)。
 
