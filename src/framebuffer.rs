@@ -197,7 +197,7 @@ impl Layout {
         })
     }
 
-    #[cfg(feature = "nx5")]
+    #[cfg(any(feature = "nx5", feature = "fbdev"))]
     pub(crate) fn same_mode(self, other: Self) -> bool {
         self.size == other.size
             && self.stride == other.stride
@@ -538,7 +538,7 @@ impl Framebuffer {
                 io::Error::last_os_error(),
             ));
         }
-        let layout = (contract.validate_layout)(&fixed, &variable)?;
+        let layout = (contract.validate_layout)(file.as_fd(), &fixed, &variable)?;
         Self::from_file(file, layout, contract)
     }
 

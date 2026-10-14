@@ -898,7 +898,7 @@ fn nx5_demo_pages_match_full_frames() {
     let mut count = 0;
     let mut last = 0;
     let contract = crate::backends::PresentationContract {
-        validate_layout: crate::framebuffer::Layout::new,
+        validate_layout: Box::new(|_, f, v| crate::framebuffer::Layout::new(f, v)),
         complete: Box::new(move |_, offset, _| {
             assert_ne!(offset, last);
             last = offset;

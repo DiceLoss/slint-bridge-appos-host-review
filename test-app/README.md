@@ -89,7 +89,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | NX5 初始化清理 | `--bin init-retry`，需 `nx5` 或 `nx5-tde` | 同进程中 framebuffer/输入初始化失败、重试与 UI 线程退出后的 VO/TDE 清理 |
 | NX5 窗口启动 | `--bin startup-regression`，仅 `nx5-tde` | 首次显示失败清理、同一组件重试、延迟创建和真实前台页像素 |
 
-`basic` 只使用 `--framebuffer` 和 `--touch` 路径配置。`display` 另外支持 `--textures`、`--pattern`、`--split`、`--observe=N` 和 `--seconds=N`；这些选项使用表中所示的 `--name=value` 或独立开关格式。旋转、按键映射和帧间隔通过 Rust `Config` 配置，当前没有对应命令行参数。
+`basic` 支持 `--framebuffer`、`--touch` 路径及 `--rotation=0|90|180|270` 顺时针旋转配置。`display` 另外支持 `--textures`、`--pattern`、`--split`、`--observe=N` 和 `--seconds=N`；这些选项使用表中所示的 `--name=value` 或独立开关格式。共享参数解析支持 `--rotation=0|90|180|270`，默认 0；非法值会在设备初始化前报错退出。按键映射和帧间隔通过 Rust `Config` 配置。X9 独立 CPU 整帧参考导出见 [工具说明](tools/x9/README.md#独立-cpu-参考)。
 
 <a id="六页展示应用-showcase"></a>
 
@@ -116,7 +116,7 @@ Devices 默认显示纵向列表，点击 `Horizontal cards` 切为横向卡片�
 
 设备数据和图表均为本地模拟，配置仅在本次进程中保存，不改变设备硬件设置。`UI ticks` 是应用动画更新次数，不是 framebuffer 完成数或显示 FPS；静态页面不更新动画数据。练习完成表示对应 UI 操作已发生，不表示硬件测试通过。打开透明区域时不绘制全屏底色，没有连接视频源；实机下层可能仍是黑色，视频合成仍须独立验收。
 
-应用支持 `--framebuffer=PATH`、`--touch=PATH` 和 `--seconds=N`。NX5 构建命令与设备说明相同，将 `--bin display` 换为 `--bin showcase`；运行时不传 `--textures` 或 WBC 参数。必须先按设备流程确认显示所有权、退出已有程序并保留回退，再启动新二进制。构建和主机预览不会切换设备当前版本。
+应用支持 `--framebuffer=PATH`、`--touch=PATH`、`--rotation=0|90|180|270` 和 `--seconds=N`。X9 使用 `fbdev`、800×1280 物理面板及 `--rotation=90`，逻辑界面为 1280×800；构建与启动见 [X9 设备说明](devices/x9/README.md)。NX5 构建命令与设备说明相同，将 `--bin display` 换为 `--bin showcase`；运行时不传 `--textures` 或 WBC 参数。必须先按设备流程确认显示所有权、退出已有程序并保留回退，再启动新二进制。构建和主机预览不会切换设备当前版本。
 
 ### 主机预览与自动交互检查
 

@@ -10,7 +10,7 @@ INK, MUTED = '#111827', '#475569'
 parts = [f'''<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}"
  data-generator="fireworks-tech-graph" data-style-id="1" data-diagram-type="sequence" data-quality-profile="showcase">
 <title>Slint Bridge · 双 framebuffer 并行运行时序</title>
-<desc>依据 src/runtime.rs、framebuffer.rs、presentation.rs、backends/mod.rs、backends/nx5/mod.rs。仅展示有脏区的成功提交路径；初始 A 为前台、B 为后台。渲染后及写页分段之间处理输入，写页期间冻结保留画布，整页完成后才提交。UI 预渲染 N+1 可与后台提交 N 的阻塞 PAN 并行。完成成功后才允许复用旧前台页。NX5 回调与通用提交器属于同一个后台线程。</desc>
+<desc>依据 src/runtime.rs、framebuffer.rs、presentation.rs、backends/mod.rs、backends/nx5/mod.rs、backends/x9/mod.rs。仅展示有脏区的成功提交路径；初始 A 为前台、B 为后台。渲染后及写页分段之间处理输入，写页期间冻结保留画布，整页完成后才提交。UI 预渲染 N+1 可与后台提交 N 的板级完成等待并行。完成成功后才允许复用旧前台页。板级回调与通用提交器属于同一个后台线程。</desc>
 <style>text {{font-family:'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',sans-serif;}}</style>
 <defs>''']
 for name, color in [('call', BLUE), ('async', PURPLE), ('return', GREEN), ('driver', ORANGE)]:
@@ -65,20 +65,20 @@ text(60,92,'渲染下一帧与等待上一帧翻页重叠；页面复用由成�
 rect(60,119,1160,37,'#eff6ff')
 rect(1240,119,540,37,'#fff7ed')
 text(80,145,'通用层：调度、画布、页面所有权、提交与完成通知',18,BLUE,600)
-text(1260,145,'NX5 适配层及设备驱动',18,ORANGE,600)
+text(1260,145,'板级适配层及设备驱动',18,ORANGE,600)
 rect(60,170,860,37,'#f8fafc')
 rect(960,170,820,37,'#faf5ff')
 text(80,196,'UI 线程执行的代码 / 管理的资源',17,MUTED,500)
-text(980,196,'fb-present 的调用栈：同步调用 NX5 回调，再进入驱动',17,PURPLE,500)
+text(980,196,'fb-present 的调用栈：同步调用板级回调，再进入驱动',17,PURPLE,500)
 
 X = {'ui':200,'canvas':480,'pages':780,'worker':1080,'nx5':1370,'driver':1660}
 headers = [
  ('ui','UI 渲染线程','runtime / framebuffer',BLUE,'#eff6ff'),
  ('canvas','保留画布 retained','TDE 就绪：共享 MMZ',BLUE,'#eff6ff'),
- ('pages','物理显示页 A / B','NX5：straight RGB / A≤128',BLUE,'#eff6ff'),
+ ('pages','物理显示页 A / B','straight RGB / 板级 alpha',BLUE,'#eff6ff'),
  ('worker','后台提交线程','presentation.rs · fb-present',PURPLE,'#faf5ff'),
- ('nx5','NX5 完成回调','backends/nx5/mod.rs',ORANGE,'#fff7ed'),
- ('driver','fyfb 驱动','配置的设备 · 阻塞 PAN',ORANGE,'#fff7ed'),
+ ('nx5','板级完成回调','backends/{nx5,x9}/',ORANGE,'#fff7ed'),
+ ('driver','设备显示驱动','NX5 / X9 完成契约',ORANGE,'#fff7ed'),
 ]
 for ident, title, sub, color, fill in headers:
     cx = X[ident]
@@ -108,7 +108,7 @@ text(212,517,'首次整页；随后合并两帧脏区；编码 alpha；源画布
 msg('copy-b','ui','pages',495,'② 分段反预乘 / 写 B；段间处理输入')
 msg('submit-b','ui','worker',565,'③ submit(H)：入队即返回；pending = true','async')
 msg('contract-b','worker','nx5',625,'④ complete(fd, H, layout)',size=17)
-msg('pan-b','nx5','driver',680,'⑤ FBIOPAN_DISPLAY','driver',18)
+msg('pan-b','nx5','driver',680,'⑤ PAN；X9 再送 flip','driver',18)
 
 rect(70,732,1710,234,'#f0fdf4','#86efac',radius=10)
 # Restore lifeline/activation fragments on the tinted parallel frame.
@@ -124,9 +124,9 @@ text(118,796,'PAR',18,GREEN,700,'middle',role='content')
 msg('render-next','ui','canvas',790,'render(N+1) → 画布',size=18)
 note('ui-work',96,857,498,77,'最多预渲染一帧，然后暂停后续绘制',['任务每批约 2 ms / 最多 128 个；继续处理输入'],BLUE,'#eff6ff')
 note('frozen-pages',638,766,284,167,'pending 期间两页均不可写',['A：旧前台，等待释放','B：提交中，禁止修改','画布最多再渲染一帧'],GREEN,'#ffffff')
-note('blocked-worker',990,801,735,106,'后台线程阻塞于 complete → NX5 PAN',['等待驱动完成；通用层没有发起第二次页面提交'],ORANGE,'#fff7ed')
+note('blocked-worker',990,801,735,106,'后台线程等待板级完成确认',['等待驱动完成；通用层没有发起第二次页面提交'],ORANGE,'#fff7ed')
 
-msg('pan-done','driver','nx5',1010,'⑥ PAN 成功返回','return',18)
+msg('pan-done','driver','nx5',1010,'⑥ 板级完成确认','return',18)
 msg('get-offset','nx5','driver',1065,'GET + 校验布局 / 页号','driver',18)
 msg('checked-offset','driver','nx5',1110,'一致：仅作错误检查','return',18)
 msg('contract-done','nx5','worker',1165,'⑦ Ok：旧前台可复用','return',18)
@@ -140,10 +140,10 @@ rect(60,1490,1720,44,'#f0fdf4')
 text(80,1520,'循环：A 提交后两页再次冻结；UI 在保留画布渲染 N+2，后台等待 A 的翻页完成。',19,GREEN,500)
 note('capacity',60,1565,540,143,'并行与容量',['最多 1 次提交进行中 + 1 帧等待提交','画布冻结至整页提交；不是第三张物理页','约 1 ms 是写页软预算；Slint 渲染不抢占'],BLUE,'#eff6ff')
 note('generic-contract',640,1565,540,143,'通用层负责',['事件 / 帧期限、脏区复制、前后台角色','提交线程、完成队列、eventfd 与错误传播','通过私有 PresentationContract 调用板级实现'],PURPLE,'#faf5ff')
-note('board-contract',1220,1565,560,143,'NX5 适配负责',['布局、SYS/VO、MMZ 与缓存同步','阻塞 PAN 的完成语义及 yoffset 校验','读回或定时器精度均不能单独证明页面已释放'],ORANGE,'#fff7ed')
+note('board-contract',1220,1565,560,143,'板级适配负责',['NX5：阻塞 PAN 成功返回','X9：PAN 后等待匹配 flip 事件','读回或定时器精度均不能单独证明页面已释放'],ORANGE,'#fff7ed')
 
 # Legend outside the message corridors.
-for x,name,color,label,dash in [(70,'call',BLUE,'同步调用 / UI 复制',False),(440,'async',PURPLE,'跨线程请求 / 完成通知',True),(900,'return',GREEN,'成功返回',True),(1215,'driver',ORANGE,'NX5 驱动调用',False)]:
+for x,name,color,label,dash in [(70,'call',BLUE,'同步调用 / UI 复制',False),(440,'async',PURPLE,'跨线程请求 / 完成通知',True),(900,'return',GREEN,'成功返回',True),(1215,'driver',ORANGE,'板级驱动调用',False)]:
     dash_attr = ' stroke-dasharray="7 4"' if dash else ''
     parts.append(f'<line data-graph-role="decoration" x1="{x}" y1="1748" x2="{x+43}" y2="1748" stroke="{color}" stroke-width="2.3"{dash_attr} marker-end="url(#arrow-{name})"/>')
     text(x+56,1754,label,17,MUTED)

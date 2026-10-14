@@ -58,7 +58,7 @@ fn touch_arriving_during_render_is_dispatched_before_framebuffer_write() {
         file,
         layout,
         PresentationContract {
-            validate_layout: Layout::new,
+            validate_layout: Box::new(|_, f, v| Layout::new(f, v)),
             complete: Box::new(|_, _, _| Ok(())),
         },
     )
@@ -256,7 +256,7 @@ fn installed_platform_exit(exit: Exit) {
         };
         let (presented, frame_ready) = mpsc::sync_channel(1);
         let contract = PresentationContract {
-            validate_layout: crate::framebuffer::Layout::new,
+            validate_layout: Box::new(|_, f, v| crate::framebuffer::Layout::new(f, v)),
             complete: Box::new(move |_, _, _| {
                 record(&session.events, "submission", inode, fd);
                 let _ = presented.try_send(());
@@ -419,7 +419,7 @@ fn framebuffer_drop_drains_submission_before_releasing_resources() {
                 dropped: session_dropped,
             };
             let contract = PresentationContract {
-                validate_layout: crate::framebuffer::Layout::new,
+                validate_layout: Box::new(|_, f, v| crate::framebuffer::Layout::new(f, v)),
                 complete: Box::new(move |_, _, _| {
                     entered.send(()).unwrap();
                     gate.recv_timeout(Duration::from_secs(3)).unwrap();
@@ -529,7 +529,7 @@ fn unknown_dma_keeps_the_board_session_alive() {
         dropped,
     };
     let contract = PresentationContract {
-        validate_layout: Layout::new,
+        validate_layout: Box::new(|_, f, v| Layout::new(f, v)),
         complete: Box::new(move |_, _, _| {
             let _alive = &session;
             Ok(())

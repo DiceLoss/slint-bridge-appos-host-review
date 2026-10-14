@@ -10,7 +10,7 @@
 slint_bridge/
 ├── Cargo.toml / Cargo.lock    # 根库 + test-app workspace
 ├── build.rs                  # 可选 NX5 TDE 原生桥构建
-├── .cargo/                   # ARM 工具链和 NX5 CPU 预设
+├── .cargo/                   # ARM 工具链和 NX5 / X9 CPU 预设
 ├── src/
 │   ├── lib.rs                # Config、init、Error、Backend
 │   ├── runtime.rs            # UI 事件循环与调度
@@ -20,7 +20,8 @@ slint_bridge/
 │   ├── wake.rs / event_wait.rs
 │   ├── backends/
 │   │   ├── mod.rs            # 私有板级契约与准入分派
-│   │   └── nx5/              # NX5 翻页、SDK 会话及 tde/
+│   │   ├── nx5/              # NX5 翻页、SDK 会话及 tde/
+│   │   └── x9/               # X9 纯 CPU framebuffer 与 DRM 完成事件
 │   └── tests/                # 按职责拆分的库内回归
 ├── test-app/                 # 独立测试程序、.slint 界面、设备工具
 ├── docs/                     # 使用说明、设计和实测报告
@@ -54,11 +55,11 @@ slint_bridge::init(Config {
 
 | Feature | 行为 |
 | --- | --- |
-| `fbdev` | 通用 framebuffer 软件组合；真实设备仍需已验证的板级完成契约 |
+| `fbdev` | 纯 CPU framebuffer；当前接入 X9 Lombo #452 板级完成契约 |
 | `nx5` | NX5 VO 初始化、软件渲染与双页显示 |
 | `nx5-tde` | 包含 `nx5`，加速大块 RGBA 复制和透明混合；另有 QuickFill 诊断开关 |
 
-必须选择一个板级 feature；`fbdev` 与 `nx5` 互斥。NX5 按 SDK/驱动接口和双页布局运行，不比对内核版本、驱动名称或文件摘要；通用 `fbdev` 尚无板级完成契约，仍返回 `DisplayNotAdmitted`。SDK 目录由系统动态库搜索路径决定，见 [平台说明](docs/software-platform.md#准入边界)。
+必须选择一个板级 feature；`fbdev` 与 `nx5` 互斥。NX5 按 SDK/驱动接口和双页布局运行，不比对内核版本、驱动名称或文件摘要；`fbdev` 仅准入已验证的 X9 Lombo 固件与布局，其他 framebuffer 仍拒绝。SDK 目录由系统动态库搜索路径决定，见 [平台说明](docs/software-platform.md#准入边界)。
 
 `Config::frame_interval` 是最小渲染启动间隔，默认 16667 微秒；没有 NX5 专用 30 FPS 钳制。当前驱动的实际提交上限约为 29 FPS，原因及尚未实现的单周期改动见 [驱动调查](docs/nx5-single-cycle.md)。
 
@@ -68,7 +69,7 @@ slint_bridge::init(Config {
 
 从 [test-app/src/bin/basic.rs](test-app/src/bin/basic.rs) 查看最小接入方式，从 [test-app/ui/](test-app/ui/app.slint) 查看独立界面文件。完整用例、参数及设备配置见 [测试工程说明](test-app/README.md)。
 
-完整界面展示使用 `--bin showcase`：包含总览、控件/表单、设备列表、动画、图像/透明、交互记录、运行时图片缩放和富内容长列表八页。主机原生 MCP 预览、自动交互检查及 NX5 运行方式见 [展示应用说明](test-app/README.md#展示应用-showcase)；`display` 保留为原有诊断场景。
+完整界面展示使用 `--bin showcase`：包含总览、控件/表单、设备列表、动画、图像/透明、交互记录、运行时图片缩放和富内容长列表八页。主机原生 MCP 预览、自动交互检查及 NX5 / X9 运行方式见 [展示应用说明](test-app/README.md#展示应用-showcase)；`display` 保留为原有诊断场景。
 
 ```sh
 # 独立测试工程的公共接口回归。
@@ -89,4 +90,4 @@ cargo --config .cargo/nx5.toml build --locked --offline --release \
 
 UI 检查使用 [Slint 原生 MCP](docs/slint-mcp.md)：元素查询、截图、交互与事件录制。底层页生命周期、evdev 解码、TDE 故障注入和实际输出采样继续使用相应回归，不能用 UI 截图代替。
 
-当前设备记录及测试命令集中在 [test-app/devices/nx5/](test-app/devices/nx5/README.md)。历史报告由 [docs/README.md](docs/README.md) 导航；报告引用的 `evidence/` 原始证据作为本地档案保存，不纳入 Git，检出仓库后需另行获取。
+当前设备记录及测试命令分别见 [NX5](test-app/devices/nx5/README.md) 和 [X9](test-app/devices/x9/README.md)。历史报告由 [docs/README.md](docs/README.md) 导航；报告引用的 `evidence/` 原始证据作为本地档案保存，不纳入 Git，检出仓库后需另行获取。

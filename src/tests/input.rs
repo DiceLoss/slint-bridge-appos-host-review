@@ -151,7 +151,7 @@ fn touch_uses_the_configured_device_path() {
     assert!(matches!(
         result,
         Err(Error::Io {
-            operation: "query evdev absolute axis",
+            operation: "query evdev absolute capabilities",
             ..
         })
     ));
@@ -190,4 +190,82 @@ fn touch_scales_device_axes_to_the_actual_panel_size() {
             if position.x == (panel.width - 1) as f32 && position.y == (panel.height - 1) as f32)
         );
     }
+}
+
+fn type_a_frame(decoder: &mut Decoder, contacts: &[(i32, i32, i32)], out: &mut Vec<WindowEvent>) {
+    for &(id, x, y) in contacts {
+        decoder.event(3, 54, y, out); // Coordinates may precede the tracking ID.
+        decoder.event(3, 53, x, out);
+        decoder.event(3, 57, id, out);
+        decoder.event(0, 2, 0, out);
+    }
+    decoder.event(0, 0, 0, out);
+}
+
+#[test]
+fn type_a_keeps_primary_finger_and_rotates_complete_frames() {
+    let mut decoder = touch_decoder(Rotation::Clockwise90);
+    decoder.enable_type_a();
+    let mut events = Vec::new();
+    type_a_frame(&mut decoder, &[(7, 900, 1000), (8, -100, 0)], &mut events);
+    assert!(
+        matches!(events.as_slice(), [WindowEvent::PointerPressed { position, .. }] if position.x == 5.0 && position.y == 0.0)
+    );
+    events.clear();
+    type_a_frame(&mut decoder, &[(8, -100, 0), (7, 400, 500)], &mut events);
+    assert!(
+        matches!(events.as_slice(), [WindowEvent::PointerMoved { position }] if position.x == 2.5 && position.y == 3.5)
+    );
+    events.clear();
+    type_a_frame(&mut decoder, &[(8, -100, 0)], &mut events);
+    assert!(
+        matches!(events.as_slice(), [WindowEvent::PointerReleased { position, .. }, WindowEvent::PointerExited] if position.x == 2.5 && position.y == 3.5)
+    );
+    events.clear();
+    type_a_frame(&mut decoder, &[(8, -100, 0)], &mut events);
+    assert!(events.is_empty()); // no accidental press by a remaining finger
+    type_a_frame(&mut decoder, &[], &mut events);
+    type_a_frame(&mut decoder, &[(9, -100, 0)], &mut events);
+    assert!(matches!(
+        events.as_slice(),
+        [WindowEvent::PointerPressed { .. }]
+    ));
+}
+
+#[test]
+fn type_a_dropped_and_partial_packets_do_not_invent_contacts() {
+    let mut decoder = touch_decoder(Rotation::None);
+    decoder.enable_type_a();
+    let mut events = Vec::new();
+    decoder.event(3, 57, 4, &mut events);
+    decoder.event(3, 53, 400, &mut events); // Missing y: no contact.
+    decoder.event(0, 0, 0, &mut events);
+    assert!(events.is_empty());
+    type_a_frame(&mut decoder, &[], &mut events);
+    type_a_frame(&mut decoder, &[(4, 400, 500)], &mut events);
+    events.clear();
+    decoder.event(3, 53, 900, &mut events);
+    decoder.event(0, 3, 0, &mut events);
+    decoder.event(3, 54, 1000, &mut events);
+    assert!(decoder.event(0, 0, 0, &mut events));
+    let mut keys = [0u8; 96];
+    keys[330 / 8] |= 1 << (330 % 8);
+    decoder.resync(None, &keys, &mut events);
+    assert!(events.is_empty());
+    type_a_frame(&mut decoder, &[(4, 900, 1000)], &mut events);
+    assert!(matches!(
+        events.as_slice(),
+        [WindowEvent::PointerMoved { .. }]
+    ));
+    events.clear();
+    decoder.event(0, 3, 0, &mut events);
+    assert!(decoder.event(0, 0, 0, &mut events));
+    decoder.resync(None, &[0; 96], &mut events);
+    assert!(matches!(
+        events.as_slice(),
+        [
+            WindowEvent::PointerReleased { .. },
+            WindowEvent::PointerExited
+        ]
+    ));
 }

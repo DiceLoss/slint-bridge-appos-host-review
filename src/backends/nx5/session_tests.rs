@@ -58,7 +58,7 @@ fn sdk_session_releases_vo_after_failed_init_and_can_retry() {
         unsafe { observer.get::<unsafe extern "C" fn() -> i32>(b"test_vo_references\0") }.unwrap();
     assert!(matches!(acquire(), Err(Error::DisplayNotAdmitted { .. })));
     let contract = PresentationContract {
-        validate_layout,
+        validate_layout: Box::new(|_, f, v| validate_layout(f, v)),
         complete: Box::new(move |_, _, _| {
             let _alive = &session;
             Ok(())
@@ -81,7 +81,7 @@ fn sdk_session_releases_vo_after_failed_init_and_can_retry() {
 
     let session = acquire().unwrap();
     let contract = PresentationContract {
-        validate_layout,
+        validate_layout: Box::new(|_, f, v| validate_layout(f, v)),
         complete: Box::new(move |_, _, _| {
             let _alive = &session;
             Ok(())

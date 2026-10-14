@@ -27,7 +27,8 @@ impl KeyBinding {
     }
 }
 
-/// Explicit input selection. Touchscreens use ABS_X/ABS_Y and BTN_TOUCH;
+/// Explicit input selection. Touchscreens use ABS_X/ABS_Y and BTN_TOUCH,
+/// or Type-A ABS_MT_POSITION_X/Y with tracking IDs (no slots);
 /// key devices use mappings rather than assuming a keyboard layout or IME.
 #[derive(Debug, Clone)]
 pub enum InputDevice {
@@ -92,10 +93,75 @@ struct Touch {
     reported_position: LogicalPosition,
 }
 
+#[derive(Default)]
+struct Contact {
+    id: Option<i32>,
+    x: Option<i32>,
+    y: Option<i32>,
+}
+
+#[derive(Default)]
+struct TypeA {
+    contact: Contact,
+    first: Option<(i32, i32, i32)>,
+    primary_position: Option<(i32, i32)>,
+    primary: Option<i32>,
+    blocked: bool,
+    button: Option<bool>,
+}
+
+impl TypeA {
+    fn finish_contact(&mut self) {
+        let contact = std::mem::take(&mut self.contact);
+        if let (Some(id), Some(x), Some(y)) = (contact.id, contact.x, contact.y)
+            && id >= 0
+        {
+            self.first.get_or_insert((id, x, y));
+            if self.primary == Some(id) {
+                self.primary_position = Some((x, y));
+            }
+        }
+    }
+
+    fn clear_frame(&mut self) {
+        self.contact = Contact::default();
+        self.first = None;
+        self.primary_position = None;
+        self.button = None;
+    }
+
+    fn finish_frame(&mut self, touch: &mut Touch) {
+        self.finish_contact();
+        if self.button == Some(false) {
+            self.first = None;
+            self.primary_position = None;
+        }
+        if self.primary.is_none()
+            && !self.blocked
+            && let Some((id, x, y)) = self.first
+        {
+            self.primary = Some(id);
+            self.primary_position = Some((x, y));
+        }
+        if let Some((x, y)) = self.primary_position {
+            touch.x.value = x;
+            touch.y.value = y;
+            touch.down = true;
+        } else {
+            touch.down = false;
+            self.primary = None;
+            // Wait for all contacts to lift before accepting a new primary.
+            self.blocked = self.first.is_some();
+        }
+        self.clear_frame();
+    }
+}
+
 pub(crate) struct Decoder {
     panel: PhysicalSize,
     rotation: Rotation,
     touch: Option<Touch>,
+    type_a: Option<TypeA>,
     bindings: BTreeMap<u16, String>,
     pressed: BTreeMap<u16, String>,
     dropped: bool,
@@ -133,6 +199,7 @@ impl Decoder {
             bindings: mapping,
             pressed: BTreeMap::new(),
             dropped: false,
+            type_a: None,
             touch: axes.map(|(x, y)| Touch {
                 x,
                 y,
@@ -141,6 +208,10 @@ impl Decoder {
                 reported_position: LogicalPosition::default(),
             }),
         })
+    }
+
+    pub(crate) fn enable_type_a(&mut self) {
+        self.type_a = Some(TypeA::default());
     }
 
     fn flush_touch(&mut self, out: &mut Vec<WindowEvent>) {
@@ -207,12 +278,31 @@ impl Decoder {
     ) -> bool {
         if kind == 0 && code == 3 {
             self.dropped = true;
+            if let Some(mt) = &mut self.type_a {
+                mt.clear_frame();
+            }
             return false;
         }
         if self.dropped {
             if kind == 0 && code == 0 {
                 self.dropped = false;
                 return true;
+            }
+            return false;
+        }
+        if let (Some(mt), Some(touch)) = (&mut self.type_a, &mut self.touch) {
+            match (kind, code) {
+                (3, 53) => mt.contact.x = Some(value),
+                (3, 54) => mt.contact.y = Some(value),
+                (3, 57) => mt.contact.id = Some(value),
+                (0, 2) => mt.finish_contact(),
+                (0, 0) => {
+                    mt.finish_frame(touch);
+                    self.flush_touch(out);
+                }
+                (1, 330) => mt.button = Some(value != 0),
+                (1, code) => self.key(code, value, out),
+                _ => {}
             }
             return false;
         }
@@ -241,7 +331,17 @@ impl Decoder {
         keys: &[u8; 96],
         out: &mut Vec<WindowEvent>,
     ) {
-        if let (Some(t), Some((x, y))) = (&mut self.touch, axes) {
+        if let (Some(mt), Some(t)) = (&mut self.type_a, &mut self.touch) {
+            mt.clear_frame();
+            // Type A has no EVIOCGMTSLOTS snapshot. Preserve the primary until
+            // the next complete frame, unless BTN_TOUCH proves all fingers up.
+            if keys[330 / 8] & (1 << (330 % 8)) == 0 {
+                mt.primary = None;
+                mt.blocked = false;
+                t.down = false;
+                self.flush_touch(out);
+            }
+        } else if let (Some(t), Some((x, y))) = (&mut self.touch, axes) {
             t.x = x;
             t.y = y;
             t.down = keys[330 / 8] & (1 << (330 % 8)) != 0;
@@ -253,6 +353,19 @@ impl Decoder {
             self.key(code, i32::from(down), out);
         }
     }
+}
+
+fn touch_protocol(bits: &[u8; 8]) -> Result<bool, Error> {
+    let has = |code: usize| bits[code / 8] & (1 << (code % 8)) != 0;
+    if has(0) && has(1) {
+        return Ok(false);
+    }
+    if !has(47) && has(53) && has(54) && has(57) {
+        return Ok(true);
+    }
+    Err(Error::UnsupportedInput(
+        "touch requires legacy axes or Type-A tracking IDs",
+    ))
 }
 
 pub(crate) struct Evdev {
@@ -275,12 +388,37 @@ impl Evdev {
             .custom_flags(libc::O_NONBLOCK | libc::O_CLOEXEC)
             .open(path)
             .map_err(|e| Error::io("open evdev input", e))?;
+        let type_a = if touch {
+            let mut bits = [0u8; 8];
+            // EVIOCGBIT(EV_ABS, 8). Unsupported EVIOCGABS can return a zero
+            // range on older drivers, so inspect capabilities before choosing.
+            if unsafe {
+                libc::ioctl(
+                    file.as_raw_fd(),
+                    0x8008_4523 as libc::c_ulong,
+                    bits.as_mut_ptr(),
+                )
+            } < 0
+            {
+                return Err(Error::io(
+                    "query evdev absolute capabilities",
+                    io::Error::last_os_error(),
+                ));
+            }
+            touch_protocol(&bits)?
+        } else {
+            false
+        };
         let axes = if touch {
-            Some((Self::axis(&file, 0)?, Self::axis(&file, 1)?))
+            let (x, y) = if type_a { (53, 54) } else { (0, 1) };
+            Some((Self::axis(&file, x)?, Self::axis(&file, y)?))
         } else {
             None
         };
-        let decoder = Decoder::new(panel, rotation, axes, bindings)?;
+        let mut decoder = Decoder::new(panel, rotation, axes, bindings)?;
+        if type_a {
+            decoder.enable_type_a();
+        }
         Ok(Self { file, decoder })
     }
 
@@ -325,7 +463,7 @@ impl Evdev {
                 io::Error::last_os_error(),
             ));
         }
-        let axes = if self.decoder.touch.is_some() {
+        let axes = if self.decoder.touch.is_some() && self.decoder.type_a.is_none() {
             Some((Self::axis(&self.file, 0)?, Self::axis(&self.file, 1)?))
         } else {
             None

@@ -1,0 +1,10 @@
+# X9 / Lombo N7: Cortex-A7, hard-float ABI, software framebuffer rendering.
+[target.arm-unknown-linux-gnueabihf]
+linker = "/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc"
+rustflags = ["-C", "target-cpu=cortex-a7"]
+
+[env]
+CC_arm_unknown_linux_gnueabihf = "/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc"
+CXX_arm_unknown_linux_gnueabihf = "/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-g++"
+AR_arm_unknown_linux_gnueabihf = "/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-ar"
+CFLAGS_arm_unknown_linux_gnueabihf = "-march=armv7-a -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"

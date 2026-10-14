@@ -529,7 +529,7 @@ fn framebuffer_uses_the_configured_device_path() {
     let result = Framebuffer::open(
         &path,
         PresentationContract {
-            validate_layout: Layout::new,
+            validate_layout: Box::new(|_, f, v| Layout::new(f, v)),
             complete: Box::new(|_, _, _| unreachable!()),
         },
     );
@@ -560,7 +560,7 @@ fn framebuffer_lock_conflict_is_display_not_admitted() {
     let result = Framebuffer::open(
         &path,
         PresentationContract {
-            validate_layout: Layout::new,
+            validate_layout: Box::new(|_, f, v| Layout::new(f, v)),
             complete: Box::new(|_, _, _| unreachable!()),
         },
     );

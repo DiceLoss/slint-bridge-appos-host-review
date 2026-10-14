@@ -1,8 +1,8 @@
 # Rust 公共平台层
 
-本文描述当前源码的接口与运行行为。NX5 使用板级阻塞翻页双页实现，不按固定固件版本或文件摘要准入；`fbdev` 尚无真实显示准入。目标或显示所有权不符合要求返回 `DisplayNotAdmitted`，SDK 加载和设备 I/O 失败返回 `Io`。约 29 FPS、有限 WBC 样本等实机结果属于对应阶段的观测，不代表所有物理帧的无撕裂认证。
+本文描述当前源码的接口与运行行为。NX5 使用板级阻塞翻页双页实现，不按固定固件版本或文件摘要准入；`fbdev` 目前仅接入 X9 Lombo #452 的纯 CPU 双页路径。目标或显示所有权不符合要求返回 `DisplayNotAdmitted`，SDK 加载和设备 I/O 失败返回 `Io`。约 29 FPS、有限 WBC 样本等实机结果属于对应阶段的观测，不代表所有物理帧的无撕裂认证。
 
-日常构建和运行见 [测试工程](../test-app/README.md) 与 [NX5 设备说明](../test-app/devices/nx5/README.md)。各轮硬件测量由 [文档索引](README.md) 导航；历史报告中的测试数量、PID 和性能数据不定义当前接口。
+日常构建和运行见 [测试工程](../test-app/README.md) 、[NX5 设备说明](../test-app/devices/nx5/README.md) 与 [X9 设备说明](../test-app/devices/x9/README.md)。各轮硬件测量由 [文档索引](README.md) 导航；历史报告中的测试数量、PID 和性能数据不定义当前接口。
 
 ## 统一 API
 
@@ -21,7 +21,7 @@
 
 每个平台实例只允许创建一次全屏根窗口；即使释放该窗口，也不能在同一平台上创建第二个。重试和再次运行复用同一组件，不允许嵌套运行事件循环。输入至多一个触摸设备及一个按键设备。根窗口应使用响应式布局；可用 `preferred-width`、`preferred-height` 表达偏好，不能固定成与旋转后的逻辑屏幕矛盾的大小。约束不匹配时返回错误。
 
-`InputDevice::touchscreen(path)` 使用当前 NX5 触摸协议 `ABS_X/ABS_Y + BTN_TOUCH`。轴范围由 ioctl 查询，先归一化到物理屏幕，再逆变换为未旋转的 Slint 逻辑坐标。触摸按下、移动和释放只在 `SYN_REPORT` 后发送，避免把接触事件与尚未收齐的坐标组合。收到 `SYN_DROPPED` 后忽略事件直到报告边界，再用 `EVIOCG*` 查询状态，修复按键及接触状态；依据 [Linux evdev 规范](https://docs.kernel.org/input/event-codes.html#ev-syn)。
+`InputDevice::touchscreen(path)` 查询 EV_ABS 能力，支持 NX5 的 `ABS_X/ABS_Y + BTN_TOUCH`，以及 X9 的无 slot Type-A `ABS_MT_POSITION_X/Y + ABS_MT_TRACKING_ID`。Type-A 在 `SYN_MT_REPORT` 收齐单个触点、在 `SYN_REPORT` 更新指针，保持首个 tracking ID；主指抬起后等所有手指抬起，避免剩余手指误触。轴范围由 ioctl 查询，先归一化到物理屏幕，再逆变换为未旋转的 Slint 逻辑坐标。触摸按下、移动和释放只在 `SYN_REPORT` 后发送，避免把接触事件与尚未收齐的坐标组合。收到 `SYN_DROPPED` 后忽略事件直到报告边界，再用 `EVIOCG*` 查询状态，修复按键及接触状态；Type-A 没有可查询的 slot 快照，丢包后清除未完成包；BTN_TOUCH 为 0 时释放，否则等下一完整帧恢复主触点。依据 [Linux evdev 规范](https://docs.kernel.org/input/event-codes.html#ev-syn)。
 
 `InputDevice::keys(path)` 提供方向、确认、返回等导航键。产品可通过 `InputDevice::Keys { path, bindings }` 和 `KeyBinding::new(code, text)` 指定 Linux 键码到 Slint 特殊键或字符的映射。它处理按下、自动重复和释放，不提供键盘布局或输入法。自定义按键映射要求 Linux key code 小于 768、彼此不重复，且映射文本非空；不满足时返回 `InvalidConfig`。输入掉线会终止事件循环并返回错误，避免持续轮询失效描述符。
 
@@ -47,7 +47,7 @@ flowchart LR
 
 提交 `949ceb9` 的 [启动实机回归](nx5-startup.md) 已验证首次显示失败清理、同一组件重试及任务/定时器延迟创建窗口，每个用例运行两轮；十次退出均无 TDE MMZ 泄漏回收，成功呈现的十帧全幅像素检查通过。正常 WBC 与纹理运行也通过。三项 ignored TDE/翻页测试已于 2026-10-12 [独立补齐并通过](nx5-hardware.md)。输入 EIO 的历史结果仍见 [177c18a 报告](nx5-tde-exit.md)，未在这次补测中重跑。未知 DMA 完成状态仍按原生 TDE 安全策略保留资源。
 
-NX5 后端提供 10 ms 定时器精度参数，依据 #233 内核的实测分辨率；该参数不是内核版本检查。通用等待模块据此先阻塞、再在最后一个节拍内检查期限与事件，以减少粗粒度睡眠造成的迟到；参数为零的默认策略仍只阻塞等待。精确检查会增加 CPU 用量，不参与页面退休判断，见 [调度测量](nx5-scheduling.md)。
+NX5 后端提供 10 ms 定时器精度参数，依据 #233 内核的实测分辨率；该参数不是内核版本检查。通用等待模块据此先阻塞、再在最后一个节拍内检查期限与事件，以减少粗粒度睡眠造成的迟到；X9 的高精度定时器实测分辨率为 1 ns，传入零参数，只阻塞等待。精确检查会增加 CPU 用量，不参与页面退休判断，见 [调度测量](nx5-scheduling.md)。
 
 每轮更新 Slint 定时器与动画、执行一批业务任务、处理输入并检查窗口约束，再按最小帧间隔绘制。业务任务每批最多 128 个，并在每个回调返回后检查 2 ms 执行时间预算；到限后先处理输入，未开始的任务按 FIFO 留在队列。每轮至少允许一个任务执行，避免无进展；回调执行时不持有队列锁。单个回调不能被抢占，因此 2 ms 是批次让出阈值，不是触摸延迟的硬性上限，耗时业务仍应放在工作线程。
 
@@ -87,7 +87,7 @@ flowchart LR
 
 分段写页保存本帧脏区、两帧合并区域及下一行位置，不增加画布或物理页。期间保留画布不可改写，输入回调只更新应用状态，后续帧再绘制这些变化；整页写完才执行提交前的内存屏障。退出或错误若放弃部分写入，则将后台页标为未初始化，并保留该帧脏区，保证再次运行时重建后台页及修复另一页。
 
-绘制与提交已分开：同时至多一笔在途提交和一帧已准备画布；页号、初始化标记及历史脏区仅在完成确认后更新。NX5 的布局约束通过板级契约提供，通用工作线程不包含 NX5 驱动调用。
+绘制与提交已分开：同时至多一笔在途提交和一帧已准备画布；页号、初始化标记及历史脏区仅在完成确认后更新。布局约束及初始化完成同步通过私有板级契约提供，通用工作线程不包含设备驱动调用。
 
 CPU fence 不等于 DMA 缓存一致性。设备专有实现仍须负责缓存维护、垂直消隐锁存和旧页不再被硬件读取的完成条件。
 
@@ -96,6 +96,23 @@ CPU fence 不等于 DMA 缓存一致性。设备专有实现仍须负责缓存�
 [src/backends/mod.rs](../src/backends/mod.rs) 将 NX5 分派给 [src/backends/nx5/mod.rs](../src/backends/nx5/mod.rs)。检查 ARM32，再获取进程锁、检查 VO 未被占用并加载厂商库。不读取内核版本、构建时间或 framebuffer 驱动名称，也不计算 SDK、fyfb、vou 文件的 SHA256；兼容重编译不再因这些元数据变化被拒绝。库加载本身具有 SYS/VO 初始化副作用，不能与其他 SDK 进程并用。[current-target.json](../test-app/devices/nx5/current-target.json) 仅保存带时间戳的环境观测，不控制代码准入，也不实时更新设备状态。
 
 SDK 按无版本库名 `libVideoDec.so` 交给系统动态加载器查找，可在启动进程时用 `LD_LIBRARY_PATH=/任意/SDK目录` 指定位置；代码不再要求 `/system/app/clib`。若 SDK 文件自带版本后缀，在该目录提供 `libVideoDec.so` 链接即可，后端不限制实际文件的版本名称。首次加载后若 SDK 构造函数已启用 VO，就接管该次引用；若库已驻留且 VO 未启用，或构造函数不自动启用，则调用一次 `VO_Enable()`。初始化后续失败和正常析构均只配对调用一次 `VO_Disable()`；库映像通过 `RTLD_NODELETE` 保持驻留，使 SDK 的 SYS/VB/MMZ 描述符缓存可被后续会话复用，避免重复加载后遗失缓存并累积描述符。这不保留正常会话的 VO 引用或独占锁；锁竞争返回 `DisplayNotAdmitted`，其他锁调用错误仍为 `Io`。VO 检查必需符号与调用结果，TDE 以同一库名及 `RTLD_NOLOAD` 复用会话，不会另行初始化 SDK。调用者仍需提供兼容 `codec/vd/VoApi.h`、TDE 头文件和阻塞 PAN 完成语义的 SDK/驱动；符号存在和布局通过并不能自动证明 ABI 或完成语义兼容。
+
+`fbdev` 分派到 [X9 后端](../src/backends/x9/mod.rs)，只接受 ARM32、已核验的 `3.10.100 #452 SMP PREEMPT Mon Dec 12 11:32:50 CST 2022` 固件、`lombo` DRM 1.0.0 和 800×1280 / 虚拟 800×2560 的 BGRA8888 双页布局。获取会话锁和 DRM master，将控制台置为 graphics，避免 fbcon 写页；核对实际 framebuffer fd 的 sysfs 设备与 DRM 相同。打开 framebuffer 后重新核对当前页，并在任何像素写入前等待一次匹配 flip 事件；不能沿用打开 framebuffer 前的页号。
+
+X9 不加载厂商 SDK、不分配 DRM dumb buffer，也不使用 G2D。CPU 通过 `/dev/fb0` 写既有后台页；提交先 PAN 设置 yoffset，再对同一个 DRM FB ID 请求 `DRM_MODE_PAGE_FLIP_EVENT`。只有长度、类型、64 位 cookie 匹配的完成事件及模式/偏移复核成功后，旧页才可复用。普通 vblank、读回页号、固定延时、超时、EOF、错配或多余事件均不能判为完成；两秒是失败期限。旧内核事件末尾为 reserved，厂商 sequence 恒为 0，不依赖这些字段。发生不确定提交后停止写页且不恢复文字控制台，待板级恢复；正常结束恢复原控制台模式。目标调用链、实机事件验证及扫描输出限制见 [X9 接入报告](x9-framebuffer.md)。
+
+```mermaid
+sequenceDiagram
+    participant CPU as CPU / fbdev 双页
+    participant Board as X9 提交线程
+    participant DRM as Lombo DRM / TCON IRQ
+    CPU->>Board: 整页写完后提交，冻结两页
+    Board->>DRM: PAN(yoffset)
+    Board->>DRM: 同一 FB 的 page_flip(EVENT, cookie)
+    DRM-->>Board: 安全扫描窗口内提交 + 匹配完成事件
+    Board-->>CPU: 复核模式和页号后释放旧页
+    Note over CPU,DRM: 最多一笔在途；未知完成即停止写页
+```
 
 完成提交的回调及内存显示替身均为 crate 私有，应用不能注入回调、构造“已验证”标记或选择公开的无检查显示路径。内存替身用于测试像素、页生命周期和完整事件循环，不能证明物理屏幕行为。
 
@@ -124,11 +141,13 @@ flowchart LR
 
 两个 package 均要求 Linux、Rust 1.92 或更新版本，默认 features 为空，必须显式选择 `fbdev` 或 `nx5`；`nx5-tde` 包含 `nx5`。`fbdev,nx5` 和 `fbdev,nx5-tde` 组合编译失败。根 workspace 的默认成员只有库；检查测试工程使用 `-p slint-bridge-test-app`，检查两者使用 `--workspace`。
 
-Slint 使用用户指定的本地源码树 `/home/dpower/data/GitHub/slint-1.18.1`，当前核对的 HEAD 为 `9a1a3b14c454a751f9a804a5309a4eaae0faeded`。依赖关闭默认桌面后端，启用 `std`、`renderer-software` 和 `compat-1-18`。`nx5-tde` 额外启用同源软件 renderer 的 `experimental`，ARM 构建额外编译使用外部 SDK 头文件的 C 接口，运行时复用已加载的 SDK 会话。
+Slint 使用用户指定的本地源码树 `/home/dpower/data/GitHub/slint-1.18.1`，当前核对的 HEAD 为 `ea7d0aec488caf3acaf61a2ab275a23cae201088`。依赖关闭默认桌面后端，启用 `std`、`renderer-software` 和 `compat-1-18`。`nx5-tde` 额外启用同源软件 renderer 的 `experimental`，ARM 构建额外编译使用外部 SDK 头文件的 C 接口，运行时复用已加载的 SDK 会话。
 
 `fontique` 固定到 Slint 当前使用的 0.11.1，并启用 `fontconfig-dlopen`，避免 ARM 构建依赖主机的 Fontconfig 链接配置。没有系统字体库的设备仍需由应用提供字体，例如设置 `SLINT_DEFAULT_FONT` 或在 `.slint` 中导入字体资源。
 
 Cargo.lock 不固定外部 path 依赖的 Git 提交，构建环境需同时保持指定 Slint 源码。该版本还修复文字布局缓存淘汰时未通知重绘依赖的问题：否则持续动画后切页可能保留旧标题，而完整截图仍显示新标题。展示应用的保留缓冲回归见 `test-app/tests/showcase_repaint.rs`。缓存容量限制仍保持不变。
+
+该源码还修复软件 renderer 的旋转截图：原生 `Window::take_snapshot()` 按窗口逻辑方向绘制，随后恢复面板旋转及 repaint 模式，避免 90°/270° 的 stride 断言以及 180° 截图倒置。`test-app/tests/rotation_snapshot.rs` 对四个旋转方向比较完整截图，并核对截图前后物理缓冲绘制一致；X9 原生 MCP 使用同一修复。旋转输出的 SVG 使用旋转前的目标尺寸栅格化，再由纹理路径旋转；避免 90°/270° 先交换栅格尺寸造成二次缩放和边缘失真。相同回归还比较四个方向的 PNG/SVG 全图像素。
 
 该 Slint 版本还缓存运行时 SVG 的栅格结果：按解析源的弱引用身份和请求的物理尺寸匹配，每个源保留一个尺寸，最多 32 项、像素预算 2 MiB。尺寸或源改变会重新栅格化，超预算结果直接返回而不缓存；缓存不保留解析源树，失效源在插入时清除。返回像素仍采用共享缓冲的写时复制语义。没有 `std` 的构建沿用原有直接栅格化路径。
 

@@ -179,7 +179,7 @@ mod tests {
         let (entered, started) = mpsc::sync_channel(1);
         let (release, gate) = mpsc::sync_channel(1);
         let contract = PresentationContract {
-            validate_layout: crate::framebuffer::Layout::new,
+            validate_layout: Box::new(|_, f, v| crate::framebuffer::Layout::new(f, v)),
             complete: Box::new(move |_, _, _| {
                 let _alive = &session;
                 entered.send(()).unwrap();
@@ -223,7 +223,7 @@ mod tests {
         let dropped = Arc::new(AtomicBool::new(false));
         let session = Session(dropped.clone());
         let contract = PresentationContract {
-            validate_layout: crate::framebuffer::Layout::new,
+            validate_layout: Box::new(|_, f, v| crate::framebuffer::Layout::new(f, v)),
             complete: Box::new(move |_, _, _| {
                 let _alive = &session;
                 panic!("injected presentation callback panic");

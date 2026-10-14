@@ -1,5 +1,7 @@
 #[cfg(feature = "nx5")]
 pub(crate) mod nx5;
+#[cfg(feature = "fbdev")]
+mod x9;
 
 use crate::{
     Backend, Error,
@@ -27,6 +29,9 @@ pub(crate) fn lock_exclusive(fd: BorrowedFd<'_>, operation: &'static str) -> Res
     }
 }
 
+type ValidateLayout =
+    dyn Fn(BorrowedFd<'_>, &FixedInfo, &VariableInfo) -> Result<Layout, Error> + Send;
+
 type CompletePresentation = dyn FnMut(BorrowedFd<'_>, u32, &Layout) -> io::Result<()> + Send;
 
 /// Private seam for a board's blocking presentation implementation. Success
@@ -35,7 +40,7 @@ type CompletePresentation = dyn FnMut(BorrowedFd<'_>, u32, &Layout) -> io::Resul
 /// No public API can create this value or supply a callback.
 pub(crate) struct PresentationContract {
     pub(crate) complete: Box<CompletePresentation>,
-    pub(crate) validate_layout: fn(&FixedInfo, &VariableInfo) -> Result<Layout, Error>,
+    pub(crate) validate_layout: Box<ValidateLayout>,
 }
 
 /// Verified board resources and OS timing information. Timer precision affects
@@ -51,6 +56,13 @@ pub(crate) fn require(backend: Backend) -> Result<Admission, Error> {
         return Ok(Admission {
             presentation: crate::backends::nx5::open()?,
             timer_quantum: crate::backends::nx5::TIMER_QUANTUM,
+        });
+    }
+    #[cfg(feature = "fbdev")]
+    if backend == Backend::Fbdev {
+        return Ok(Admission {
+            presentation: x9::open()?,
+            timer_quantum: Duration::ZERO,
         });
     }
     Err(Error::DisplayNotAdmitted {

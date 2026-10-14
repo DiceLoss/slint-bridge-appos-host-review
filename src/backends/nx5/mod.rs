@@ -142,7 +142,7 @@ pub(crate) fn open() -> Result<PresentationContract, Error> {
     let mut blocking_us = 0u128;
     eprintln!("slint-bridge: NX5 VO enabled; blocking PAN, two pages");
     Ok(PresentationContract {
-        validate_layout,
+        validate_layout: Box::new(|_, f, v| validate_layout(f, v)),
         complete: Box::new(move |fd, yoffset, layout| {
             let _keep_alive = &session;
             let start = Instant::now();

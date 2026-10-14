@@ -1,0 +1,89 @@
+{
+  "observed_at_utc": "2026-10-14T14:13:47Z",
+  "scope": "observation only; recheck identity, PID, and ownership before operation",
+  "adb_serial": "192.168.1.143:5555",
+  "hostname": "virgo",
+  "mac": "82:a1:cf:66:54:03",
+  "boot_id": "ebe00047-16a3-4600-89ee-0fe601f48967",
+  "kernel": "3.10.100 #452 SMP PREEMPT Mon Dec 12 11:32:50 CST 2022",
+  "cpu": "dual ARM Cortex-A7, hard-float",
+  "toolchain": "/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf",
+  "cargo_config": ".cargo/x9.toml",
+  "target": "arm-unknown-linux-gnueabihf",
+  "features": [
+    "fbdev",
+    "slint/mcp"
+  ],
+  "slint_commit": "ea7d0aec488caf3acaf61a2ab275a23cae201088",
+  "library_source": "X9 implementation committed with this snapshot",
+  "display": {
+    "driver": "lombo-drm",
+    "drm": "lombo 1.0.0",
+    "framebuffer": "/dev/fb0",
+    "drm_card": "/dev/dri/card0",
+    "physical_size": [
+      800,
+      1280
+    ],
+    "virtual_size": [
+      800,
+      2560
+    ],
+    "stride": 3200,
+    "format": "BGRA8888, alpha 0..255",
+    "pages": 2,
+    "completion": "PAN plus same-FB legacy flip event matching request cookie",
+    "rotation_clockwise_degrees": 90,
+    "logical_size": [
+      1280,
+      800
+    ]
+  },
+  "input": {
+    "path": "/dev/input/event1",
+    "name": "gt9xxnew_ts",
+    "protocol": "Type A, tracking IDs, no slots",
+    "axes": {
+      "x": [
+        0,
+        800
+      ],
+      "y": [
+        0,
+        1280
+      ]
+    }
+  },
+  "process": {
+    "pid": 2029,
+    "executable": "/tmp/slint-bridge-x9-20261014/showcase-06",
+    "sha256": "568791f1c3e64c23154ae537af46f882023c346a58be6e15205d24732f1cb289",
+    "bytes": 13697892,
+    "arguments": [
+      "--touch=/dev/input/event1",
+      "--rotation=90"
+    ],
+    "environment": {
+      "SLINT_MCP_PORT": "9315",
+      "SLINT_DEFAULT_FONT": "/tmp/slint-bridge-x9-20261014/DejaVuSans.ttf"
+    },
+    "font_sha256": "ae7b7855e115a5966d8b1b3f80f254ccc117ec86f9965e202ee2940453837280",
+    "log": "/tmp/slint-bridge-x9-20261014/showcase-06.log",
+    "rss_kib": 15020,
+    "peak_rss_kib": 22104,
+    "threads": 3,
+    "console_mode": "KD_GRAPHICS"
+  },
+  "mcp": {
+    "host_port": 19316,
+    "device_port": 9315
+  },
+  "backup": {
+    "executable": "/tmp/slint-bridge-x9-20261014/showcase-05",
+    "sha256": "2cc53e912e8c20cd271ad16f46b41982e8e86b803be9d482957d3a15b7ca2e10",
+    "limitation": "before SVG rotated-raster-size fix",
+    "initial_pixels": "/tmp/slint-bridge-x9-probe/before.fb",
+    "recover_console": "/tmp/slint-bridge-x9-probe/recover-console"
+  },
+  "evidence": "evidence/x9-framebuffer/2026-10-14 (local ignored archive, acquired separately)"
+}

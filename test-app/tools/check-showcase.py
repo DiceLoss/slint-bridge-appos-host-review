@@ -196,6 +196,9 @@ def exercise_horizontal(client, output):
     client.expect_text("18 results")
     assert initial[0]["accessibleLabel"] == "Light panel 01"
     first = initial[0]["handle"]
+    step = initial[1]["absolutePosition"]["x"] - initial[0]["absolutePosition"]["x"]
+    expected_extent = 17 * step + initial[0]["size"]["width"] - bounds["size"]["width"]
+    assert expected_extent > bounds["size"]["width"], "Expected a multi-screen list"
     seen = set()
     start = client.data("get_element_properties", elementHandle=first)["absolutePosition"]
     client.screenshot(output, "11-horizontal-start")
@@ -237,7 +240,7 @@ def exercise_horizontal(client, output):
             raise AssertionError(f"Horizontal {direction} boundary was not reached")
         boundary = client.data("get_element_properties", elementHandle=first)["absolutePosition"]["x"]
         if direction == "left":
-            assert start["x"] - boundary > 4 * bounds["size"]["width"], "Expected multiple screen widths"
+            assert abs(start["x"] - boundary - expected_extent) < 1, "Wrong horizontal scroll extent"
         swipe()
         assert abs(gestures[-1]["first_x"] - boundary) < 1, "Horizontal boundary did not clamp"
         results.append(dict(direction=direction, gestures=gestures, boundary_first_x=boundary,
@@ -416,11 +419,20 @@ def exercise_scaling(client, output):
             if zoom <= 125:
                 assert pixels.getpixel((round(x + 2), round(y + 2))) == (220, 229, 235, 255)
             if zoom == 200:
-                assert x < vx and y < vy, "Expected enlarged content to exercise clipping"
-                assert pixels.getpixel((round(vx - 4), round(y + h / 4)))[:3] != colors[0][2]
-                assert pixels.getpixel((round(vx + vw + 4), round(y + h / 4)))[:3] != colors[1][2]
-                assert pixels.getpixel((round(x + w / 4), round(vy - 4)))[:3] != colors[0][2]
-                assert pixels.getpixel((round(x + w / 4), round(vy + vh + 4)))[:3] != colors[2][2]
+                # Larger panels may fit an enlarged image on one axis. Check
+                # clipping only where the actual image exceeds its viewport.
+                if w > vw:
+                    assert x < vx
+                    assert pixels.getpixel((round(vx - 4), round(y + h / 4)))[:3] != colors[0][2]
+                    assert pixels.getpixel((round(vx + vw + 4), round(y + h / 4)))[:3] != colors[1][2]
+                else:
+                    assert vx <= x and x + w <= vx + vw
+                if h > vh:
+                    assert y < vy
+                    assert pixels.getpixel((round(x + w / 4), round(vy - 4)))[:3] != colors[0][2]
+                    assert pixels.getpixel((round(x + w / 4), round(vy + vh + 4)))[:3] != colors[2][2]
+                else:
+                    assert vy <= y and y + h <= vy + vh
             sizes.append(dict(format=kind, zoom=zoom, image=picture, viewport=viewport))
     output.joinpath("scaling.json").write_text(json.dumps(sizes, indent=2))
 
