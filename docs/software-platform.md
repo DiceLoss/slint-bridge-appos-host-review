@@ -81,6 +81,8 @@ flowchart LR
 
 两条路径均在预乘 RGBA 画布中混合。写入含 8 位 alpha 的 framebuffer 时，RGB 精确反预乘为 straight RGB，通用格式保留原 alpha；alpha=0 写零，alpha=255 直接复制 RGB 通道，其余使用共享倒数表，结果等于 `min(255, (channel × 255 + alpha / 2) / alpha)` 的整数除法。NX5 当前板级显示契约使用 0–128 的逐像素 alpha 量程：写页时按 `round(alpha × 128 / 255)` 编码（等于 `(alpha + 1) / 2` 的整数除法），0 为全透明、128 为不透明。该量程来自实际 WBC 色块比较，不能从 8 位 alpha 位域推断；Slint 画布与 TDE 运算仍使用标准 0–255 alpha。NX5 的 BGRA 位域路径只在目标页交换红蓝并编码 alpha，不修改源画布；不透明和全透明连续区域分别使用独立的 16 像素 NEON 快路径，避免半透明计算的寄存器压力拖慢它们。半透明区域对 8 个像素复用 Q16 倒数，按颜色通道执行向量乘法、舍入收窄和饱和；同一组 alpha 相同时只查表一次。输出 alpha 为 128 或 255 量程时均逐字节等于原整数算法，短尾部及其他量程保留标量路径。算法和实测见 [NEON 反预乘优化](nx5-neon-unpremultiply.md)。RGB565 或无 alpha 的 RGB888 输出保留预乘 RGB，相当于黑底合成，不能透出下层视频。位域转换按主机原生字节序写入，保留行尾 padding。
 
+通用 BGRA8888 写页在 alpha 量程为 255、源/目标均按 4 字节对齐且片段不少于 16 像素时，先按整段检查 alpha。全不透明段批量交换 R/B，避免逐像素反预乘分支；含透明像素、短段、不对齐地址及其他格式保留原路径。该优化不修改源画布、不分配缓存，且仍位于完成等待后的写页阶段；NX5 TDE 的既有转换入口优先执行。
+
 应用需要透明区域时，在 `.slint` 根窗口设置 `background: transparent;`，并避免用不透明全屏背景覆盖开口；局部颜色 alpha 也会保留。透明 UI 通过独占设备的 `alpha-regression` 验证实际页与黑色 VO 底层上的 WBC 合成；视频解码和业务视频层尚未接入。视频接入方式未定，当前 SDK/VO 独占所有权、初始化和关闭流程保持原有约束。实际视频集成仍须验证非黑色视频底层、图层配置及共用会话生命周期；新增设备/固件还须重新核验 alpha 量程。历史背景见 [slint-nx5 经验](slint-nx5-lessons.md#6-通道顺序预乘和显示-alpha-是三个不同契约)。
 
 两页首次使用时写入完整的软件图像；随后逐行合并本帧与前一已提交帧的实际脏区，跳过不相交区域之间的空隙，修复交替显示页中遗漏的变化。空脏区不触发提交。只写不可见页，提交契约成功返回后才改变前后页身份。若提交结果不确定，缓冲区进入禁止写入状态，后续重绘返回错误。
@@ -141,13 +143,15 @@ flowchart LR
 
 两个 package 均要求 Linux、Rust 1.92 或更新版本，默认 features 为空，必须显式选择 `fbdev` 或 `nx5`；`nx5-tde` 包含 `nx5`。`fbdev,nx5` 和 `fbdev,nx5-tde` 组合编译失败。根 workspace 的默认成员只有库；检查测试工程使用 `-p slint-bridge-test-app`，检查两者使用 `--workspace`。
 
-Slint 使用用户指定的本地源码树 `/home/dpower/data/GitHub/slint-1.18.1`，当前核对的 HEAD 为 `ea7d0aec488caf3acaf61a2ab275a23cae201088`。依赖关闭默认桌面后端，启用 `std`、`renderer-software` 和 `compat-1-18`。`nx5-tde` 额外启用同源软件 renderer 的 `experimental`，ARM 构建额外编译使用外部 SDK 头文件的 C 接口，运行时复用已加载的 SDK 会话。
+Slint 使用用户指定的本地源码树 `/home/dpower/data/GitHub/slint-1.18.1`，当前核对的 HEAD 为 `fa6a6d0158c9730fed62ef1eb1c9730c80214e20`。依赖关闭默认桌面后端，启用 `std`、`renderer-software` 和 `compat-1-18`。`nx5-tde` 额外启用同源软件 renderer 的 `experimental`，ARM 构建额外编译使用外部 SDK 头文件的 C 接口，运行时复用已加载的 SDK 会话。
 
 `fontique` 固定到 Slint 当前使用的 0.11.1，并启用 `fontconfig-dlopen`，避免 ARM 构建依赖主机的 Fontconfig 链接配置。没有系统字体库的设备仍需由应用提供字体，例如设置 `SLINT_DEFAULT_FONT` 或在 `.slint` 中导入字体资源。
 
 Cargo.lock 不固定外部 path 依赖的 Git 提交，构建环境需同时保持指定 Slint 源码。该版本还修复文字布局缓存淘汰时未通知重绘依赖的问题：否则持续动画后切页可能保留旧标题，而完整截图仍显示新标题。展示应用的保留缓冲回归见 `test-app/tests/showcase_repaint.rs`。缓存容量限制仍保持不变。
 
 该源码还修复软件 renderer 的旋转截图：原生 `Window::take_snapshot()` 按窗口逻辑方向绘制，随后恢复面板旋转及 repaint 模式，避免 90°/270° 的 stride 断言以及 180° 截图倒置。`test-app/tests/rotation_snapshot.rs` 对四个旋转方向比较完整截图，并核对截图前后物理缓冲绘制一致；X9 原生 MCP 使用同一修复。旋转输出的 SVG 使用旋转前的目标尺寸栅格化，再由纹理路径旋转；避免 90°/270° 先交换栅格尺寸造成二次缩放和边缘失真。相同回归还比较四个方向的 PNG/SVG 全图像素。
+
+该源码对 90°/270°、宽高均不少于 64 像素的 RGB/RGBA 纹理按 32×32 块调用原采样与混合函数，提高源图列读取的缓存局部性；不增加纹理缓存或修改采样坐标。软件 renderer 的 `texture_tiles_tests` 对照旧扫描行路径，覆盖格式、旋转、缩放、透明度、着色和脏区裁剪。X9 阶段耗时与整机复测见 [优化报告](x9-optimization.md)。
 
 该 Slint 版本还缓存运行时 SVG 的栅格结果：按解析源的弱引用身份和请求的物理尺寸匹配，每个源保留一个尺寸，最多 32 项、像素预算 2 MiB。尺寸或源改变会重新栅格化，超预算结果直接返回而不缓存；缓存不保留解析源树，失效源在插入时清除。返回像素仍采用共享缓冲的写时复制语义。没有 `std` 的构建沿用原有直接栅格化路径。
 

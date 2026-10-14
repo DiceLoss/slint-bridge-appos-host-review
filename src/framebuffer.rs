@@ -257,6 +257,30 @@ impl Layout {
                 std::slice::from_raw_parts_mut(destination.as_mut_ptr().cast::<u32>(), source.len())
             };
             if self.channels.map(|c| (c.offset, c.length)) == [(16, 8), (8, 8), (0, 8), (24, 8)] {
+                if self.alpha_max == 255
+                    && source.len() >= 16
+                    && source.as_ptr().align_offset(4) == 0
+                {
+                    // SAFETY: repr(C) RGBA has four initialized bytes per pixel;
+                    // the source is aligned, read-only, and separate from words.
+                    let rgba = unsafe {
+                        std::slice::from_raw_parts(source.as_ptr().cast::<u32>(), source.len())
+                    };
+                    let alpha_mask = u32::from_le(0xff00_0000);
+                    if rgba.iter().fold(u32::MAX, |bits, pixel| bits & pixel) & alpha_mask
+                        == alpha_mask
+                    {
+                        // Hoist opacity out of the pixel loop so the compiler
+                        // can vectorize the common opaque RGBA-to-BGRA copy.
+                        for (word, pixel) in words.iter_mut().zip(rgba) {
+                            let pixel = u32::from_le(*pixel);
+                            *word = (pixel & 0xff00_ff00)
+                                | ((pixel & 0xff) << 16)
+                                | ((pixel >> 16) & 0xff);
+                        }
+                        return;
+                    }
+                }
                 for (word, pixel) in words.iter_mut().zip(source) {
                     let [r, g, b, a] = self.output_rgba(*pixel);
                     *word = (u32::from(a) << 24)
@@ -335,6 +359,72 @@ mod row_tests {
                     [expected, expected, expected, alpha],
                     "channel={value} alpha={alpha}"
                 );
+            }
+        }
+    }
+
+    #[test]
+    fn opaque_rows_and_transparent_fallback_preserve_pixels_and_guards() {
+        let (fixed, variable) = crate::tests::info(80, 1, 32);
+        let mut layout = Layout::new(&fixed, &variable).unwrap();
+        for length in [0, 1, 15, 16, 17, 31, 32, 33, 63, 64, 65] {
+            for source_offset in 0..4 {
+                let mut storage = vec![0u8; length * 4 + 4];
+                // SAFETY: repr(C) RGBA has byte alignment, accepts any byte
+                // pattern, and the initialized range holds exactly length pixels.
+                let source = unsafe {
+                    std::slice::from_raw_parts_mut(
+                        storage
+                            .as_mut_ptr()
+                            .add(source_offset)
+                            .cast::<PremultipliedRgbaColor>(),
+                        length,
+                    )
+                };
+                for (i, pixel) in source.iter_mut().enumerate() {
+                    *pixel = PremultipliedRgbaColor {
+                        red: (i * 37) as u8,
+                        green: (i * 53) as u8,
+                        blue: (i * 71) as u8,
+                        alpha: 255,
+                    };
+                }
+                for alpha_max in [128, 255] {
+                    layout.alpha_max = alpha_max;
+                    for changed_alpha in [255, 254, 128, 1, 0] {
+                        if let Some(last) = source.last_mut() {
+                            last.alpha = changed_alpha;
+                        }
+                        for offset in 0..8 {
+                            let mut bytes = vec![0xa5; length * 4 + 16];
+                            let mut expected = bytes.clone();
+                            for (i, pixel) in source.iter().enumerate() {
+                                let straight = |value: u8| {
+                                    if pixel.alpha == 0 {
+                                        0
+                                    } else {
+                                        ((u32::from(value) * 255 + u32::from(pixel.alpha) / 2)
+                                            / u32::from(pixel.alpha))
+                                        .min(255)
+                                    }
+                                };
+                                let alpha =
+                                    (u32::from(pixel.alpha) * u32::from(alpha_max) + 127) / 255;
+                                let word = alpha << 24
+                                    | straight(pixel.red) << 16
+                                    | straight(pixel.green) << 8
+                                    | straight(pixel.blue);
+                                expected[offset + i * 4..offset + i * 4 + 4]
+                                    .copy_from_slice(&word.to_ne_bytes());
+                            }
+                            layout.write_row(source, &mut bytes[offset..offset + length * 4]);
+                            assert_eq!(
+                                bytes, expected,
+                                "length={length} source={source_offset} dest={offset} alpha={changed_alpha} max={alpha_max}"
+                            );
+                        }
+                    }
+                }
             }
         }
     }

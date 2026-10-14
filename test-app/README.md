@@ -221,3 +221,5 @@ MCP 不能替代 evdev 解码、物理页所有权、TDE/DMA 失败及实际扫�
 `nx5-tde` 的等尺寸 RGBA 图像现支持整体透明度，透明度变化会重新准备源缓存。已有 Media 展示中的缩放图片仍走软件回退；完整支持边界见 [平台说明](../docs/software-platform.md)，不能用滑块操作或 MCP 截图代替硬件命中检查。
 
 需要比较纯色填充时，在上述设备启动命令前加 `SLINT_BRIDGE_TDE_FILL=1 SLINT_BRIDGE_TRACE=1`；TDE 统计行的 `fill` 显示硬件填充次数。正常运行不设置此变量，保留本板实测更快的 CPU 填充。初次接入见 [填充/混合报告](../docs/nx5-fill-blend.md)，当前共享 MMZ 路径的填充复测见 [共享画布报告](../docs/nx5-shared-canvas.md)。
+
+X9 富列表的离屏阶段对照入口为 `examples/x9-render-bench.rs`，构建、参数和测量边界见 [X9 绘制阶段对照](tools/x9/README.md#绘制阶段对照)。它使用同一 Showcase 界面与软件 renderer，通过 0°/90° 对照定位旋转成本，不访问显示设备。

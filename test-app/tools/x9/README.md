@@ -76,3 +76,18 @@ cc -std=c11 -O2 -Wall -Wextra -Werror -DPROBE_TEST \
 ./target/x9-count-test
 python3 -m unittest discover -s test-app/tools/x9 -p 'test_performance.py' -v
 ```
+
+## 绘制阶段对照
+
+`test-app/examples/x9-render-bench.rs` 在同一 X9 CPU 上运行真实 Showcase 富列表，但不打开 framebuffer、输入或 SDK。参数为 `0|90 vertical|horizontal 帧数 [新输出.rgba]`；先定位到列表内部，预热 20 帧，再每帧固定滚动 8 个逻辑像素，输出事件处理、render 耗时和脏像素面积。帧数允许 1–300，末尾输出全图 FNV 摘要，可另存 RGBA 作逐字节对照。
+
+```sh
+SLINT_EMIT_DEBUG_INFO=1 cargo --config .cargo/x9.toml build --locked --offline --release \
+  --target arm-unknown-linux-gnueabihf --features fbdev,slint/mcp \
+  -p slint-bridge-test-app --example x9-render-bench
+# 上传后在 X9 root 会话运行，每个输出路径必须尚不存在：
+SLINT_DEFAULT_FONT=RUN_DIR/DejaVuSans.ttf RUN_DIR/x9-render-bench \
+  90 vertical 60 RUN_DIR/vertical-90.rgba > RUN_DIR/vertical-90.csv
+```
+
+同轴 90° 与 0° 的 render 差用于估计旋转增加的 CPU 成本；软件 renderer 将旋转融合在采样过程中，该差值不是一次独立全屏旋转复制的耗时。它不包含实际写页、提交和 MCP 手势，不能换算为正式应用 FPS。对照必须保持 ELF 构建配置、字体、帧数和动作一致；正式 FPS/CPU/RSS 仍使用上一节的方法。
