@@ -1,24 +1,13 @@
 {
-  "current_binary": "/tmp/slint-bridge-scaling-abb2e33/showcase",
-  "recovery_binary": "/tmp/slint-bridge-horizontal-3892780/showcase",
+  "current_binary": "/run/slint-bridge-rich-8d6bd47/showcase",
+  "recovery_binary": "/tmp/slint-bridge-scaling-abb2e33/showcase",
   "keep": [
-    "/tmp/slint-bridge-c03c3bb/start-live.sh",
     "/tmp/slint-bridge-c03c3bb/lib",
     "/tmp/slint-bridge-c03c3bb/dev",
     "/run/slint-bridge-display/DejaVuSans.ttf",
     "/run/slint-bridge-display/DejaVu-font-license.txt",
-    "/run/slint-bridge-display/adbd.log",
-    "/run/slint-bridge-display/dhcp.log",
-    "/tmp/slint-bridge-clean-c087071/start-live.sh",
-    "/tmp/slint-bridge-clean-c087071/live-final.log",
-    "/tmp/slint-bridge-input-a0e880c/start-live.sh",
-    "/tmp/slint-bridge-input-a0e880c/live-after-release-ab.log",
-    "/tmp/slint-bridge-clean-c087071/showcase",
-    "/tmp/slint-bridge-horizontal-3892780/start-live.sh",
-    "/tmp/slint-bridge-horizontal-3892780/live-final.log",
-    "/tmp/slint-bridge-input-a0e880c/showcase",
     "/tmp/slint-bridge-scaling-abb2e33/start-live.sh",
-    "/tmp/slint-bridge-scaling-abb2e33/live-final.log",
-    "/tmp/slint-bridge-scaling-abb2e33/live-after-format-profile.log"
+    "/run/slint-bridge-rich-8d6bd47/start-live.sh",
+    "/run/slint-bridge-rich-8d6bd47/live-final.log"
   ]
 }

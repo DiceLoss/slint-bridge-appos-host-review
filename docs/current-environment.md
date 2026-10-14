@@ -1,5 +1,13 @@
 # NX5 最近环境记录
 
+2026-10-14 富内容长列表收尾：当前为 `8d6bd47` + Slint `22804ff`，路径 `/run/slint-bridge-rich-8d6bd47/showcase`，观测 PID **2264**，日志 `live-final.log`。第八页 Rich list 停留纵向起点，Controls 保留 48%；无退出定时器、trace、事件录制、回放器或 WBC。
+
+新页含 100 项渐变阴影 PNG、运行时 SVG 小图标和文本，纵向可滚动 11652 px、横向 24788 px。当前启动实测纵向 **12.43 FPS / 94.89% CPU / 17.86 MiB 平均 RSS**，横向 **11.53 FPS / 95.72% CPU / 18.20 MiB 平均 RSS**。两方向分别采样 CPU/RSS 与完成提交 FPS；原生 MCP 通过完整范围和六张实机截图，两个物理页条带共 102400 像素与同板截图最大通道差 1。TDE 每绘制帧约 1 次复制、1.25–1.62 次混合，纹理缓存命中约 37%–38%；没有将调用计数换算为硬件忙碌率。方法见[富内容列表报告](nx5-rich-list.md)。
+
+用户报告重启后重新部署，最终启动 ID 为 `4aa4f5d2-8de2-42cb-9c2b-44c3e74d6e2b`，重启原因未判定。旧 tmpfs 副本已随重启消失，本次恢复最新程序和 `abb2e33` 回退；SDK 使用与原副本同摘要的系统文件。五个新启动下的有限进程正常退出，47 个诊断文件校验归档清理。当前 RSS 18752 KiB、VmHWM 23516 KiB（含截图峰值）、MMZ 12100 KiB / 5 块，可用内存 39540 KiB；`/tmp` 使用 10344 KiB、`/run` 使用 11348 KiB。操作前重新核对身份、实际 PID 和显示所有者。
+
+## 2026-10-14 单格式缩放收尾（历史）
+
 2026-10-14 PNG / SVG 单独缩放测量收尾：正式程序仍为 `abb2e33` + Slint `22804ff`，路径 `/tmp/slint-bridge-scaling-abb2e33/showcase`，恢复后观测 PID **7333**，日志 `live-after-format-profile.log`。Image scaling 恢复为左右双图 100%，Controls 保留 48%；无退出定时器、trace、录制、回放或 WBC。
 
 单 PNG 为 **28.99 FPS / 65.23% CPU / 13.49 MiB 平均 RSS**，单 SVG 为 **28.06 FPS / 84.38% CPU / 14.83 MiB 平均 RSS**；同一诊断构建的双图为 25.99 FPS，空图对照为 28.96 FPS。CPU 为关闭 trace 的单核占比，FPS 使用独立进程。临时诊断仅改变图片选择与测试文案，正式源码已恢复；方法与归因限制见[单格式缩放报告](nx5-scaling-formats.md)。

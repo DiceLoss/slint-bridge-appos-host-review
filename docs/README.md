@@ -17,6 +17,7 @@
 
 | 记录 | 内容 |
 | --- | --- |
+| [富内容长列表测试](nx5-rich-list.md) | 第八页、100 项渐变阴影 PNG 与运行时 SVG/文本、横纵大范围滚动及 CPU/RSS/FPS |
 | [PNG / SVG 单独缩放开销](nx5-scaling-formats.md) | 同位置单格式/空图/双图 CPU、RSS、独立完成提交 FPS，以及正式界面恢复核验 |
 | [PNG / SVG 运行时缩放](nx5-runtime-scaling.md) | 独立第七页、运行时原图缩放、透明/裁剪与保留缓冲回归、NX5 实测 |
 | [横向多屏滑动测试](nx5-horizontal-scroll.md) | 18 张横向卡片、双向边界与误触回归、自动 evdev、当前版 CPU/RSS 与持续运动帧率 |
