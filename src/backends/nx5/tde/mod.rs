@@ -217,7 +217,7 @@ pub(crate) struct Buffer {
     width: u32,
     height: u32,
     engine: Option<Box<dyn Accelerator>>,
-    keys: [Option<CachedTexture>; 2],
+    keys: [Option<CachedTexture>; 3],
     fatal: Option<Failure>,
     pub stats: Stats,
     frames: u64,
@@ -233,7 +233,9 @@ impl Buffer {
         let result = match native::Native::new(width, height) {
             Ok((engine, canvas)) => {
                 let pixels = Pixels::Mmz(canvas);
-                eprintln!("slint-bridge: TDE enabled; shared cached MMZ canvas + two source slots");
+                eprintln!(
+                    "slint-bridge: TDE enabled; shared cached MMZ canvas + two full source slots and one compact slot"
+                );
                 Self::with_pixels(width, height, pixels, Some(Box::new(engine)))
             }
             Err(code) => {
@@ -277,7 +279,7 @@ impl Buffer {
             width,
             height,
             engine,
-            keys: [None, None],
+            keys: [None, None, None],
             fatal: None,
             stats: Stats::default(),
             frames: 0,
@@ -349,7 +351,7 @@ impl Buffer {
         // The canvas retains MMZ ownership after acceleration is disabled.
         // Native context destruction also retains unknown DMA allocations.
         self.engine = None;
-        self.keys = [None, None];
+        self.keys = [None, None, None];
     }
 
     fn fill(&mut self, color: PremultipliedRgbaColor, rects: &[Rect]) -> bool {
@@ -454,12 +456,17 @@ impl Buffer {
                 })
             })
         });
+        let canvas_pixels = u64::from(self.width) * u64::from(self.height);
+        let padded_pixels = (u64::from(self.width) + 4) * (u64::from(self.height) + 2);
+        let compact_pixels = canvas_pixels / 4 + padded_pixels - canvas_pixels;
+        let source_pixels = (u64::from(source.width) + 4) * (u64::from(source.height) + 2);
         // Use empty slots first, then older-frame sources. Within one frame,
         // preserve a larger upload instead of evicting it for small foregrounds.
         let slot = cached.unwrap_or_else(|| {
             self.keys
                 .iter()
                 .enumerate()
+                .filter(|(slot, _)| *slot < 2 || source_pixels <= compact_pixels)
                 .min_by_key(|(_, entry)| {
                     entry.as_ref().map(|entry| (entry.last_frame, entry.pixels))
                 })

@@ -2,6 +2,7 @@ import { DeviceRow } from "models.slint";
 import { Label, Caption, Heading, Card, Action } from "widgets.slint";
 
 component RichItem inherits Rectangle {
+    clip: true;
     in property <DeviceRow> entry;
     in property <image> background-image;
     in property <image> icon;

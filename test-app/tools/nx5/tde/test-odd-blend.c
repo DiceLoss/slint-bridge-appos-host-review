@@ -9,15 +9,17 @@ static FY_S32 odd_end(TDE_HANDLE j, FY_BOOL s, FY_BOOL b, FY_U32 t) {
 }
 static FY_S32 odd_blit(TDE_HANDLE j, TDE2_SURFACE_S *bg, TDE2_RECT_S *br,
     TDE2_SURFACE_S *fg, TDE2_RECT_S *fr, TDE2_SURFACE_S *dst, TDE2_RECT_S *dr, TDE2_OPT_S *opt) {
-    (void)bg; (void)br; (void)opt; assert(j==11);
+    (void)bg; (void)br; assert(j==11);
+    assert(opt->enOutAlphaFrom == TDE2_OUTALPHA_FROM_BACKGROUND);
     assert(!((fr->s32Xpos | fr->s32Ypos | dr->s32Xpos | dr->s32Ypos | fr->u32Width | fr->u32Height) & 1));
     assert(fr->u32Width==dr->u32Width && fr->u32Height==dr->u32Height);
     ++odd_blits;
     for (unsigned y=0;y<dr->u32Height;++y) for(unsigned x=0;x<dr->u32Width;++x) {
         uint8_t *d=(uint8_t *)odd_engine->target.ptr+(dr->s32Ypos+y)*dst->u32Stride*4+(dr->s32Xpos+x)*4;
-        const uint8_t *s=(uint8_t *)odd_engine->source[0].ptr+(fr->s32Ypos+y)*fg->u32Stride*4+(fr->s32Xpos+x)*4;
+        unsigned slot = fg->u32PhyAddr == 2 ? 2 : 0;
+        const uint8_t *s=(uint8_t *)odd_engine->source[slot].ptr+(fr->s32Ypos+y)*fg->u32Stride*4+(fr->s32Xpos+x)*4;
         for(unsigned c=0;c<3;++c) d[c]=s[c]+d[c]*(255-s[3])/255;
-        d[3]=0; /* Native must restore opaque alpha after known completion. */
+        /* The mock preserves the opaque background alpha, as requested. */
     }
     return 0;
 }
@@ -70,6 +72,18 @@ static void test_odd_blend(void) {
     assert(bridge_tde_draw(&e,source,20,12,80,1,255,0,1,regions,2,&multi_error)==1);
     assert(!multi_error && odd_jobs==1 && odd_blits==2);
     assert(!memcmp(e.target.ptr,expected,sizeof expected));
+    /* The compact third slot admits padded small sources and rejects full-size uploads. */
+    e.source[2].phy=2;e.source[2].ptr=malloc(source_capacity(&e,2));
+    for(unsigned i=0;i<32*24;++i) memcpy(expected+i*4,base,4);
+    memcpy(e.target.ptr,expected,sizeof expected);memset(source,127,sizeof source);
+    BridgeRect compact={0,0,3,3,16,8};int compact_error;
+    for(unsigned y=3;y<11;++y) for(unsigned x=3;x<19;++x) memcpy(expected+(y*32+x)*4,mixed,4);
+    odd_jobs=odd_blits=0;
+    assert(bridge_tde_draw(&e,source,20,12,80,1,255,2,1,&compact,1,&compact_error)==1);
+    assert(odd_jobs==1 && odd_blits==1 && !memcmp(e.target.ptr,expected,sizeof expected));
+    assert(bridge_tde_draw(&e,source,32,24,128,1,255,2,1,&compact,1,&compact_error)==2);
+    assert(odd_jobs==1 && !memcmp(e.target.ptr,expected,sizeof expected));
+    puts("PASS compact source slot: padded upload, exact pixels, oversized source rejected before access/job");
     /* An unknown completion must not touch the CPU fringes. */
     for(unsigned i=0;i<32*24;++i) memcpy((uint8_t *)e.target.ptr+i*4,base,4);
     memset(source,127,sizeof source);
@@ -82,6 +96,6 @@ static void test_odd_blend(void) {
             for(unsigned c=0;c<4;++c) assert(((uint8_t *)e.target.ptr)[(y*32+x)*4+c]==base[c]);
     odd_wait_failure=0;
     /* The mock has no DMA; real quarantined allocations are never freed. */
-    free(e.target.ptr);free(e.source[0].ptr);
+    free(e.target.ptr);free(e.source[0].ptr);free(e.source[2].ptr);
     printf("PASS odd blend: %u parity/clip/opacity cases, exact pixels and outside-clip guards\n",cases);
 }

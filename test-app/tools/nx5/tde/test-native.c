@@ -28,7 +28,10 @@ static FY_S32 blend(TDE_HANDLE job, TDE2_SURFACE_S *bg, TDE2_RECT_S *br,
     assert(opt->stBlendOpt.bPixelAlphaEnable && !opt->stBlendOpt.bGlobalAlphaEnable);
     assert(!opt->stBlendOpt.bSrc2AlphaPremulti);
     for (unsigned i = 0; i < 64; ++i) assert(((uint8_t *)current->source[0].ptr)[i] == 127);
-    return copy(job, fg, fr, d, dr);
+    assert(opt->enOutAlphaFrom == TDE2_OUTALPHA_FROM_BACKGROUND);
+    int result = copy(job, fg, fr, d, dr);
+    if (!fault) for (unsigned i=3;i<current->bytes;i+=4) ((uint8_t *)current->target.ptr)[i]=255;
+    return result;
 }
 static FY_S32 flush(FY_U32 p,FY_VOID *v,FY_U32 n) {
     (void)p;(void)v;assert(n); ++flushes;
@@ -44,6 +47,31 @@ static FY_S32 free_mmz(FY_U32 p,FY_VOID *v) {
 }
 static void close_tde(void) { ++closes; }
 #include "test-odd-blend.c"
+static void test_alpha_spans(void) {
+    for (unsigned count = 0; count <= 65; ++count) for (unsigned shift = 0; shift < 16; ++shift) {
+        uint8_t actual[65 * 4 + 32], expected[65 * 4 + 32];
+        for (unsigned i = 0; i < sizeof actual; ++i) actual[i] = (i * 29 + 17) % 256;
+        for (unsigned i = 0; i < count; ++i) actual[shift + i * 4 + 3] = 255;
+        memcpy(expected, actual, sizeof actual);
+        assert(pixels_are_opaque(actual + shift, count));
+        for (unsigned at = 0; at < count; ++at) {
+            for (unsigned alpha = 0; alpha < 255; ++alpha) {
+                actual[shift + at * 4 + 3] = alpha;
+                assert(!pixels_are_opaque(actual + shift, count));
+            }
+            actual[shift + at * 4 + 3] = 255;
+        }
+        assert(!memcmp(actual, expected, sizeof actual));
+        uint8_t source[65 * 4 + 32];
+        for (unsigned i = 0; i < sizeof source; ++i) source[i] = (i * 31 + shift) % 256;
+        memset(actual, 0xa5, sizeof actual); memcpy(expected, actual, sizeof actual);
+        memcpy(expected + shift, source + shift, count * 4);
+        bridge_prepare_rgba(actual + shift, source + shift, count, 1, 255);
+        assert(!memcmp(actual, expected, sizeof actual));
+    }
+    puts("PASS alpha spans lengths=0..65 alignments=0..15, all nonopaque alpha/positions, RGB and guards unchanged");
+}
+
 static void test_span_blending(void) {
     for (unsigned alpha = 0; alpha < 256; ++alpha) {
         uint8_t color[4] = {alpha, alpha / 2, 0, alpha};
@@ -135,6 +163,8 @@ int main(int argc, char **argv) {
         test_sdk_loading();
         return 0;
     }
+    printf("CPU backend NEON=%d\n", bridge_neon_available());
+    test_alpha_spans();
     test_span_blending();
     test_odd_blend();
     test_prepare_rgba();
@@ -239,13 +269,13 @@ int main(int argc, char **argv) {
         frees=closes=0; in_use=1;
         Engine *e=calloc(1,sizeof(*e));
         e->api.FY_MPI_SYS_MmzFree=free_mmz; e->api.FY_TDE2_Close=close_tde; e->opened=1;
-        e->target.ptr=malloc(64); e->source[0].ptr=malloc(64); e->source[1].ptr=malloc(64);
+        e->target.ptr=malloc(64); e->source[0].ptr=malloc(64); e->source[1].ptr=malloc(64); e->source[2].ptr=malloc(64);
         bridge_tde_destroy(e);
-        assert(frees==3 && closes==1);
+        assert(frees==4 && closes==1);
         for (unsigned retry=0;retry<3;++retry) {
             int error;
             assert(!bridge_tde_create(4,4,&error) && error==-2);
-            assert(frees==3 && closes==1); /* No repeated release or new SDK use. */
+            assert(frees==4 && closes==1); /* No repeated release or new SDK use. */
         }
         printf("PASS MMZ release fault=%d blocks recreation without retrying addresses\n",free_fault);
         /* Test-only: no DMA/driver allocation; clean up the simulated leak. */

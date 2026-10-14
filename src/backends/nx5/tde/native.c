@@ -59,6 +59,10 @@ void bridge_blend_rgba(uint8_t *pixels, size_t count, const uint8_t *color) {
  * before premultiplication; premultiplied RGBA scales every channel directly. */
 void bridge_prepare_rgba(uint8_t *out, const uint8_t *source, size_t count,
     int premultiplied, uint8_t alpha) {
+    if (premultiplied && alpha == 255) {
+        memcpy(out, source, count * 4);
+        return;
+    }
 #ifdef __ARM_NEON
     while (count >= 8) {
         uint8x8x4_t p = vld4_u8(source);
@@ -204,17 +208,22 @@ typedef struct { uint32_t phy; void *ptr; uint32_t width, height, pitch, rows, p
 typedef struct {
     Api api;
     void *library;
-    Buffer target, source[2];
+    Buffer target, source[3];
     uint32_t width, height, bytes;
     int opened, quarantined;
 } Engine;
 static int in_use;
 
+static uint32_t source_capacity(const Engine *e, unsigned slot) {
+    uint32_t full = (uint32_t)(((uint64_t)e->width + 4) * ((uint64_t)e->height + 2) * 4);
+    return slot < 2 ? full : e->bytes / 4 + full - e->bytes;
+}
+
 void bridge_tde_destroy(Engine *e) {
     if (!e || e->quarantined) return; /* Retain MMZ, fd and dlopen ref on unknown DMA. */
     int release_failed = 0;
-    Buffer *buffers[] = { &e->source[0], &e->source[1], &e->target };
-    for (unsigned i = 0; i < 3; ++i) {
+    Buffer *buffers[] = { &e->source[0], &e->source[1], &e->source[2], &e->target };
+    for (unsigned i = 0; i < 4; ++i) {
         if (!buffers[i]->ptr) continue;
         int result = e->api.FY_MPI_SYS_MmzFree(buffers[i]->phy, buffers[i]->ptr);
         if (result) {
@@ -253,8 +262,8 @@ Engine *bridge_tde_create(uint32_t width, uint32_t height, int *error) {
     *error = e->api.FY_MPI_SYS_MmzAlloc_Cached(&e->target.phy, &e->target.ptr, "bridge_tde_target", NULL, e->bytes);
     if (*error || !e->target.ptr) goto fail;
     memset(e->target.ptr, 0, e->bytes);
-    for (unsigned i = 0; i < 2; ++i) {
-        *error = e->api.FY_MPI_SYS_MmzAlloc_Cached(&e->source[i].phy, &e->source[i].ptr, "bridge_tde_source", NULL, (uint32_t)source_bytes);
+    for (unsigned i = 0; i < 3; ++i) {
+        *error = e->api.FY_MPI_SYS_MmzAlloc_Cached(&e->source[i].phy, &e->source[i].ptr, "bridge_tde_source", NULL, source_capacity(e, i));
         if (*error || !e->source[i].ptr) goto fail;
     }
     *error = 0;
@@ -279,22 +288,27 @@ static TDE2_SURFACE_S surface(uint32_t phy, uint32_t width, uint32_t height) {
     return s;
 }
 
+static int pixels_are_opaque(const uint8_t *pixels, size_t count) {
+#ifdef __ARM_NEON
+    while (count >= 16) {
+        uint8x16x4_t rgba = vld4q_u8(pixels);
+        uint8x8_t alpha = vand_u8(vget_low_u8(rgba.val[3]), vget_high_u8(rgba.val[3]));
+        if (vget_lane_u64(vreinterpret_u64_u8(alpha), 0) != UINT64_MAX) return 0;
+        pixels += 64; count -= 16;
+    }
+#endif
+    for (size_t i = 0; i < count; ++i)
+        if (pixels[i * 4 + 3] != 255) return 0;
+    return 1;
+}
+
 /* Return the shared canvas to CPU only after successful wait and cache sync. */
 static int finish_job(Engine *e, TDE_HANDLE job,
-    const BridgeRect *rects, unsigned count, uint32_t first, uint32_t last,
-    int opaque, int *error) {
+    uint32_t first, uint32_t last, int *error) {
     *error = e->api.FY_TDE2_EndJob(job, FY_TRUE, FY_TRUE, 100); /* 1 second */
     if (*error) { e->quarantined = 1; return -2; } /* Cancel is invalid after EndJob. */
     *error = e->api.FY_MPI_SYS_MmzFlushCache(e->target.phy + first, (uint8_t *)e->target.ptr + first, last - first);
     if (*error) return -1; /* Retired, but the whole frame must be repainted. */
-    uint8_t *pixels = e->target.ptr;
-    for (unsigned i = 0; opaque && i < count; ++i) {
-        const BridgeRect *r = &rects[i];
-        for (uint32_t y = 0; y < r->height; ++y) {
-            size_t at = ((size_t)(r->dy + y) * e->width + r->dx) * 4;
-            for (uint32_t x = 0; x < r->width; ++x) pixels[at + x * 4 + 3] = 255;
-        }
-    }
     return 0;
 }
 
@@ -331,7 +345,7 @@ int bridge_tde_fill(Engine *e, uint32_t color,
             return -1;
         }
     }
-    return finish_job(e, job, rects, count, first, last, 0, error);
+    return finish_job(e, job, first, last, error);
 }
 
 /* At most a one-pixel fringe on each side; source is already premultiplied.
@@ -356,7 +370,8 @@ int bridge_tde_draw(Engine *e, const uint8_t *data,
     *error = 0;
     if (e->quarantined) return -2;
     if (!width || !height || width > e->width || height > e->height || (width & 3u) ||
-        (height & 1u) || stride < width * 4 || slot > 1 || !count || count > 16) return 2;
+        (height & 1u) || stride < width * 4 || slot > 2 || !count || count > 16) return 2;
+    if (((uint64_t)width + 4) * ((uint64_t)height + 2) * 4 > source_capacity(e, slot)) return 2;
     Buffer *src = &e->source[slot];
     const uint8_t *pixels = e->target.ptr;
     for (unsigned i = 0; i < count; ++i) {
@@ -424,8 +439,7 @@ int bridge_tde_draw(Engine *e, const uint8_t *data,
                 size_t at = ((size_t)(r->dy + y) * e->width + r->dx) * 4;
                 /* This profile blends only onto opaque UI pixels. Transparent
                  * destinations use Slint's exact alpha compositing in software. */
-                for (uint32_t x = 0; x < r->width; ++x)
-                    if (pixels[at + x * 4 + 3] != 255) return 2;
+                if (!pixels_are_opaque(pixels + at, r->width)) return 2;
             }
     }
     uint32_t first = (top * e->width * 4) & ~4095u;
@@ -448,7 +462,8 @@ int bridge_tde_draw(Engine *e, const uint8_t *data,
              * path does not match Slint's premultiplied RGB semantics. */
             opt.stBlendOpt.bSrc2AlphaPremulti = FY_FALSE;
             opt.bClutReload = FY_TRUE;
-            opt.enOutAlphaFrom = TDE2_OUTALPHA_FROM_NORM;
+            /* The admitted background is opaque; preserve its alpha in hardware. */
+            opt.enOutAlphaFrom = TDE2_OUTALPHA_FROM_BACKGROUND;
             *error = e->api.FY_TDE2_Bitblit(job, &d, &dr, &s, &sr, &d, &dr, &opt);
         }
         if (*error) {
@@ -456,7 +471,7 @@ int bridge_tde_draw(Engine *e, const uint8_t *data,
             return -1;
         }
     }
-    int result = finish_job(e, job, gpu, gpu_count, first, last, blend, error);
+    int result = finish_job(e, job, first, last, error);
     if (result < 0) return result;
     for (unsigned i = 0; blend && i < count; ++i) {
         const BridgeRect *r = &rects[i], *inner = &interiors[i];

@@ -32,6 +32,7 @@ test-app/
 ├── tests/showcase.rs          # 展示应用状态、筛选、表单及透明像素回归
 ├── tests/showcase_scaling.rs  # PNG/SVG 运行时缩放及保留缓冲像素回归
 ├── tests/showcase_repaint.rs  # 文字缓存淘汰后的保留缓冲标题刷新回归
+├── tests/showcase_rich_repaint.rs # 富列表双向裁剪、选择及屏外修改的保留缓冲回归
 ├── devices/nx5/               # 当前设备记录与构建/运行说明
 └── tools/
     ├── check-feature-matrix.py
@@ -107,7 +108,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | Image scaling | SVG/PNG 并排预览、50%～200% 缩放滑块、100% 复位 | 运行时尺寸与像素变化、非整数比例、透明边缘、放大裁剪、缩小后脏区清理 |
 | Rich list | 100 张含渐变阴影 PNG、运行时 SVG 图标及多行文本的卡片，横纵切换及回到起点 | 大范围持续滑动、边界夹紧、拖动误触、按稳定 ID 选中首末项 |
 
-Rich list 首次进入时才加载两套 PNG 底图和五个原始 SVG，并建立 100 项模型。1024×600 面板上可视区为 800×340；纵向总长 11992 px、可滚动 11652 px（约 34.3 屏），横向总长 25588 px、可滚动 24788 px（约 31.0 屏）。两套底图交替使用；每张卡片都含 32×32 SVG 主图标、16×16 SVG 箭头和文本，透明边缘与阴影参与合成。当前固定 100 个卡片实例，没有列表虚拟化；这是本例的负载范围，不代表无限列表的内存特性。方向切换回到起点，选择状态在离开页面后仍保留；侧栏导航高度为 44 px，以容纳八页。
+Rich list 首次进入时才加载两套 PNG 底图和五个原始 SVG，并建立 100 项模型。1024×600 面板上可视区为 800×340；纵向总长 11992 px、可滚动 11652 px（约 34.3 屏），横向总长 25588 px、可滚动 24788 px（约 31.0 屏）。两套底图交替使用；每张卡片都含 32×32 SVG 主图标、16×16 SVG 箭头和文本，透明边缘与阴影参与合成。每张卡片限定自身裁剪边界，使 renderer 跳过屏外子树，保留原图像、阴影、文字和命中区域。当前固定 100 个卡片实例，没有列表虚拟化；这是本例的负载范围，不代表无限列表的内存特性。方向切换回到起点，选择状态在离开页面后仍保留；侧栏导航高度为 44 px，以容纳八页。
 
 Controls 预览圆环从顶部顺时针显示配置百分比：0% 只显示底轨，100% 显示完整着色环。关闭输出时仍保留配置进度，并改用灰色；下方线性 Meter 显示关闭后的零输出。修复与设备验证见 [圆环报告](../docs/nx5-controls-ring.md)。
 
@@ -147,7 +148,7 @@ python3 test-app/tools/check-showcase.py --binary target/debug/showcase \
 
 稳定 ID 为 `RichList::listing`、`rich-item`、`orientation-toggle`、`start-button`（均带 `RichList::` 前缀）。
 
-`tests/showcase.rs` 使用 Slint 内存软件窗口检查表单校验、状态保留、重置取消、键盘编辑、列表筛选、稳定 ID、日志上限及透明开口的实际 RGBA 像素。`tests/showcase_scaling.rs` 在同一个保留缓冲 renderer 中依次切换 50%→100%→125%→200%→125%→50%→100%，检查原始素材尺寸固定、PNG/SVG 实际色块随缩放变化，并与独立全量重绘逐像素对照，覆盖缩小后的残留清除。`tests/showcase_repaint.rs` 另外通过确定性的文字模型更新和独立参考 renderer，验证缓存淘汰后切页标题仍刷新；不会用截图清空被测 renderer 的缓存。默认 feature 矩阵包含这些测试；MCP 交互检查单独运行。这些检查均不代替 evdev、TDE/DMA、物理双页和扫描输出验证。
+`tests/showcase.rs` 使用 Slint 内存软件窗口检查表单校验、状态保留、重置取消、键盘编辑、列表筛选、稳定 ID、日志上限及透明开口的实际 RGBA 像素。`tests/showcase_scaling.rs` 在同一个保留缓冲 renderer 中依次切换 50%→100%→125%→200%→125%→50%→100%，检查原始素材尺寸固定、PNG/SVG 实际色块随缩放变化，并与独立全量重绘逐像素对照，覆盖缩小后的残留清除。`tests/showcase_repaint.rs` 另外通过确定性的文字模型更新和独立参考 renderer，验证缓存淘汰后切页标题仍刷新；不会用截图清空被测 renderer 的缓存。`tests/showcase_rich_repaint.rs` 比较 25 个横纵滚动、奇数/小数偏移、首末端、选中、屏外模型修改及重新进入状态的保留缓冲与独立全量重绘，并验证滚动确实改变画面、屏外修改不改变当前画面。默认 feature 矩阵包含这些测试；MCP 交互检查单独运行。这些检查均不代替 evdev、TDE/DMA、物理双页和扫描输出验证。
 
 界面固定使用 Fluent 标准控件，图标以 SVG 数据嵌入二进制；测试工程启用同源 `i-slint-core` 的图像/SVG 解码能力，不引入桌面或 GPU 后端。图片背景使用编译时嵌入的 [coastal-background.png](ui/assets/coastal-background.png)，保留的源图为 1638×960 PNG；构建脚本在主机将它转换为 1024×600 RGBA PNG 后嵌入，默认面板不再反复缩放背景，且满足 TDE 复制的尺寸/格式条件。独立 Image scaling 页另用两份未经构建期变换的 256×160 原始 PNG/SVG，运行时加载后由同一尺寸滑块缩放；它与背景优化分开。其他窗口尺寸仍按 `cover` 适配；生成来源与提示词见 [素材说明](ui/assets/README.md)。动画区复用同一图片，卡片与列表行采用半透明底色，保证动画/滚动时图片实际参与绘制。径向 alpha 叠加图仍由 Rust 生成；Layers 透明开口会隐藏背景图片。无需另行部署素材文件，字体仍按设备说明提供。
 

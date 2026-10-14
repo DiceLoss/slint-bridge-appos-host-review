@@ -252,7 +252,7 @@ fn several_foregrounds_do_not_evict_the_large_background_each_frame() {
     struct Uploads {
         background: usize,
         foreground: usize,
-        slots: [Vec<u8>; 2],
+        slots: [Vec<u8>; 3],
     }
     struct Probe(Rc<std::cell::RefCell<Uploads>>);
     impl Accelerator for Probe {
@@ -300,6 +300,11 @@ fn several_foregrounds_do_not_evict_the_large_background_each_frame() {
         1,
         "stable large background must survive smaller images in the same frame"
     );
+    assert_eq!(
+        uploads.borrow().foreground,
+        16,
+        "each small source should upload once per changed phase, not once per use"
+    );
     // A large image that stops being used must yield its slot to the active set.
     scene.set_show_backdrop(false);
     scene.set_offset(0.);
@@ -318,7 +323,7 @@ fn changing_foreground_keeps_recent_background_texture_cached() {
         background: usize,
         foreground: usize,
         bytes: usize,
-        slots: [Vec<u8>; 2],
+        slots: [Vec<u8>; 3],
     }
     struct CacheProbe(Rc<RefCell<Uploads>>);
     impl Accelerator for CacheProbe {
