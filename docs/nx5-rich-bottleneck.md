@@ -60,6 +60,8 @@ TDE 完整绘制计数窗口两个方向各 1500 帧，混合分别为 3.04 / 3.
 
 诊断阶段设置的两个方向至少 15 FPS 检查线由基线失败转为正式版通过。帧率仍低于板级约 29 FPS 的提交上限；剩余脏区计算、软件绘制和同步 TDE 工作保留，未宣称消除所有瓶颈。完整窗口与计数见 `*-resources/`、`*-fps/`、`results.json` 和 `tde-counters.json`。
 
+后续针对脏区、SVG 和 TDE CPU 路径继续优化，见[脏区与绘制报告](nx5-rich-render.md)。本报告保留本阶段测量与部署口径。
+
 ## 常驻与证据
 
 常驻程序 `/tmp/slint-bridge-rich-cache-1225593/showcase`，SHA256 `7ede47e1555804ba075fc5697c93b03d6778e8b71ad4152dc594396e344b4b3b`，观测 PID **3102**。同目录 `start.sh` 清除诊断环境变量且不带退出定时器，日志为 `live.log`。Rich list 已恢复纵向起点、Controls 48%。直接回退为 `/tmp/slint-bridge-odd-b1164e4/showcase` 和其 `start.sh`；更早的 `8d6bd47`、`abb2e33` 二进制、启动脚本与原保留日志继续保留。回退前重新核对设备、实际所有者，结束当前进程并确认 VO 关闭、MMZ 基线和独占锁释放，不能照抄观测 PID。

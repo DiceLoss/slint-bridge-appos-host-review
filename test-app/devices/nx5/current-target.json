@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-14T09:26:45.379992+00:00",
+  "checked_at_utc": "2026-10-14T11:53:31.721728+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -46,7 +46,7 @@
     ],
     "pan": [
       0,
-      600
+      0
     ],
     "vo_device_enabled": true,
     "initialization_error_observed": "gui layer region(0,0,1024,600) cannot exceed frame region(0,0)",
@@ -140,8 +140,8 @@
     }
   ],
   "running_ui": {
-    "path": "/tmp/slint-bridge-rich-cache-1225593/showcase",
-    "pid": 3102,
+    "path": "/tmp/slint-bridge-rich-render-2fddc04/showcase",
+    "pid": 6607,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -151,12 +151,12 @@
       "--framebuffer=/tmp/slint-bridge-c03c3bb/dev/panel",
       "--touch=/tmp/slint-bridge-c03c3bb/dev/touch"
     ],
-    "sha256": "7ede47e1555804ba075fc5697c93b03d6778e8b71ad4152dc594396e344b4b3b",
+    "sha256": "e2a0f1245c3a471329091f215b68311f16362db954837901e63b4fcc53449f39",
     "frame_interval_us": 16667,
     "trace_enabled": false,
-    "last_observed_fps": 17.523713458508972,
-    "fps_evidence": "evidence/nx5-rich-bottleneck/2026-10-14/results.json",
-    "fps_note": "Same-boot 100-item rich-list native MCP comparison against b1164e4; separate trace-off CPU/RSS and completed-PAN FPS. Diagnostic phase timings are separate.",
+    "last_observed_fps": 27.515195450139476,
+    "fps_evidence": "evidence/nx5-rich-render/2026-10-14/final/results.json",
+    "fps_note": "Same-boot 100-item rich-list native MCP comparison against 1225593; separate trace-off CPU/RSS and completed-PAN FPS. Intermediate diagnostic timings are separate.",
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
@@ -164,7 +164,7 @@
       "forward": "adb -s 192.168.1.151:5555 forward tcp:19315 tcp:9315",
       "tools_available": 18,
       "tools_exercised": 10,
-      "verification": "evidence/nx5-rich-bottleneck/2026-10-14/ui-full/summary.json",
+      "verification": "evidence/nx5-rich-render/2026-10-14/final/ui-full/summary.json",
       "exercised_tools": [
         "list_windows",
         "get_window_properties",
@@ -177,44 +177,47 @@
         "take_screenshot",
         "set_element_value"
       ],
-      "screenshot_status": "Clean optimized NX5: both axes all 100 IDs, wide drags, full traversal, boundaries, stable-ID selection; guarded native snapshots. Physical strips captured at odd positions before same-device references.",
-      "restored_properties": "evidence/nx5-rich-bottleneck/2026-10-14/resident-restore-ui.json",
+      "screenshot_status": "Clean final NX5: both axes all 100 IDs, wide drags, full traversal, boundaries, stable-ID selection; six guarded native snapshots. Full physical pages captured at odd positions before same-device software references.",
+      "restored_properties": "evidence/nx5-rich-render/2026-10-14/final/resident-restore-ui.json",
       "latest_restore_verification": {
         "screenshots": [
-          "evidence/nx5-rich-bottleneck/2026-10-14/device-vertical.png",
-          "evidence/nx5-rich-bottleneck/2026-10-14/device-horizontal.png"
+          "evidence/nx5-rich-render/2026-10-14/final/device-vertical.png",
+          "evidence/nx5-rich-render/2026-10-14/final/device-horizontal.png"
         ],
-        "physical_comparison": "evidence/nx5-rich-bottleneck/2026-10-14/physical-comparison.json",
-        "physical_strip_pixels": 102400,
+        "physical_comparison": "evidence/nx5-rich-render/2026-10-14/final/physical-comparison.json",
+        "physical_pixels": 1228800,
         "maximum_channel_error": 1,
-        "full_frame_validation": false
+        "full_frame_validation": true,
+        "baseline_exact": true,
+        "alpha_exact": true,
+        "capture_phase": "finite final UI process; resident state verified separately"
       }
     },
-    "log": "/tmp/slint-bridge-rich-cache-1225593/live.log",
-    "source_commit": "1225593a9478746fec908707671f7219e520cc20",
+    "log": "/tmp/slint-bridge-rich-render-2fddc04/live.log",
+    "source_commit": "2fddc04b8816d70ae6a00712ddc215c02c696b7e",
     "fault_injection_enabled": false,
-    "source_state": "Two TDE source slots replace older-frame entries first, then smaller same-frame sources. Static large background stays cached; no additional MMZ. Generic runtime/UI/Slint/native TDE/SDK unchanged; all temporary profiling removed. Rich list vertical start, Controls 48; no timer/trace/recording/WBC.",
-    "source_manifest": "evidence/nx5-rich-bottleneck/2026-10-14/manifest.json",
+    "source_state": "100 rich items with root clip; bounded weak-identity SVG raster cache; direct premultiplied uploads; full target opacity check with NEON; NEON alpha restoration; two full source slots and one compact slot. Generic runtime and DMA/page completion contract unchanged. Rich list vertical start, Controls 48; no timer/trace/recording/WBC.",
+    "source_manifest": "evidence/nx5-rich-render/2026-10-14/final/manifest.json",
     "resources": {
-      "rss_kib": 18824,
-      "vm_hwm_kib": 23588,
-      "vm_peak_kib": 41624,
+      "rss_kib": 18904,
+      "vm_hwm_kib": 18904,
+      "vm_peak_kib": 37436,
       "threads": 3,
-      "mmz_used_kib": 12140,
-      "mmz_blocks": 5,
-      "mem_available_kib": 17364,
+      "mmz_used_kib": 12760,
+      "mmz_blocks": 6,
+      "mem_available_kib": 38692,
       "wbc_running": false
     },
     "runtime_source_sha256": "da7e30859b9dd07a76ade3a549bd35f028df85b0f1a9209d61b2ada8b3d0ab22",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "wake_source_sha256": "4c67e34b31870b5254b093ee17181bad74d0dda6b86a3af9bb5cc6bebda8256a",
-    "performance_manifest": "evidence/nx5-rich-bottleneck/2026-10-14/manifest.json",
-    "slint_source_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
+    "performance_manifest": "evidence/nx5-rich-render/2026-10-14/final/manifest.json",
+    "slint_source_commit": "9a1a3b14c454a751f9a804a5309a4eaae0faeded",
     "tde_fill_enabled": false,
-    "native_source_sha256": "a516057e1566dd31016e7ef9e64e0319f9ff4afb024154df291da0504028c6a0",
+    "native_source_sha256": "c5e9af6e6441b8a42785ab20937e4cd051e563ad557da10a7133a9ad82c5c0ee",
     "sdk_mapping": "same SHA256 system SDK via libVideoDec.so/SONAME links in configured library path"
   },
-  "status": "rich_source_cache_validated_resident",
+  "status": "rich_render_validated_resident",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -234,7 +237,8 @@
     "2026-10-13 TDE writeback investigation: required ABGR8888 conversion rejected; tested alternatives fail output semantics. Exact CPU/MMZ conversion + TDE framebuffer copy verified but slower for all 4 patterns. Runtime remains d34f436. Probe exited normally; old residents 6670/12062/14723 were separately SIGTERM-stopped. Restore command marker timeout was verified as a successful launch via /proc and MCP; no duplicate SDK start. New resident PID 17394, no timer or trace. Final strengthened sentinel check passed again; resident restored as PID 20127 after separately stopping 17394.",
     "2026-10-13 NEON: 4a2eda2 resident PID 6818, no timer/trace/WBC/observer. Exact integer 8-pixel conversion and separate opaque/clear runs; physical pixels verified. Initial opaque slowdown was rejected and fixed. Trace CPU outlier retained; adjacent no-trace old/new comparison found no regression. Shared-MMZ d34f436 kept for recovery; older fdb0f0e and finished diagnostics archived before cleanup. Finite 6663 exited normally; signal stops of residents recorded separately.",
     "2026-10-13 cleanup deployment: c087071 resident PID 12364; previous 4a2eda2 kept for rollback. Stripped binaries have identical SHA256. Finite PID 12253 exited normally; old PID 6818 SIGTERM and kernel reclaim recorded separately. 8 physical contacts matched; user confirmed display/touch. Seventeen finished diagnostic/older-recovery files archived and removed; no firmware/SDK/driver/network/boot-service changes.",
-    "2026-10-14 input-latency deployment: a0e880c resident PID 7241, c087071 kept for rollback. Full-alpha automatic input P95 16.88 -> 0.86 ms (1 ms MCP quantization); final showcase list 900 completed presentations at 29 FPS. Ordinary scene render/layout stalls remain. Initial slow replay and rejected initial-axis sample retained separately. Runtime instrumentation/prototype removed, 24 device artifacts archived/cleaned. No firmware, SDK, driver, Slint or boot-service change."
+    "2026-10-14 input-latency deployment: a0e880c resident PID 7241, c087071 kept for rollback. Full-alpha automatic input P95 16.88 -> 0.86 ms (1 ms MCP quantization); final showcase list 900 completed presentations at 29 FPS. Ordinary scene render/layout stalls remain. Initial slow replay and rejected initial-axis sample retained separately. Runtime instrumentation/prototype removed, 24 device artifacts archived/cleaned. No firmware, SDK, driver, Slint or boot-service change.",
+    "2026-10-14 rich render: 2fddc04 + Slint 9a1a3b1 validated and resident. One 1225593 recovery binary retained; older 8d6bd47, abb2e33 and b1164e4 binaries archived to host with SHA256 before removal. Prior signal-exit reclaims remain separate from the final clean validation window."
   ],
   "previous_serial_device": "/dev/ttyUSB2",
   "serial_recheck_evidence": "evidence/nx5-rich-list/2026-10-14/reboot-restore.json",
@@ -250,7 +254,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "Frame-aware and size-aware two-slot TDE source-cache replacement; host cache regression, independent hardware pixel and 100-frame double-page tests, rich-list both-axis traversal and separate CPU/RSS/FPS. Odd-position front-page strips; no new WBC, evdev or LCD scanout validation.",
+  "observation_scope": "Offscreen subtree culling, bounded SVG raster cache, TDE premultiplied copy, NEON opacity check, exact post-completion alpha restoration and compact source slot. Host exact full-frame comparisons, independent hardware tests, both-axis rich traversal, separate CPU/RSS/FPS, and full physical pages at odd positions. No new WBC, evdev or LCD scanout validation.",
   "hardware_regression": {
     "report": "docs/nx5-hardware.md",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -383,12 +387,12 @@
     }
   },
   "recovery_ui": {
-    "path": "/tmp/slint-bridge-odd-b1164e4/showcase",
-    "source_commit": "b1164e431cce33a394ec08bd020e4b8131d20327",
+    "path": "/tmp/slint-bridge-rich-cache-1225593/showcase",
+    "source_commit": "1225593a9478746fec908707671f7219e520cc20",
     "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
-    "sha256": "d7224ea8ba92447ccb7d62aec918fa7d574f78e8a37a3cebef223e5eaad1e245",
-    "startup_script": "/tmp/slint-bridge-odd-b1164e4/start.sh",
-    "procedure": "docs/nx5-rich-bottleneck.md#常驻与证据"
+    "sha256": "7ede47e1555804ba075fc5697c93b03d6778e8b71ad4152dc594396e344b4b3b",
+    "startup_script": "/tmp/slint-bridge-rich-cache-1225593/start.sh",
+    "procedure": "docs/nx5-rich-render.md#正式版性能与常驻"
   },
   "alpha_validation": {
     "report": "docs/nx5-alpha.md",
@@ -948,24 +952,6 @@
       }
     ]
   },
-  "additional_recovery_ui": [
-    {
-      "path": "/tmp/slint-bridge-scaling-abb2e33/showcase",
-      "source_commit": "abb2e334b2e9f29af2521f5dd12166a17e9f10cd",
-      "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
-      "sha256": "f5518f6e9bae9e49aa528f94a132675f9fec7e25aa46bb86195a509e1fb68dbf",
-      "startup_script": "/tmp/slint-bridge-scaling-abb2e33/start-live.sh",
-      "procedure": "docs/nx5-rich-list.md#常驻与证据"
-    },
-    {
-      "path": "/run/slint-bridge-rich-8d6bd47/showcase",
-      "source_commit": "8d6bd47493ca21fe17105df71f20c4679976431a",
-      "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
-      "sha256": "46c3ba46a0aeba6d5f664e197acfeada30b9f7ef699623aaf065e054249d6901",
-      "startup_script": "/run/slint-bridge-rich-8d6bd47/start-live.sh",
-      "procedure": "docs/nx5-odd-blend.md#常驻与证据"
-    }
-  ],
   "odd_blend_validation": {
     "report": "docs/nx5-odd-blend.md",
     "source_commit": "b1164e431cce33a394ec08bd020e4b8131d20327",
@@ -1287,5 +1273,152 @@
     "kernel_delta_lines": 100,
     "kernel_new_oom_or_forced_reclaims": 0,
     "resource_snapshot_phase": "before final diagnostic cleanup"
+  },
+  "archived_recovery_ui": [
+    {
+      "path": "/tmp/slint-bridge-scaling-abb2e33/showcase",
+      "source_commit": "abb2e334b2e9f29af2521f5dd12166a17e9f10cd",
+      "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
+      "sha256": "f5518f6e9bae9e49aa528f94a132675f9fec7e25aa46bb86195a509e1fb68dbf",
+      "startup_script": "/tmp/slint-bridge-scaling-abb2e33/start-live.sh",
+      "procedure": "docs/nx5-rich-list.md#常驻与证据",
+      "device_availability": "Binary archived and SHA256-verified on host, then removed from device; redeploy before recovery",
+      "host_archive": "evidence/nx5-rich-render/2026-10-14/archive-older/files/tmp/slint-bridge-scaling-abb2e33/showcase"
+    },
+    {
+      "path": "/run/slint-bridge-rich-8d6bd47/showcase",
+      "source_commit": "8d6bd47493ca21fe17105df71f20c4679976431a",
+      "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
+      "sha256": "46c3ba46a0aeba6d5f664e197acfeada30b9f7ef699623aaf065e054249d6901",
+      "startup_script": "/run/slint-bridge-rich-8d6bd47/start-live.sh",
+      "procedure": "docs/nx5-odd-blend.md#常驻与证据",
+      "device_availability": "Binary archived and SHA256-verified on host, then removed from device; redeploy before recovery",
+      "host_archive": "evidence/nx5-rich-render/2026-10-14/archive-older/files/run/slint-bridge-rich-8d6bd47/showcase"
+    },
+    {
+      "path": "/tmp/slint-bridge-odd-b1164e4/showcase",
+      "source_commit": "b1164e431cce33a394ec08bd020e4b8131d20327",
+      "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
+      "sha256": "d7224ea8ba92447ccb7d62aec918fa7d574f78e8a37a3cebef223e5eaad1e245",
+      "startup_script": "/tmp/slint-bridge-odd-b1164e4/start.sh",
+      "procedure": "docs/nx5-rich-bottleneck.md#常驻与证据",
+      "device_availability": "Binary archived and SHA256-verified on host, then removed from device; redeploy before recovery",
+      "host_archive": "evidence/nx5-rich-render/2026-10-14/final/cleanup-final/files/tmp/slint-bridge-odd-b1164e4/showcase"
+    }
+  ],
+  "rich_render_validation": {
+    "report": "docs/nx5-rich-render.md",
+    "source_commit": "2fddc04b8816d70ae6a00712ddc215c02c696b7e",
+    "slint_source_commit": "9a1a3b14c454a751f9a804a5309a4eaae0faeded",
+    "manifest": "evidence/nx5-rich-render/2026-10-14/final/manifest.json",
+    "boot": "4aa4f5d2-8de2-42cb-9c2b-44c3e74d6e2b",
+    "baseline_report": "docs/nx5-rich-bottleneck.md",
+    "hardware_tests_passed": 2,
+    "double_page_frames": 100,
+    "max_hardware_channel_error": 1,
+    "host_exact_pixels": 15360000,
+    "device_snapshots": 6,
+    "final_finite_processes": 7,
+    "physical_pixels": 1228800,
+    "physical_max_channel_error": 1,
+    "physical_baseline_exact": true,
+    "physical_alpha_exact": true,
+    "mmz_kib": 12760,
+    "mmz_blocks": 6,
+    "results": [
+      {
+        "axis": "vertical",
+        "cpu_percent_one_core": 78.65697177074692,
+        "rss_mean_kib": 18336.434782608696,
+        "rss_range_kib": [
+          18292,
+          18364
+        ],
+        "fps": 27.515195450139476,
+        "completed_presentations": 2250,
+        "tde_counters": {
+          "axis": "vertical",
+          "frames": 2400,
+          "copy": 2353,
+          "blend": 7280,
+          "software": 429199,
+          "cache_hits": 5391,
+          "errors": 0,
+          "fill": 0,
+          "first": [
+            450,
+            441,
+            1164,
+            76760,
+            884,
+            0,
+            0
+          ],
+          "last": [
+            2850,
+            2794,
+            8444,
+            505959,
+            6275,
+            0,
+            0
+          ],
+          "copy_per_frame": 0.9804166666666667,
+          "blend_per_frame": 3.033333333333333,
+          "software_per_frame": 178.83291666666668,
+          "cache_hit_percent": 55.96387418249766
+        }
+      },
+      {
+        "axis": "horizontal",
+        "cpu_percent_one_core": 85.99023561876353,
+        "rss_mean_kib": 18709.565217391304,
+        "rss_range_kib": [
+          18608,
+          18780
+        ],
+        "fps": 26.028355974418584,
+        "completed_presentations": 2250,
+        "tde_counters": {
+          "axis": "horizontal",
+          "frames": 2250,
+          "copy": 2235,
+          "blend": 7372,
+          "software": 498188,
+          "cache_hits": 5231,
+          "errors": 0,
+          "fill": 0,
+          "first": [
+            450,
+            446,
+            1293,
+            94581,
+            984,
+            0,
+            0
+          ],
+          "last": [
+            2700,
+            2681,
+            8665,
+            592769,
+            6215,
+            0,
+            0
+          ],
+          "copy_per_frame": 0.9933333333333333,
+          "blend_per_frame": 3.2764444444444445,
+          "software_per_frame": 221.41688888888888,
+          "cache_hit_percent": 54.44988029561778
+        }
+      }
+    ],
+    "cleanup_archived_files": 48,
+    "kernel_delta_lines": 95,
+    "kernel_new_oom_or_forced_reclaims": 0,
+    "resource_snapshot_phase": "after final diagnostic cleanup",
+    "throughput_target_fps": 28,
+    "throughput_target_passed": false,
+    "throughput_target_evidence": "evidence/nx5-rich-render/2026-10-14/final/fps-target-check.log"
   }
 }
