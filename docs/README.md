@@ -17,6 +17,7 @@
 
 | 记录 | 内容 |
 | --- | --- |
+| [横向多屏滑动测试](nx5-horizontal-scroll.md) | 18 张横向卡片、双向边界与误触回归、自动 evdev、当前版 CPU/RSS 与持续运动帧率 |
 | [新旧正式版资源对照](nx5-release-overhead.md) | 无阶段计时的旧→新→新→旧 CPU/RSS 对照，独立完成提交帧率与 MMZ 检查 |
 | [输入延迟与分段写页](nx5-input-latency.md) | 渲染/写页占用诊断、约 1 ms 写页预算、自动 evdev 对照及物理页验证 |
 | [清理版部署与触摸验证](nx5-cleanup-deploy.md) | `c087071` 部署、六页 MCP、实体 evdev 配对、正常退出及上一版回退 |
