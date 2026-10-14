@@ -231,6 +231,85 @@ fn incremental_motion_matches_full_software_frames() {
 }
 
 #[test]
+fn several_foregrounds_do_not_evict_the_large_background_each_frame() {
+    slint::slint! {
+        export component CacheScene inherits Window {
+            preferred-width: 512px; preferred-height: 384px;
+            in property <image> backdrop;
+            in property <image> first;
+            in property <image> second;
+            in property <bool> show-backdrop: true;
+            in property <length> offset;
+            if show-backdrop: Image { source: backdrop; width: 512px; height: 384px; }
+            for i in 4: Image {
+                source: mod(i, 2) == 0 ? root.first : root.second;
+                x: mod(i, 2) * 256px; y: floor(i / 2) * 192px + root.offset;
+                width: 256px; height: 192px;
+            }
+        }
+    }
+    #[derive(Default)]
+    struct Uploads {
+        background: usize,
+        foreground: usize,
+        slots: [Vec<u8>; 2],
+    }
+    struct Probe(Rc<std::cell::RefCell<Uploads>>);
+    impl Accelerator for Probe {
+        fn draw(
+            &mut self,
+            _: &mut [PremultipliedRgbaColor],
+            texture: &Texture<'_>,
+        ) -> Result<Outcome, Failure> {
+            let mut uploads = self.0.borrow_mut();
+            let slot = texture.slot as usize;
+            if texture.upload {
+                if texture.width == 512 {
+                    uploads.background += 1;
+                } else {
+                    uploads.foreground += 1;
+                }
+                uploads.slots[slot] = texture.data.to_vec();
+            } else {
+                assert_eq!(uploads.slots[slot], texture.data, "stale source cache hit");
+            }
+            Ok(if texture.width == 512 {
+                Outcome::Copied
+            } else {
+                Outcome::Blended
+            })
+        }
+    }
+    let window = MinimalSoftwareWindow::new(RepaintBufferType::NewBuffer);
+    slint::platform::set_platform(Box::new(TestPlatform(window.clone()))).unwrap();
+    let scene = CacheScene::new().unwrap();
+    scene.set_backdrop(image(512, 384, false, false));
+    scene.set_first(image(256, 192, true, false));
+    scene.set_second(image(256, 192, true, true));
+    scene.show().unwrap();
+    window.set_size(PhysicalSize::new(512, 384));
+    let uploads = Rc::new(std::cell::RefCell::new(Uploads::default()));
+    let mut buffer = Buffer::software(512, 384).unwrap();
+    buffer.engine = Some(Box::new(Probe(uploads.clone())));
+    for frame in 0..8 {
+        scene.set_offset((frame % 2) as f32);
+        draw(&window, &mut buffer).unwrap();
+    }
+    assert_eq!(
+        uploads.borrow().background,
+        1,
+        "stable large background must survive smaller images in the same frame"
+    );
+    // A large image that stops being used must yield its slot to the active set.
+    scene.set_show_backdrop(false);
+    scene.set_offset(0.);
+    draw(&window, &mut buffer).unwrap();
+    let before = uploads.borrow().foreground;
+    draw(&window, &mut buffer).unwrap();
+    assert_eq!(uploads.borrow().foreground, before);
+}
+
+#[test]
 fn changing_foreground_keeps_recent_background_texture_cached() {
     use std::cell::RefCell;
 

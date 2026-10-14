@@ -173,6 +173,8 @@ pub(crate) struct Stats {
 }
 
 struct CachedTexture {
+    last_frame: u64,
+    pixels: u64,
     key: (TextureCacheKey, u8),
     // Opaque copies are reusable at any position; blend uploads encode parity.
     phase: Option<(u8, u8)>,
@@ -216,7 +218,6 @@ pub(crate) struct Buffer {
     height: u32,
     engine: Option<Box<dyn Accelerator>>,
     keys: [Option<CachedTexture>; 2],
-    next_slot: usize,
     fatal: Option<Failure>,
     pub stats: Stats,
     frames: u64,
@@ -277,7 +278,6 @@ impl Buffer {
             height,
             engine,
             keys: [None, None],
-            next_slot: 0,
             fatal: None,
             stats: Stats::default(),
             frames: 0,
@@ -454,13 +454,21 @@ impl Buffer {
                 })
             })
         });
-        let slot = cached.unwrap_or(self.next_slot);
+        // Use empty slots first, then older-frame sources. Within one frame,
+        // preserve a larger upload instead of evicting it for small foregrounds.
+        let slot = cached.unwrap_or_else(|| {
+            self.keys
+                .iter()
+                .enumerate()
+                .min_by_key(|(_, entry)| {
+                    entry.as_ref().map(|entry| (entry.last_frame, entry.pixels))
+                })
+                .unwrap()
+                .0
+        });
         if cached.is_none() {
             self.keys[slot] = None;
         }
-        // Keep the texture just used (often a stable background) when the next
-        // draw uploads a changed image. Hits must also update replacement order.
-        self.next_slot = 1 - slot;
         let texture = Texture {
             data: source.data,
             width: source.width,
@@ -481,6 +489,8 @@ impl Buffer {
             Ok(Outcome::Unsupported) => false,
             Ok(outcome) => {
                 self.keys[slot] = key.map(|key| CachedTexture {
+                    last_frame: self.frames,
+                    pixels: u64::from(source.width) * u64::from(source.height),
                     key,
                     phase: matches!(outcome, Outcome::Blended).then_some(phase),
                 });
