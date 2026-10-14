@@ -437,6 +437,7 @@ fn nx5_hardware_compare() {
     scene.set_canvas_color(slint::Color::from_rgb_u8(25, 55, 77));
     for (name, alpha, premul, x, y, w, h, opacity, accelerated) in [
         ("opaque", false, false, 0., 0., 512., 384., 1., true),
+        ("opaque-odd", false, false, 1., 1., 512., 384., 1., true),
         ("straight-alpha", true, false, 0., 0., 512., 384., 1., true),
         (
             "premultiplied-alpha",
@@ -450,18 +451,43 @@ fn nx5_hardware_compare() {
             true,
         ),
         ("negative-clip", true, true, -8., -2., 512., 384., 1., true),
+        ("odd-origin-blend", true, true, 1., 1., 512., 384., 1., true),
+        ("odd-x-blend", true, true, 1., 0., 512., 384., 1., true),
+        ("odd-y-blend", true, false, 0., 1., 512., 384., 1., true),
         (
-            "odd-clip-fallback",
+            "negative-odd-clip",
+            true,
+            true,
+            -7.,
+            -1.,
+            512.,
+            384.,
+            1.,
+            true,
+        ),
+        (
+            "right-bottom-odd-clip",
+            true,
+            true,
+            257.,
+            193.,
+            512.,
+            384.,
+            1.,
+            true,
+        ),
+        ("global-opacity", true, true, 0., 0., 512., 384., 0.5, true),
+        (
+            "odd-global-opacity",
             true,
             true,
             1.,
             1.,
             512.,
             384.,
-            1.,
-            false,
+            0.5,
+            true,
         ),
-        ("global-opacity", true, true, 0., 0., 512., 384., 0.5, true),
         (
             "scale-fallback",
             false,
@@ -670,6 +696,28 @@ fn nx5_hardware_compare() {
         "fallback injected_pre_submit_error=pass stats={:?}",
         hardware.stats
     );
+    drop(hardware);
+    drop(software);
+    window.set_size(PhysicalSize::new(1024, 600));
+    let mut hardware = Buffer::new(1024, 600).unwrap();
+    assert!(hardware.engine.is_some());
+    let mut software = Buffer::software(1024, 600).unwrap();
+    scene.set_crop_width(1024);
+    scene.set_crop_height(600);
+    scene.set_picture(image(1024, 600, true, true));
+    scene.set_image_x(1.);
+    scene.set_image_y(1.);
+    scene.set_image_width(1024.);
+    scene.set_image_height(600.);
+    scene.set_image_opacity(1.);
+    let before = hardware.stats.blended;
+    draw(&window, &mut hardware).unwrap();
+    draw(&window, &mut software).unwrap();
+    let (maximum, differing) = difference(hardware.pixels(), software.pixels());
+    println!(
+        "correctness name=odd-full-panel max_channel_error={maximum} differing_channels={differing}"
+    );
+    assert!(maximum <= 1 && hardware.stats.blended > before);
 }
 
 mod actual_demo {
@@ -843,6 +891,51 @@ fn image_opacity_invalidates_prepared_source_cache() {
     }
     assert_eq!(buffer.stats.blended, 6);
     assert_eq!(buffer.stats.cache_hits, 2);
+}
+
+#[test]
+fn prepared_cache_tracks_blend_phase_without_penalizing_opaque_motion() {
+    struct Probe {
+        uploads: std::rc::Rc<std::cell::RefCell<Vec<bool>>>,
+        outcome: Outcome,
+    }
+    impl Accelerator for Probe {
+        fn draw(
+            &mut self,
+            _: &mut [PremultipliedRgbaColor],
+            texture: &Texture<'_>,
+        ) -> Result<Outcome, Failure> {
+            self.uploads.borrow_mut().push(texture.upload);
+            Ok(self.outcome)
+        }
+    }
+    let (window, scene) = setup();
+    for (alpha, outcome, expected) in [
+        (
+            true,
+            Outcome::Blended,
+            [true, true, false, true, false, true],
+        ),
+        (
+            false,
+            Outcome::Copied,
+            [true, false, false, false, false, false],
+        ),
+    ] {
+        scene.set_picture(image(512, 384, alpha, true));
+        let uploads = std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+        let mut buffer = Buffer::software(512, 384).unwrap();
+        buffer.engine = Some(Box::new(Probe {
+            uploads: uploads.clone(),
+            outcome,
+        }));
+        for (x, y) in [(0., 0.), (1., 0.), (1., 0.), (0., 1.), (0., 1.), (0., 0.)] {
+            scene.set_image_x(x);
+            scene.set_image_y(y);
+            draw(&window, &mut buffer).unwrap();
+        }
+        assert_eq!(*uploads.borrow(), expected);
+    }
 }
 
 #[test]

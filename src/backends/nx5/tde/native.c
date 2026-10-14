@@ -200,7 +200,7 @@ typedef struct { API_FUNCTIONS(FIELD) } Api;
 #undef FIELD
 
 typedef struct { int32_t sx, sy, dx, dy; uint32_t width, height; } BridgeRect;
-typedef struct { uint32_t phy; void *ptr; uint32_t width, height; int opaque; } Buffer;
+typedef struct { uint32_t phy; void *ptr; uint32_t width, height, pitch, rows, pad_x, pad_y; int opaque; } Buffer;
 typedef struct {
     Api api;
     void *library;
@@ -236,6 +236,8 @@ Engine *bridge_tde_create(uint32_t width, uint32_t height, int *error) {
     /* Reserve room for page-aligned cache ranges without 32-bit wraparound. */
     if (!width || !height || (uint64_t)width * height > (UINT32_MAX - 4095u) / 4u ||
         (width & 3u) || (height & 1u)) return NULL;
+    uint64_t source_bytes = ((uint64_t)width + 4) * ((uint64_t)height + 2) * 4;
+    if (source_bytes > UINT32_MAX - 4095u) return NULL;
     if (!__sync_bool_compare_and_swap(&in_use, 0, 1)) { *error = -2; return NULL; }
     Engine *e = calloc(1, sizeof(*e));
     if (!e) { __sync_lock_release(&in_use); return NULL; }
@@ -252,7 +254,7 @@ Engine *bridge_tde_create(uint32_t width, uint32_t height, int *error) {
     if (*error || !e->target.ptr) goto fail;
     memset(e->target.ptr, 0, e->bytes);
     for (unsigned i = 0; i < 2; ++i) {
-        *error = e->api.FY_MPI_SYS_MmzAlloc_Cached(&e->source[i].phy, &e->source[i].ptr, "bridge_tde_source", NULL, e->bytes);
+        *error = e->api.FY_MPI_SYS_MmzAlloc_Cached(&e->source[i].phy, &e->source[i].ptr, "bridge_tde_source", NULL, (uint32_t)source_bytes);
         if (*error || !e->source[i].ptr) goto fail;
     }
     *error = 0;
@@ -332,6 +334,20 @@ int bridge_tde_fill(Engine *e, uint32_t color,
     return finish_job(e, job, rects, count, first, last, 0, error);
 }
 
+/* At most a one-pixel fringe on each side; source is already premultiplied.
+ * Called only after DMA retirement and cache ownership has returned to CPU. */
+static void blend_cpu_rect(Engine *e, const Buffer *src, BridgeRect r) {
+    for (uint32_t y = 0; y < r.height; ++y) {
+        uint8_t *d = (uint8_t *)e->target.ptr + ((size_t)(r.dy + y) * e->width + r.dx) * 4;
+        const uint8_t *s = (const uint8_t *)src->ptr +
+            ((size_t)(r.sy + src->pad_y + y) * src->pitch + r.sx + src->pad_x) * 4;
+        for (uint32_t x = 0; x < r.width; ++x, d += 4, s += 4) {
+            for (unsigned c = 0; c < 3; ++c) d[c] = s[c] + d[c] * (255 - s[3]) / 255;
+            d[3] = 255;
+        }
+    }
+}
+
 /* 0 copied, 1 blended, 2 unsupported (untouched), -1 safe error, -2 unknown DMA.
  * Known failure requires a full software repaint; unknown DMA forbids access. */
 int bridge_tde_draw(Engine *e, const uint8_t *data,
@@ -349,30 +365,55 @@ int bridge_tde_draw(Engine *e, const uint8_t *data,
             (uint64_t)r->sx + r->width > width || (uint64_t)r->sy + r->height > height ||
             (uint64_t)r->dx + r->width > e->width || (uint64_t)r->dy + r->height > e->height) return 2;
     }
+    uint32_t pad_x = (uint32_t)(rects[0].dx - rects[0].sx) & 1u;
+    uint32_t pad_y = (uint32_t)(rects[0].dy - rects[0].sy) & 1u;
     if (upload) {
         src->width = src->height = 0;
+        src->pad_x = pad_x; src->pad_y = pad_y;
+        src->pitch = (width + pad_x + 3u) & ~3u;
+        src->rows = (height + pad_y + 1u) & ~1u;
+        if (pad_y) memset(src->ptr, 0, src->pitch * 4);
+        if (src->rows > height + pad_y)
+            memset((uint8_t *)src->ptr + (size_t)(height + pad_y) * src->pitch * 4, 0, src->pitch * 4);
         src->opaque = alpha == 255;
         for (uint32_t y = 0; y < height; ++y) {
             const uint8_t *row = data + (size_t)y * stride;
-            uint8_t *out = (uint8_t *)src->ptr + (size_t)y * width * 4;
-            bridge_prepare_rgba(out, row, width, premultiplied, alpha);
+            uint8_t *out = (uint8_t *)src->ptr + (size_t)(y + pad_y) * src->pitch * 4;
+            if (pad_x) memset(out, 0, 4);
+            bridge_prepare_rgba(out + pad_x * 4, row, width, premultiplied, alpha);
+            memset(out + (width + pad_x) * 4, 0, (src->pitch - width - pad_x) * 4);
             for (uint32_t x = 0; x < width && src->opaque; ++x)
                 if (row[x * 4 + 3] != 255) src->opaque = 0;
-
         }
-        *error = e->api.FY_MPI_SYS_MmzFlushCache(src->phy, src->ptr, width * height * 4);
+        *error = e->api.FY_MPI_SYS_MmzFlushCache(src->phy, src->ptr, src->pitch * src->rows * 4);
         if (*error) return -1;
         src->width = width; src->height = height;
     } else if (src->width != width || src->height != height) return 2;
     int blend = !src->opaque || alpha != 255;
-    if (blend) {
-        /* VPPU blend rectangles require even coordinates and extents. Exact
-         * odd clipping falls back; never enlarge a draw outside its clip. */
-        for (unsigned i = 0; i < count; ++i) {
-            const BridgeRect *r = &rects[i];
-            if ((r->sx | r->sy | r->dx | r->dy | r->width | r->height) & 1u) return 2;
+    BridgeRect gpu[16], interiors[16];
+    unsigned gpu_count = 0;
+    for (unsigned i = 0; i < count; ++i) {
+        const BridgeRect *r = &rects[i];
+        BridgeRect inner = *r;
+        if (blend) {
+            if (src->pad_x != ((uint32_t)(r->dx - r->sx) & 1u) ||
+                src->pad_y != ((uint32_t)(r->dy - r->sy) & 1u)) return 2;
+            uint32_t left = (uint32_t)(r->dx + 1) & ~1u;
+            uint32_t top = (uint32_t)(r->dy + 1) & ~1u;
+            uint32_t right = ((uint32_t)r->dx + r->width) & ~1u;
+            uint32_t bottom = ((uint32_t)r->dy + r->height) & ~1u;
+            inner.sx += left - r->dx; inner.sy += top - r->dy;
+            inner.dx = left; inner.dy = top;
+            inner.width = right > left ? right - left : 0;
+            inner.height = bottom > top ? bottom - top : 0;
+        }
+        interiors[i] = inner;
+        if (inner.width && inner.height) {
+            inner.sx += src->pad_x; inner.sy += src->pad_y;
+            gpu[gpu_count++] = inner;
         }
     }
+    if (!gpu_count) return 2;
     uint32_t top = e->height, bottom = 0;
     for (unsigned i = 0; i < count; ++i) {
         const BridgeRect *r = &rects[i];
@@ -394,9 +435,9 @@ int bridge_tde_draw(Engine *e, const uint8_t *data,
     if (*error) return -1;
     TDE_HANDLE job = e->api.FY_TDE2_BeginJob();
     if (job < 0) { *error = job; return -1; }
-    TDE2_SURFACE_S s = surface(src->phy, width, height), d = surface(e->target.phy, e->width, e->height);
-    for (unsigned i = 0; i < count; ++i) {
-        const BridgeRect *r = &rects[i];
+    TDE2_SURFACE_S s = surface(src->phy, src->pitch, src->rows), d = surface(e->target.phy, e->width, e->height);
+    for (unsigned i = 0; i < gpu_count; ++i) {
+        const BridgeRect *r = &gpu[i];
         TDE2_RECT_S sr = {r->sx, r->sy, r->width, r->height}, dr = {r->dx, r->dy, r->width, r->height};
         if (!blend) *error = e->api.FY_TDE2_QuickCopy(job, &s, &sr, &d, &dr);
         else {
@@ -415,7 +456,17 @@ int bridge_tde_draw(Engine *e, const uint8_t *data,
             return -1;
         }
     }
-    int result = finish_job(e, job, rects, count, first, last, blend, error);
+    int result = finish_job(e, job, gpu, gpu_count, first, last, blend, error);
     if (result < 0) return result;
+    for (unsigned i = 0; blend && i < count; ++i) {
+        const BridgeRect *r = &rects[i], *inner = &interiors[i];
+        if (!inner->width || !inner->height) { blend_cpu_rect(e, src, *r); continue; }
+        uint32_t left = inner->dx - r->dx, top = inner->dy - r->dy;
+        uint32_t right = left + inner->width, bottom = top + inner->height;
+        blend_cpu_rect(e, src, (BridgeRect){r->sx,r->sy,r->dx,r->dy,r->width,top});
+        blend_cpu_rect(e, src, (BridgeRect){r->sx,r->sy+bottom,r->dx,r->dy+bottom,r->width,r->height-bottom});
+        blend_cpu_rect(e, src, (BridgeRect){r->sx,r->sy+top,r->dx,r->dy+top,left,inner->height});
+        blend_cpu_rect(e, src, (BridgeRect){r->sx+right,r->sy+top,r->dx+right,r->dy+top,r->width-right,inner->height});
+    }
     return blend ? 1 : 0;
 }

@@ -172,6 +172,12 @@ pub(crate) struct Stats {
     pub errors: u64,
 }
 
+struct CachedTexture {
+    key: (TextureCacheKey, u8),
+    // Opaque copies are reusable at any position; blend uploads encode parity.
+    phase: Option<(u8, u8)>,
+}
+
 enum Pixels {
     Heap(Vec<PremultipliedRgbaColor>),
     #[cfg(target_arch = "arm")]
@@ -209,7 +215,7 @@ pub(crate) struct Buffer {
     width: u32,
     height: u32,
     engine: Option<Box<dyn Accelerator>>,
-    keys: [Option<(TextureCacheKey, u8)>; 2],
+    keys: [Option<CachedTexture>; 2],
     next_slot: usize,
     fatal: Option<Failure>,
     pub stats: Stats,
@@ -440,10 +446,13 @@ impl Buffer {
         }
         // Prepared source pixels include opacity; changing it must upload again.
         let key = args.source_cache_key().map(|key| (key, args.alpha));
+        let phase = ((args.dst_x & 1) as u8, (args.dst_y & 1) as u8);
         let cached = key.as_ref().and_then(|key| {
-            self.keys
-                .iter()
-                .position(|entry| entry.as_ref() == Some(key))
+            self.keys.iter().position(|entry| {
+                entry.as_ref().is_some_and(|entry| {
+                    entry.key == *key && entry.phase.is_none_or(|value| value == phase)
+                })
+            })
         });
         let slot = cached.unwrap_or(self.next_slot);
         if cached.is_none() {
@@ -471,7 +480,10 @@ impl Buffer {
         {
             Ok(Outcome::Unsupported) => false,
             Ok(outcome) => {
-                self.keys[slot] = key;
+                self.keys[slot] = key.map(|key| CachedTexture {
+                    key,
+                    phase: matches!(outcome, Outcome::Blended).then_some(phase),
+                });
                 self.stats.cache_hits += u64::from(cached.is_some());
                 match outcome {
                     Outcome::Copied => self.stats.copied += 1,

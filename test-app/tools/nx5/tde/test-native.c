@@ -43,6 +43,7 @@ static FY_S32 free_mmz(FY_U32 p,FY_VOID *v) {
     free(v); return 0;
 }
 static void close_tde(void) { ++closes; }
+#include "test-odd-blend.c"
 static void test_span_blending(void) {
     for (unsigned alpha = 0; alpha < 256; ++alpha) {
         uint8_t color[4] = {alpha, alpha / 2, 0, alpha};
@@ -135,6 +136,7 @@ int main(int argc, char **argv) {
         return 0;
     }
     test_span_blending();
+    test_odd_blend();
     test_prepare_rgba();
     uint32_t reciprocals[256] = {0};
     for (unsigned alpha = 1; alpha < 256; ++alpha)
