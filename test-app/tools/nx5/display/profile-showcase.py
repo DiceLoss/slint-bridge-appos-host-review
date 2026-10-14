@@ -143,6 +143,28 @@ def main():
     run("scaling-warmup", 8, resize, measure=False)
     run("scaling", 60, resize)
     client.click("Scaling::zoom-reset")
+    client.click("Showcase::nav-rich-list")
+    for axis in ["vertical", "horizontal"]:
+        if axis == "horizontal":
+            client.click("RichList::orientation-toggle")
+        bounds = client.data("get_element_properties", elementHandle=client.find("RichList::listing"))
+        first = client.rich_items()[0]["handle"]
+        coord, length = ("x", "width") if axis == "horizontal" else ("y", "height")
+        origin = client.data("get_element_properties", elementHandle=first)["absolutePosition"][coord]
+        extent = (25588 if axis == "horizontal" else 11992) - bounds["size"][length]
+        forward = True
+
+        def rich_scroll(_index):
+            nonlocal forward
+            offset = origin - client.data("get_element_properties", elementHandle=first)["absolutePosition"][coord]
+            if offset > extent - 2 * bounds["size"][length]:
+                forward = False
+            elif offset < 2 * bounds["size"][length]:
+                forward = True
+            client.drag_rich(bounds, axis, forward)
+
+        run(f"rich-{axis}-warmup", 8, rich_scroll, measure=False)
+        run(f"rich-{axis}", 60, rich_scroll)
     client.click("Showcase::nav-controls")
     run("idle-after", 20, measure=False)
     mark("ready-for-physical")

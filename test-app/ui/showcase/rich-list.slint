@@ -1,0 +1,97 @@
+import { DeviceRow } from "models.slint";
+import { Label, Caption, Heading, Card, Action } from "widgets.slint";
+
+component RichItem inherits Rectangle {
+    in property <DeviceRow> entry;
+    in property <image> background-image;
+    in property <image> icon;
+    in property <image> chevron;
+    in property <bool> horizontal;
+    in property <bool> selected;
+    callback activated();
+    accessible-role: button;
+    accessible-label: entry.name;
+    accessible-action-default => { root.activated(); }
+    Image { source: root.background-image; width: 100%; height: 100%; image-fit: fill; }
+    if root.selected || touch.pressed: Rectangle {
+        x: 8px; y: 6px; width: parent.width - 16px; height: parent.height - 22px;
+        border-radius: 12px; border-width: 2px; border-color: #008b83;
+        background: touch.pressed ? #ffffff55 : transparent;
+    }
+    if !root.horizontal: HorizontalLayout {
+        padding-left: 26px; padding-right: 26px; padding-top: 20px; padding-bottom: 26px; spacing: 16px;
+        Image { source: root.icon; width: 32px; height: 32px; }
+        VerticalLayout {
+            Label { text: root.entry.name; font-size: 17px; font-weight: 700; }
+            Caption { text: root.entry.location; }
+            Caption { text: root.entry.online ? "Connected · Automatic schedule" : "Standby · Manual schedule"; font-size: 11px; }
+        }
+        Label { text: root.entry.level + "%"; width: 74px; font-size: 25px; font-weight: 700; }
+        Image { source: root.chevron; width: 16px; height: 16px; }
+    }
+    if root.horizontal: VerticalLayout {
+        padding: 26px; padding-bottom: 32px; spacing: 12px;
+        HorizontalLayout {
+            Image { source: root.icon; width: 32px; height: 32px; }
+            Caption { text: "SPACE " + root.entry.id; horizontal-alignment: right; }
+        }
+        Label { text: root.entry.name; font-size: 18px; font-weight: 700; wrap: word-wrap; }
+        Caption { text: root.entry.location; wrap: word-wrap; }
+        Heading { text: root.entry.level + "%"; font-size: 38px; vertical-stretch: 1; }
+        Caption { text: root.entry.online ? "Connected · Auto" : "Standby · Manual"; }
+        HorizontalLayout {
+            Caption { text: "Touch to select"; }
+            Image { source: root.chevron; width: 16px; height: 16px; }
+        }
+    }
+    touch := TouchArea { clicked => { root.activated(); } }
+}
+
+export component RichList inherits VerticalLayout {
+    in property <[DeviceRow]> rows;
+    in property <[image]> backgrounds;
+    in property <[image]> icons;
+    in property <int> selected-id;
+    private property <bool> horizontal;
+    callback select(int);
+    spacing: 12px;
+    Card {
+        height: 72px;
+        HorizontalLayout {
+            padding: 14px; spacing: 12px;
+            VerticalLayout {
+                Heading { text: "Rich content · 100 spaces"; }
+                Caption { text: root.horizontal ? "Swipe sideways to explore every space." : "Swipe vertically to explore every space."; }
+            }
+            orientation-toggle := Action {
+                text: root.horizontal ? "Vertical list" : "Horizontal cards";
+                clicked => { root.horizontal = !root.horizontal; listing.content-x = 0px; listing.content-y = 0px; }
+            }
+            start-button := Action { text: "Start"; width: 90px; clicked => { listing.content-x = 0px; listing.content-y = 0px; } }
+        }
+    }
+    listing := Flickable {
+        width: min(parent.width, 800px);
+        mouse-drag-pan-enabled: true;
+        content-width: root.horizontal ? max(self.width, root.rows.length * 256px - 12px) : self.width;
+        content-height: root.horizontal ? self.height : max(self.height, root.rows.length * 120px - 8px);
+        for row[index] in root.rows: rich-item := RichItem {
+            x: root.horizontal ? index * 256px : 0px;
+            y: root.horizontal ? 0px : index * 120px;
+            width: root.horizontal ? 244px : listing.width;
+            height: root.horizontal ? 328px : 112px;
+            entry: row;
+            horizontal: root.horizontal;
+            selected: root.selected-id == row.id;
+            background-image: root.backgrounds[(root.horizontal ? 2 : 0) + mod(index, 2)];
+            icon: root.icons[mod(index, 4)]; chevron: root.icons[4];
+            activated => { root.select(row.id); }
+        }
+    }
+    Rectangle {
+        height: 24px; background: #102a3bb3; border-radius: 4px;
+        Caption { x: 10px; width: parent.width - 20px; height: 100%; color: #eaf7ff;
+            text: "Selected space: " + (root.selected-id == 0 ? "None" : "" + root.selected-id) + "   /   Demo data · 100 spaces";
+        }
+    }
+}

@@ -51,13 +51,13 @@ export component NavItem inherits Rectangle {
     in property <string> number;
     in property <bool> selected;
     callback clicked();
-    height: 49px;
+    height: 44px;
     border-radius: 8px;
     background: selected ? #214c59 : touch.has-hover ? #1b3445 : transparent;
     accessible-role: button;
     accessible-label: text;
     accessible-action-default => { root.clicked(); }
-    Rectangle { x: 0; y: 13px; width: 3px; height: 23px; background: root.selected ? #54e0c4 : transparent; border-radius: 2px; }
+    Rectangle { x: 0; y: (parent.height - self.height) / 2; width: 3px; height: 23px; background: root.selected ? #54e0c4 : transparent; border-radius: 2px; }
     Text { x: 14px; width: 27px; height: 100%; text: root.number; color: root.selected ? #54e0c4 : #718a9e; font-size: 12px; vertical-alignment: center; }
     Text { x: 44px; width: parent.width - 48px; height: 100%; text: root.text; color: root.selected ? white : #a7b9c7; font-size: 14px; vertical-alignment: center; }
     touch := TouchArea { clicked => { root.clicked(); } }

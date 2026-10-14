@@ -2,7 +2,7 @@ use crate::{DeviceRow, EventRow, Showcase};
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use std::{cell::RefCell, rc::Rc, time::Instant};
 
-const PAGES: [&str; 7] = [
+const PAGES: [&str; 8] = [
     "Overview",
     "Controls",
     "Devices",
@@ -10,6 +10,7 @@ const PAGES: [&str; 7] = [
     "Layers",
     "Interaction lab",
     "Image scaling",
+    "Rich list",
 ];
 
 struct Session {
@@ -97,6 +98,67 @@ fn configure_overlay(app: &Showcase) {
     app.set_overlay(slint::Image::from_rgba8(overlay));
 }
 
+fn configure_rich_list(app: &Showcase) {
+    if slint::Model::row_count(&app.get_rich_rows()) != 0 {
+        return;
+    }
+    let backgrounds: [&[u8]; 4] = [
+        include_bytes!("../ui/assets/rich-row-blue.png"),
+        include_bytes!("../ui/assets/rich-row-amber.png"),
+        include_bytes!("../ui/assets/rich-card-blue.png"),
+        include_bytes!("../ui/assets/rich-card-amber.png"),
+    ];
+    app.set_rich_backgrounds(ModelRc::new(VecModel::from(
+        backgrounds
+            .iter()
+            .map(|data| {
+                slint::Image::load_from_data(data, Some("png"))
+                    .expect("decode rich list background")
+            })
+            .collect::<Vec<_>>(),
+    )));
+    let icons: [&[u8]; 5] = [
+        include_bytes!("../ui/assets/rich-climate.svg"),
+        include_bytes!("../ui/assets/rich-light.svg"),
+        include_bytes!("../ui/assets/rich-room.svg"),
+        include_bytes!("../ui/assets/rich-air.svg"),
+        include_bytes!("../ui/assets/rich-chevron.svg"),
+    ];
+    app.set_rich_icons(ModelRc::new(VecModel::from(
+        icons
+            .iter()
+            .map(|data| slint::Image::load_from_svg_data(data).expect("decode rich list SVG"))
+            .collect::<Vec<_>>(),
+    )));
+    app.set_rich_rows(ModelRc::new(VecModel::from(
+        (1..=100)
+            .map(|id| DeviceRow {
+                id,
+                name: format!(
+                    "{} {:03}",
+                    [
+                        "Climate zone",
+                        "Studio lights",
+                        "Room control",
+                        "Air monitor"
+                    ][(id - 1) as usize % 4],
+                    id
+                )
+                .into(),
+                location: format!(
+                    "Floor {:02} · {}",
+                    (id - 1) / 10 + 1,
+                    ["East wing", "Garden side", "Meeting rooms", "West wing"]
+                        [(id - 1) as usize % 4]
+                )
+                .into(),
+                online: id % 5 != 0,
+                level: 20 + id * 7 % 80,
+            })
+            .collect::<Vec<_>>(),
+    )));
+}
+
 pub fn configure(app: &Showcase) -> slint::Timer {
     let session = Rc::new(RefCell::new(Session {
         events: Rc::new(VecModel::default()),
@@ -130,13 +192,27 @@ pub fn configure(app: &Showcase) -> slint::Timer {
         let Some(name) = PAGES.get(page as usize) else {
             return;
         };
+        if page == 7 {
+            configure_rich_list(&app);
+        }
         app.set_page(page);
         let mut state = state.borrow_mut();
         state.visited |= 1 << page;
-        if state.visited == 127 {
+        if state.visited == 255 {
             state.exercise(&app, 0);
         }
         state.log(&app, format!("Opened {name}"));
+    });
+    let (weak, state) = (app.as_weak(), session.clone());
+    app.on_select_rich(move |id| {
+        let Some(app) = weak.upgrade() else { return };
+        if !(1..=100).contains(&id) {
+            return;
+        }
+        app.set_rich_selected_id(id);
+        state
+            .borrow_mut()
+            .log(&app, format!("Selected rich space {id}"));
     });
     let (weak, state) = (app.as_weak(), session.clone());
     app.on_apply_profile(move || {

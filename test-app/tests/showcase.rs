@@ -19,6 +19,7 @@ fn showcase_state_forms_filtering_and_transparency() {
     slint::platform::set_platform(Box::new(RenderPlatform(window.clone()))).unwrap();
     let app = Showcase::new().unwrap();
     let _timer = configure(&app);
+    assert_eq!(app.get_rich_rows().row_count(), 0);
     app.show().unwrap();
     window.set_size(PhysicalSize::new(1024, 600));
 
@@ -214,9 +215,18 @@ fn showcase_state_forms_filtering_and_transparency() {
         app.invoke_tap(target);
     }
     app.invoke_dragged();
-    for page in 0..7 {
+    for page in 0..8 {
         app.invoke_navigate(page);
     }
+    assert_eq!(app.get_rich_rows().row_count(), 100);
+    assert_eq!(app.get_rich_rows().row_data(99).unwrap().id, 100);
+    assert_eq!(app.get_rich_backgrounds().row_count(), 4);
+    assert_eq!(app.get_rich_icons().row_count(), 5);
+    app.invoke_select_rich(100);
+    app.invoke_select_rich(101);
+    app.invoke_navigate(0);
+    app.invoke_navigate(7);
+    assert_eq!(app.get_rich_selected_id(), 100);
     assert_eq!(app.get_completed(), 6);
     for _ in 0..30 {
         app.invoke_tap(0);

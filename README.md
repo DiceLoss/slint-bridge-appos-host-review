@@ -68,7 +68,7 @@ slint_bridge::init(Config {
 
 从 [test-app/src/bin/basic.rs](test-app/src/bin/basic.rs) 查看最小接入方式，从 [test-app/ui/](test-app/ui/app.slint) 查看独立界面文件。完整用例、参数及设备配置见 [测试工程说明](test-app/README.md)。
 
-完整界面展示使用 `--bin showcase`：包含总览、控件/表单、设备列表、动画、图像/透明、交互记录和运行时图片缩放七页。主机原生 MCP 预览、自动交互检查及 NX5 运行方式见 [展示应用说明](test-app/README.md#展示应用-showcase)；`display` 保留为原有诊断场景。
+完整界面展示使用 `--bin showcase`：包含总览、控件/表单、设备列表、动画、图像/透明、交互记录、运行时图片缩放和富内容长列表八页。主机原生 MCP 预览、自动交互检查及 NX5 运行方式见 [展示应用说明](test-app/README.md#展示应用-showcase)；`display` 保留为原有诊断场景。
 
 ```sh
 # 独立测试工程的公共接口回归。

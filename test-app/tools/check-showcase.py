@@ -90,6 +90,96 @@ class Client:
         self.call("drag_element", elementHandle=source["handle"], target=target)
         return distance
 
+    def rich_items(self):
+        return [e for e in self.tree() if any(
+            item.get("id") == "RichList::rich-item" for item in e["typeNamesAndIds"])]
+
+    def drag_rich(self, bounds, axis, forward):
+        coord, length = ("x", "width") if axis == "horizontal" else ("y", "height")
+        low = bounds["absolutePosition"][coord]
+        high = low + bounds["size"][length]
+        visible = [e for e in self.rich_items() if low + 16 < e["absolutePosition"][coord]
+                   + e["size"][length] / 2 < high - 16]
+        source = (max if forward else min)(visible, key=lambda e: e["absolutePosition"][coord])
+        target = {k: source["absolutePosition"][k] + source["size"][v] / 2
+                  for k, v in [("x", "width"), ("y", "height")]}
+        target[coord] = low + 16 if forward else high - 16
+        distance = abs(source["absolutePosition"][coord] + source["size"][length] / 2 - target[coord])
+        assert distance >= bounds["size"][length] * 0.6
+        self.call("drag_element", elementHandle=source["handle"], target=target)
+        return distance
+
+
+def exercise_rich(client, output, full=False):
+    client.click("Showcase::nav-overview")
+    client.click("Showcase::nav-rich-list")
+    results = []
+    for axis, number in [("vertical", 18), ("horizontal", 19)]:
+        if axis == "horizontal":
+            client.click("RichList::orientation-toggle")
+        listing = client.find("RichList::listing")
+        bounds = client.data("get_element_properties", elementHandle=listing)
+        coord, length = ("x", "width") if axis == "horizontal" else ("y", "height")
+        other = "y" if coord == "x" else "x"
+        initial = client.rich_items()
+        first = initial[0]["handle"]
+        start = client.data("get_element_properties", elementHandle=first)["absolutePosition"]
+        client.screenshot(output, f"{number}-rich-{axis}")
+        selected = next(e["accessibleLabel"] for e in client.tree()
+                        if e.get("accessibleLabel", "").startswith("Selected space:"))
+        drags = []
+        for forward in [True, False]:
+            drags.append(client.drag_rich(bounds, axis, forward))
+            time.sleep(0.2)
+            client.expect_text(selected)
+            pos = client.data("get_element_properties", elementHandle=first)["absolutePosition"]
+            assert abs(pos[other] - start[other]) < 1, "List drifted on its locked axis"
+            if forward:
+                assert start[coord] - pos[coord] > bounds["size"][length] * 0.4, "Rich drag did not scroll"
+        client.click("RichList::start-button")
+        seen = set()
+        positions = []
+        if full:
+            total = 25588 if axis == "horizontal" else 11992
+            extent = total - bounds["size"][length]
+            assert extent > 30 * bounds["size"][length]
+            for forward in [True, False]:
+                target = start[coord] - extent if forward else start[coord]
+                for _ in range(60):
+                    visible = client.rich_items()
+                    seen.update(int(e["accessibleLabel"].split()[-1]) for e in visible)
+                    pos = client.data("get_element_properties", elementHandle=first)["absolutePosition"]
+                    assert abs(pos[other] - start[other]) < 1
+                    positions.append(pos[coord])
+                    if abs(pos[coord] - target) < 1:
+                        break
+                    client.call("scroll_element", elementHandle=listing,
+                                **{"deltaX" if coord == "x" else "deltaY":
+                                   (-1 if forward else 1) * bounds["size"][length] * 0.8})
+                    time.sleep(0.08)
+                else:
+                    raise AssertionError(f"Rich {axis} boundary was not reached")
+                client.call("scroll_element", elementHandle=listing,
+                            **{"deltaX" if coord == "x" else "deltaY": -500 if forward else 500})
+                time.sleep(0.08)
+                pos = client.data("get_element_properties", elementHandle=first)["absolutePosition"]
+                assert abs(pos[coord] - target) < 1, "Rich boundary did not clamp"
+                client.screenshot(output, f"rich-{axis}-{'end' if forward else 'return'}")
+                endpoint = next(e for e in client.rich_items()
+                                if int(e["accessibleLabel"].split()[-1]) == (100 if forward else 1))
+                client.call("click_element", elementHandle=endpoint["handle"])
+                client.expect_text(f"Selected space: {100 if forward else 1}")
+            assert seen == set(range(1, 101)), seen
+        else:
+            client.call("click_element", elementHandle=client.rich_items()[0]["handle"])
+            client.expect_text("Selected space: 1")
+        results.append(dict(axis=axis,viewport=bounds["size"],wide_drags=drags,
+                            observed_ids=sorted(seen),positions=positions))
+    client.click("RichList::orientation-toggle")
+    client.click("RichList::start-button")
+    output.joinpath("rich-list.json").write_text(json.dumps(results, indent=2))
+    return results
+
 
 def exercise_horizontal(client, output):
     client.click("Showcase::nav-devices")
@@ -256,6 +346,7 @@ def exercise(client, output):
     client.click("Media::cutout-button")
 
     exercise_scaling(client, output)
+    exercise_rich(client, output)
     client.click("Showcase::nav-lab")
     for label in ("Tap 1", "Tap 2", "Tap 3"):
         client.button(label)
@@ -336,6 +427,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, default=Path("target/debug/showcase"))
     parser.add_argument("--output", type=Path, default=Path("target/showcase-check"))
+    parser.add_argument("--rich-only", action="store_true", help="fully traverse the 100-item rich list in both directions")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
     with socket.socket() as listener:
@@ -357,10 +449,17 @@ def main():
                     time.sleep(0.1)
             else:
                 raise RuntimeError("Preview MCP did not start")
-            horizontal = exercise(client, args.output)
-            summary = dict(result="passed", scope="host native Slint MCP; no device or evdev validation",
-                           pages=7, screenshots=17, horizontal=horizontal,
-                           runtime_image_scales=[50, 125, 200, 100])
+            if args.rich_only:
+                client.window, = client.data("list_windows")["windowHandles"]
+                client.root = client.data("get_window_properties", windowHandle=client.window)["rootElementHandle"]
+                rich = exercise_rich(client, args.output, full=True)
+                summary = dict(result="passed", scope="host native Slint MCP; no device or evdev validation",
+                               pages=1, screenshots=6, rich_list=rich)
+            else:
+                horizontal = exercise(client, args.output)
+                summary = dict(result="passed", scope="host native Slint MCP; no device or evdev validation",
+                               pages=8, screenshots=19, horizontal=horizontal,
+                               runtime_image_scales=[50, 125, 200, 100])
             args.output.joinpath("summary.json").write_text(json.dumps(summary, indent=2) + "\n")
             print(json.dumps(summary, indent=2))
         finally:

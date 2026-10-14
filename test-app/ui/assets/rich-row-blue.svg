@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="112" viewBox="0 0 800 112">
+<defs>
+  <linearGradient id="paper" x2="1" y2="1"><stop stop-color="#e7f6fa"/><stop offset="1" stop-color="#c9dff2"/></linearGradient>
+  <radialGradient id="glow"><stop stop-color="white" stop-opacity="0.8"/><stop offset="1" stop-color="white" stop-opacity="0"/></radialGradient>
+  <clipPath id="card"><rect x="8" y="6" width="784" height="90" rx="12"/></clipPath>
+</defs>
+<rect x="2" y="4" width="796" height="102" rx="18" fill="#102c43" opacity="0.018"/><rect x="3" y="5" width="794" height="100" rx="17" fill="#102c43" opacity="0.018"/><rect x="4" y="6" width="792" height="98" rx="16" fill="#102c43" opacity="0.018"/><rect x="5" y="7" width="790" height="96" rx="15" fill="#102c43" opacity="0.018"/><rect x="6" y="8" width="788" height="94" rx="14" fill="#102c43" opacity="0.018"/><rect x="7" y="9" width="786" height="92" rx="13" fill="#102c43" opacity="0.018"/><rect x="8" y="10" width="784" height="90" rx="12" fill="#102c43" opacity="0.018"/>
+<rect x="8" y="6" width="784" height="90" rx="12" fill="url(#paper)"/>
+<g clip-path="url(#card)">
+  <ellipse cx="200.0" cy="11.200000000000001" rx="480.0" ry="100.8" fill="url(#glow)"/>
+  <circle cx="825" cy="67.2" r="78.39999999999999" fill="none" stroke="#9acdcf" stroke-width="12" opacity="0.25"/>
+  <circle cx="825" cy="67.2" r="100.8" fill="none" stroke="white" stroke-width="2" opacity="0.55"/>
+</g>
+<rect x="8.5" y="6.5" width="783" height="89" rx="12" fill="none" stroke="white" stroke-opacity="0.7"/>
+</svg>
