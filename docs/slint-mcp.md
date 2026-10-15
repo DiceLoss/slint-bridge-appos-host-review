@@ -18,7 +18,6 @@ MCP 作为开发工具通过构建参数启用，不加入默认 Cargo features�
 
 ```sh
 SLINT_EMIT_DEBUG_INFO=1 \
-NX5_SDK_INCLUDE=/home/dpower/data/GitLab/LGUI3/c_library/third_party/include/NX5/codec \
 cargo --config .cargo/nx5.toml build --locked --offline --release \
   --target arm-unknown-linux-gnueabi --features nx5-tde,slint/mcp -p slint-bridge-test-app --bin display
 ```

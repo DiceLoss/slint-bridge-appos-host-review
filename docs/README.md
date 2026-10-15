@@ -4,6 +4,8 @@
 
 ## 日常入口
 
+- [获取配置与使用指南](getting-started.md)：两个 Git 仓库、新机器环境、NX5/X9 构建部署和业务应用接入。
+
 - [项目 README](../README.md)：目录、库的公开接口与 Cargo features。
 - [独立测试工程](../test-app/README.md)：用例、`.slint` 界面、应用代码及多设备选择方式。
 - [平台实现说明](software-platform.md)：事件循环、输入、双 framebuffer 和板级契约。
