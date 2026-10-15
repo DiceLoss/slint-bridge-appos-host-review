@@ -2,6 +2,8 @@ use slint_bridge::{Config, InputDevice, Rotation};
 
 slint::include_modules!();
 
+pub mod background;
+pub mod background_demo;
 pub mod showcase;
 
 #[path = "../fixtures/textures.rs"]

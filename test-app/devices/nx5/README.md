@@ -2,6 +2,10 @@
 
 本目录保存 [current-target.json](current-target.json)；路径相对于仓库根。观测时间随记录列出；PID、摘要和资源在操作前须重新核对。
 
+2026-10-15 已完成 [图片背景裁剪与多个透明区域验收](../../../docs/nx5-background-holes.md)。当前为独立 `background-holes` 演示，路径 `/tmp/slint-bridge-holes-20261015/background-holes`，观测 PID **412**；启动用 `sh /tmp/slint-bridge-holes-20261015/start.sh`。两区域已复位，前景按钮计数为 0、弹窗关闭，无退出定时器或探针。原 `2fddc04` showcase 作为恢复版本，`1225593` 已校验归档移除。23 阶段真实双页及原生交互通过；本轮未接入视频源。运行前仍需重新核对设备身份和显示所有者。
+
+以下为同日此前的兼容性回归与历史部署记录：
+
 2026-10-15 已完成 [X9 改动后的 NX5 链路回归](../../../docs/nx5-x9-regression.md)：六项实机硬件回归、实际页及 evdev 验证通过。当前源码与旧版的纵向 FPS 为 27.52 / 27.46，横向为 25.84 / 26.03；CPU 接近，本轮 RSS 约多 0.16 MiB。验证后恢复原 `2fddc04` + Slint `9a1a3b1`，观测 PID **22711**，日志 `live-after-x9-regression.log`，Rich list 纵向起点、Controls 48%。新候选已归档，回退仍为 `1225593`；操作前重新核对 PID 和所有者。
 
 以下为原版本 2026-10-14 的部署和性能记录：

@@ -1,0 +1,30 @@
+export struct BackgroundHole { x: int, y: int, width: int, height: int, visible: bool }
+export struct BackgroundRect { x: int, y: int, width: int, height: int }
+
+export global BackgroundGeometry {
+    pure callback visible-regions(int, int, [BackgroundHole]) -> [BackgroundRect];
+}
+
+// One source pixel per logical pixel; prepare the image for the target canvas.
+export component BackgroundWithHoles inherits Rectangle {
+    in property <image> source;
+    in property <[BackgroundHole]> holes;
+    width: root.source.width * 1px;
+    height: root.source.height * 1px;
+    background: transparent;
+    clip: true;
+    private property <[BackgroundRect]> regions:
+        BackgroundGeometry.visible-regions(root.source.width, root.source.height, root.holes);
+    for region in root.regions: Rectangle {
+        x: region.x * 1px; y: region.y * 1px;
+        width: region.width * 1px; height: region.height * 1px;
+        background: transparent;
+        clip: true;
+        Image {
+            source: root.source;
+            x: -region.x * 1px; y: -region.y * 1px;
+            width: root.source.width * 1px; height: root.source.height * 1px;
+            image-fit: fill;
+        }
+    }
+}

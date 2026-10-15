@@ -168,6 +168,23 @@ WBC 按无版本库名 `libobserver.so` 通过系统搜索路径加载，部署�
 
 应用要透出下层视频时，可将 `.slint` 根窗口设为 `background: transparent;`，在其上绘制局部 UI；`basic` / `display` 保持原有背景，`showcase` 的 Layers 页可以打开透明区域。透明和半透明像素的输出、无 alpha 格式限制及尚未接入的视频层边界见 [Framebuffer 软件路径](../docs/software-platform.md#framebuffer-软件路径)。库内透明窗口回归使用内存双页验证移动和消失后的 alpha、颜色及行尾 padding。`alpha-regression` 另用于设备上的实际页和 WBC 检查，构建、前提及输出见 [设备工具](tools/nx5/README.md#硬件诊断与证据重放)；它使用现有黑色 VO 底色，不代表视频解码和业务视频接入已经验证。
 
+### 图片背景中的多个透明区域
+
+独立 `background-holes` 用例使用 [BackgroundWithHoles](ui/components/background-with-holes.slint)，界面位于 [background-holes.slint](ui/background-holes.slint)，动作在 [background_demo.rs](src/background_demo.rs)。它固定为本轮 NX5 的 1024×600 画布，提供两个区域的移动、缩放、显示/隐藏、跨区域按钮及模态弹窗。背景复用构建期准备的海岸图片；区域内未被前景覆盖的像素透明，没有连接视频源。
+
+复用组件时，在应用导出 `BackgroundGeometry`、`BackgroundHole`、`BackgroundRect`，创建窗口后、显示前调用 `background::install(app.global::<BackgroundGeometry>())`。根窗口保持透明，将组件放在前景控件之前：
+
+```slint
+BackgroundWithHoles { source: wallpaper; holes: video-regions; }
+// 后续兄弟组件正常绘制按钮、字幕和弹窗。
+```
+
+`source` 使用提前准备好的图片，按 **1 个源像素对应 1 个逻辑像素** 绘制；区域模型每行包含整数 `x/y/width/height` 和 `visible`，坐标相对于组件。可替换整个模型，也可通过 `VecModel` 原地修改、插入或删除。负尺寸/零尺寸及隐藏行忽略，越界区域裁到图片边界，重叠区域取并集。几何回调只在源尺寸或模型变化时重新分割背景；所有片段共用同一张图片。前景放在组件之上，不参与背景扣除。
+
+当前组件覆盖轴对齐矩形和原尺寸图片；不同画布请先准备对应尺寸的源图，不能直接把每个片段各自 `cover` 缩放。旋转、任意缩放、圆角区域以及与解码器的坐标/生命周期同步不属于本例。组件只使用 Slint 公共 API，没有修改 Slint 源码或 framebuffer 提交逻辑。
+
+主机 `tests/background_holes.rs` 用独立的逐点区域并集判定，核对 22 个连续状态的 RGBA 输出，包含模型原地修改、重叠、越界、整数边界、隐藏恢复、图片替换、前景和弹窗；复用同一渲染缓冲，检查旧像素被修复。实机命令见 [NX5 工具](tools/nx5/README.md#图片背景透明区域的双页检查)，结果见 [实测报告](../docs/nx5-background-holes.md)。
+
 基础窗口适合新设备接入检查；运动/纹理场景使用窗口实际尺寸显示分辨率、安排绘图区和限制运动范围。默认不打开触摸设备，检查暂停/恢复时需指定 `--touch`，或使用 MCP 注入交互。
 
 MCP 使用 Slint 自带功能，不另建截图或输入服务器。稳定元素 ID 为 `App::pause-area` 和 `App::status`。先发现窗口与句柄，再执行以下流程：

@@ -1,0 +1,75 @@
+import { BackgroundWithHoles, BackgroundHole } from "components/background-with-holes.slint";
+import { ShowcaseAssets } from "showcase-assets.slint";
+
+component Action inherits Rectangle {
+    in property <string> label;
+    callback clicked;
+    height: 42px;
+    border-radius: 9px;
+    background: area.pressed ? #305877 : area.has-hover ? #274b69 : #18344d;
+    border-width: 1px; border-color: #668398;
+    Text { text: root.label; color: white; font-size: 15px; horizontal-alignment: center; vertical-alignment: center; }
+    area := TouchArea { clicked => { root.clicked(); } }
+}
+
+export component BackgroundHolesDemo inherits Window {
+    title: "Background windows";
+    width: 1024px; height: 600px;
+    background: transparent;
+    in property <[BackgroundHole]> holes;
+    in-out property <bool> modal;
+    in-out property <int> presses;
+    in-out property <int> revision;
+    callback action(int);
+
+    BackgroundWithHoles { source: ShowcaseAssets.wallpaper; holes: root.holes; }
+    Rectangle {
+        x: 24px; y: 20px; width: 976px; height: 88px;
+        background: #10273de8; border-radius: 14px;
+        Text { x: 24px; y: 13px; text: "Background windows"; font-size: 25px; font-weight: 700; color: white; }
+        Text { x: 24px; y: 51px; text: "Two transparent regions · move, resize, hide · foreground stays visible"; font-size: 16px; color: #c6d9e7; }
+        Text { x: 822px; y: 30px; width: 130px; text: "Change " + root.revision; font-size: 16px; color: #a5d8ef; horizontal-alignment: right; }
+    }
+    for hole[index] in root.holes: Rectangle {
+        visible: hole.visible;
+        x: hole.x * 1px; y: hole.y * 1px; width: hole.width * 1px; height: hole.height * 1px;
+        background: transparent; border-width: 2px; border-color: #b7edf8;
+        Rectangle {
+            x: 10px; y: 10px; width: 133px; height: 30px; border-radius: 7px; background: #10273dd9;
+            Text { text: index == 0 ? "Window A" : "Window B"; color: white; font-size: 16px; horizontal-alignment: center; vertical-alignment: center; }
+        }
+    }
+    foreground := Action {
+        x: 355px; y: 250px; width: 304px; height: 68px;
+        label: "Foreground button · " + root.presses;
+        clicked => { root.action(8); }
+    }
+    Rectangle {
+        x: 398px; y: 332px; width: 220px; height: 40px; border-radius: 9px; background: #245075a0;
+        Text { text: "Translucent overlay"; color: white; font-size: 16px; horizontal-alignment: center; vertical-alignment: center; }
+    }
+    Rectangle {
+        x: 24px; y: 496px; width: 976px; height: 84px; border-radius: 14px; background: #10273df5;
+        HorizontalLayout {
+            padding: 14px; spacing: 8px;
+            move-a := Action { label: "Move A"; clicked => { root.action(0); } }
+            resize-a := Action { label: "Resize A"; clicked => { root.action(1); } }
+            hide-a := Action { label: "Show/hide A"; clicked => { root.action(2); } }
+            move-b := Action { label: "Move B"; clicked => { root.action(3); } }
+            resize-b := Action { label: "Resize B"; clicked => { root.action(4); } }
+            hide-b := Action { label: "Show/hide B"; clicked => { root.action(5); } }
+            popup := Action { label: "Dialog"; clicked => { root.action(6); } }
+            reset := Action { label: "Reset"; clicked => { root.action(7); } }
+        }
+    }
+    if root.modal: Rectangle {
+        background: #09182780;
+        TouchArea {} // Consume pointer input outside the dialog.
+        Rectangle {
+            x: 260px; y: 176px; width: 504px; height: 248px; border-radius: 18px; background: #f2f6fa;
+            Text { x: 28px; y: 26px; text: "Foreground dialog"; font-size: 25px; font-weight: 700; color: #18344d; }
+            Text { x: 28px; y: 78px; width: 448px; text: "This dialog covers both transparent regions.\nClose it to reveal the same background and windows."; font-size: 17px; color: #36566e; wrap: word-wrap; }
+            close-dialog := Action { x: 28px; y: 172px; width: 448px; label: "Close dialog"; clicked => { root.modal = false; root.revision += 1; } }
+        }
+    }
+}

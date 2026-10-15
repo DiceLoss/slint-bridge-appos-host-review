@@ -71,6 +71,8 @@ slint_bridge::init(Config {
 
 完整界面展示使用 `--bin showcase`：包含总览、控件/表单、设备列表、动画、图像/透明、交互记录、运行时图片缩放和富内容长列表八页。主机原生 MCP 预览、自动交互检查及 NX5 / X9 运行方式见 [展示应用说明](test-app/README.md#展示应用-showcase)；`display` 保留为原有诊断场景。
 
+图片背景中的多个透明区域使用独立 `--bin background-holes` 演示：应用组件只裁剪背景，前景控件和弹窗正常叠加，见 [接入与约束](test-app/README.md#图片背景中的多个透明区域) 及 [NX5 实测](docs/nx5-background-holes.md)。
+
 ```sh
 # 独立测试工程的公共接口回归。
 cargo test --locked --offline -p slint-bridge-test-app --features fbdev

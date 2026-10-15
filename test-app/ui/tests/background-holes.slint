@@ -1,0 +1,14 @@
+import { BackgroundWithHoles, BackgroundHole } from "../components/background-with-holes.slint";
+export component BackgroundHolesTest inherits Window {
+    width: 128px; height: 96px; background: transparent;
+    in property <image> picture;
+    in property <[BackgroundHole]> holes;
+    in property <bool> overlay;
+    in property <bool> modal;
+    BackgroundWithHoles { source: root.picture; holes: root.holes; }
+    if root.overlay: Rectangle { x: 12px; y: 14px; width: 88px; height: 8px; background: #e0bd45; }
+    if root.modal: Rectangle {
+        background: #20406080;
+        Rectangle { x: 33px; y: 25px; width: 62px; height: 42px; background: #f4f7fb; }
+    }
+}

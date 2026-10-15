@@ -195,3 +195,21 @@ LD_LIBRARY_PATH=/tmp/slint-bridge-c03c3bb/lib /tmp/slint-bridge-next/probe-write
 ```
 
 格式探针输出中的拒绝/像素不符是调查结果，其进程退出码 0 不表示所有格式可用。写页探针则对实际页、源画布和前台页进行断言；异常 SDK 返回立即停止后续写入，不在未知 DMA 状态下继续操作或关闭 SDK。正常结束后核对 VO、MMZ 和锁，再恢复已有 `start-live.sh`；归档并校验测试文件后清理设备副本。
+
+## 图片背景透明区域的双页检查
+
+按设备说明构建 `--bin background-holes`，启用 `nx5-tde,slint/mcp` 并保留 `SLINT_EMIT_DEBUG_INFO=1`。交互模式接受通用设备路径及 `--seconds=N`。物理页验收另需只读检查插件：
+
+```sh
+sh test-app/tools/nx5/display/build-background-checker.sh
+```
+
+输出 `target/nx5-display/libbackground-checker.so`；仅依赖 libc，不加载 SDK。按上方归档部署流程逐文件上传演示及插件（本固件没有 tar），在原显示所有者退出后，将插件目录与既有 SDK 目录一起加入 `LD_LIBRARY_PATH`，保留设备字体，执行：
+
+```sh
+background-holes --verify --framebuffer=/dev/fb0
+```
+
+`--verify` 在同一个组件上执行 23 个动作状态，涵盖两个区域移动、缩放、全部隐藏/恢复、跨区域按钮、弹窗以及弹窗后方区域更新。每次事件循环退出会等待当前提交完成，再用 `Window::take_snapshot()` 生成软件参考；[check-background-pages.c](display/check-background-pages.c) 查询实际 framebuffer 布局，逐像素比较前台物理页和上一状态/当前状态的后台物理页，并检查读取前后偏移稳定。前台页必须逐阶段交替，alpha 必须精确匹配 NX5 `(a+1)/2`，RGB 误差最多 1。首轮故意破坏一个参考 alpha，要求检查器拒绝；之后要求 23 个 `passed=true` 及最终 `stages=23 result=0`，否则程序返回错误。
+
+350 ms 定时器用于结束阶段，页读取的完成依据是运行时退出时的提交 drain，不能用该延时或偏移读回替代板级完成契约。插件不写 framebuffer，也不操作 VO、WBC 或 DMA。此检查验证 UI 与物理页一致；图片挖孔本身另由主机独立像素预期检验。它不证明真实视频层合成、LCD 扫描或实体触摸性能。

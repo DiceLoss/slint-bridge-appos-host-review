@@ -53,3 +53,7 @@ required-features = ["nx5"]
 name = "alpha-regression"
 path = "src/bin/alpha-regression.rs"
 required-features = ["nx5"]
+
+[[bin]]
+name = "background-holes"
+path = "src/bin/background-holes.rs"

@@ -1,6 +1,6 @@
 {
-  "current_binary": "/tmp/slint-bridge-rich-render-2fddc04/showcase",
-  "recovery_binary": "/tmp/slint-bridge-rich-cache-1225593/showcase",
+  "current_binary": "/tmp/slint-bridge-holes-20261015/background-holes",
+  "recovery_binary": "/tmp/slint-bridge-rich-render-2fddc04/showcase",
   "keep": [
     "/tmp/slint-bridge-c03c3bb/lib",
     "/tmp/slint-bridge-c03c3bb/dev",
@@ -21,6 +21,9 @@
     "/tmp/slint-bridge-rich-render-2fddc04/live.env",
     "/tmp/slint-bridge-rich-render-2fddc04/live.owners",
     "/tmp/slint-bridge-rich-render-2fddc04/live-after-x9-regression.log",
-    "/tmp/slint-bridge-rich-render-2fddc04/live-after-x9-regression.pid"
+    "/tmp/slint-bridge-rich-render-2fddc04/live-after-x9-regression.pid",
+    "/tmp/slint-bridge-holes-20261015/start.sh",
+    "/tmp/slint-bridge-holes-20261015/live.log",
+    "/tmp/slint-bridge-holes-20261015/live.pid"
   ]
 }
