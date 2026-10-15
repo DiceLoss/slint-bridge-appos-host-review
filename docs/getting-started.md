@@ -2,6 +2,8 @@
 
 本指南用于在新的 Linux 开发机上获取工程、配置交叉编译环境、构建 NX5/X9 示例，以及在业务应用中引用适配层。NX5 和 X9 共用同一个 Slint 来源，使用不同的板级 feature 和 ARM 工具链。设备运行只适用于已经准入验证的硬件与固件，详细契约以 [平台说明](software-platform.md) 为准。
 
+仅在自己的业务工程中使用适配层时，直接按 [业务接入](#在自己的-rust-应用中接入) 配置 Git 依赖即可，无需手动克隆或把适配层源码放入项目目录。前面的仓库克隆步骤用于构建仓库自带示例。
+
 ## 仓库地址
 
 | 仓库 | 地址 | 用途 |
@@ -38,7 +40,7 @@ Rust target 提供 Rust 标准库，不能替代板级 C/C++ 交叉工具链及 
 
 安装匹配的厂商工具链及 sysroot。不要把 NX5 的 `gnueabi` 和 X9 的 `gnueabihf` 混用，也不要只把一个不同版本的编译器改成相同文件名。
 
-## 获取工程和依赖
+## 获取示例工程和依赖
 
 ```sh
 git clone http://192.168.253.238/wshl/slint_bridge.git
@@ -179,7 +181,7 @@ NX5 endpoint 为 `http://127.0.0.1:19315/mcp`，X9 为 `http://127.0.0.1:19316/m
 
 ## 在自己的 Rust 应用中接入
 
-业务工程可以直接引用两个 Git 仓库，无需依赖 `test-app`。下面是一个可选择 NX5/X9 的最小应用配置，所有 Slint 包使用同一 Git 地址，不设置提交哈希。
+业务工程直接声明两个 Git 依赖；Cargo 将源码下载到自己的 Git 缓存，不要求业务目录中存在 `slint-bridge/`，也不需要 `path` 依赖。下面的应用默认选择 NX5 TDE，X9 构建时关闭默认 feature 后选择 `fbdev`。所有 Slint 包使用同一 Git 地址，不设置提交哈希。
 
 ### Cargo.toml
 
@@ -191,7 +193,7 @@ edition = "2024"
 rust-version = "1.92"
 
 [features]
-default = []
+default = ["nx5-tde"]
 nx5 = ["slint-bridge/nx5"]
 nx5-tde = ["slint-bridge/nx5-tde"]
 fbdev = ["slint-bridge/fbdev"]
@@ -207,6 +209,10 @@ slint-build = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-la
 lto = "thin"
 codegen-units = 1
 ```
+
+`"slint-bridge/nx5-tde"` 中的斜杠表示“依赖包 / feature”，不是目录。它引用同一清单 `[dependencies]` 中的 Git 包；仅定义 feature 名称不会启用它，还需要 `default` 或构建参数选择。
+
+本例默认 `nx5-tde`，因此不传 `--features` 也会选择 NX5 TDE。若希望每次构建显式选板，可把应用的 `default` 改回 `[]`，并始终传 `--features nx5-tde` 或 `--features fbdev`。适配库本身仍不默认选择设备。仅使用 NX5 的应用也可以不声明这些转发项，直接在 `slint-bridge` 依赖中写 `features = ["nx5-tde"]`。
 
 ### build.rs
 
@@ -254,18 +260,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### 业务工程的交叉编译配置
 
-**Git 依赖中的 `.cargo/` 不会自动成为业务工程的交叉编译配置。** 在业务工程中创建 `.cargo/`，从已克隆的适配层仓库复制 `config.toml`、`nx5.toml`、`x9.toml`，并按实际安装位置修改工具链路径。SDK 头文件由适配层自身定位，不需要再复制到业务工程。
+**Git 依赖中的 `.cargo/` 不会自动成为业务工程的交叉编译配置。** 在业务工程中自行创建以下 `.cargo/config.toml` 即可，不需要克隆适配层仓库。按实际安装位置修改工具链路径，保持两个 target 的 ABI 参数不变。SDK 头文件随 Git 依赖提供，由适配层自身定位，不需要复制到业务工程。
+
+### .cargo/config.toml
+
+```toml
+[target.arm-unknown-linux-gnueabi]
+linker = "/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-gcc"
+rustflags = ["-C", "target-cpu=cortex-a7"]
+
+[target.arm-unknown-linux-gnueabihf]
+linker = "/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc"
+rustflags = ["-C", "target-cpu=cortex-a7"]
+
+[env]
+CC_arm_unknown_linux_gnueabi = "/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-gcc"
+CXX_arm_unknown_linux_gnueabi = "/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-g++"
+AR_arm_unknown_linux_gnueabi = "/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-ar"
+CFLAGS_arm_unknown_linux_gnueabi = "-march=armv7-a -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=softfp"
+CC_arm_unknown_linux_gnueabihf = "/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc"
+CXX_arm_unknown_linux_gnueabihf = "/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-g++"
+AR_arm_unknown_linux_gnueabihf = "/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-ar"
+CFLAGS_arm_unknown_linux_gnueabihf = "-march=armv7-a -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+```
 
 从业务工程根目录执行首次解析，生成并提交业务工程自己的 `Cargo.lock`：
 
 ```sh
 cargo fetch
-# NX5
-cargo --config .cargo/nx5.toml build --locked --offline --release \
-  --target arm-unknown-linux-gnueabi --features nx5-tde
-# X9
-cargo --config .cargo/x9.toml build --locked --offline --release \
-  --target arm-unknown-linux-gnueabihf --features fbdev
+# NX5 TDE，使用应用默认 feature。
+cargo build --locked --offline --release --target arm-unknown-linux-gnueabi
+# X9，先关闭默认的 NX5 TDE。
+cargo build --locked --offline --release --target arm-unknown-linux-gnueabihf \
+  --no-default-features --features fbdev
+# NX5 纯软件模式，同样先关闭默认的 TDE。
+cargo build --locked --offline --release --target arm-unknown-linux-gnueabi \
+  --no-default-features --features nx5
 ```
 
 输出程序名为 `panel-app`。这个最小例子没有测试工程的命令行参数解析，不接受 `--seconds`、`--touch` 或 `--rotation`；相关值来自上述 `Config`，需要参数支持时由业务应用自行添加。
@@ -302,7 +332,7 @@ git clone http://192.168.253.238/wshl/slint-last.git
 | Git/Cargo 不能访问仓库 | 内网连通性、两个 URL 的访问权限、Git 凭据；需要时使用 Git CLI 获取依赖 |
 | 离线构建提示找不到依赖或提交 | 先联网运行 `cargo fetch --locked`；首次新业务工程没有锁文件时使用 `cargo fetch` |
 | 找不到交叉 gcc，或 ELF/浮点 ABI 不匹配 | 检查对应 target 的 linker、CC/CXX/AR 和完整 sysroot，确认没有混用 NX5/X9 工具链 |
-| 报必须选择板级 feature 或 feature 互斥 | 从 `fbdev`、`nx5`、`nx5-tde` 中选择一个，不用 `--all-features` |
+| 报必须选择板级 feature 或 feature 互斥 | `default = []` 时必须传 `--features`；已有默认设备时，切换设备或模式使用 `--no-default-features --features ...`。不要用 `--all-features`；这类错误不表示缺少本地源码目录 |
 | 找不到 `mpi_tde.h` | 检查 `third-party/` 是否完整；清除指向旧机器目录的 `NX5_SDK_INCLUDE` 覆盖 |
 | NX5 找不到 `libVideoDec.so` | 检查设备上的版本库、无版本别名及 `LD_LIBRARY_PATH`，不要填主机仓库路径 |
 | NX5 报 VO 已启用，或设备资源被占用 | 重新核对显示所有者并按恢复流程释放，不并行启动第二个 SDK 显示程序 |
