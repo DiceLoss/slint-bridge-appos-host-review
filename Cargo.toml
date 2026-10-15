@@ -24,8 +24,8 @@ libloading = { version = "0.8.9", optional = true }
 # build-host fontconfig into ARM binaries. Missing system fonts can be registered
 # explicitly by the application via SLINT_DEFAULT_FONT or .slint font imports.
 fontique = { version = "=0.11.1", default-features = false, features = ["fontconfig-dlopen"] }
-slint = { version = "=1.18.1", path = "/home/dpower/data/GitHub/slint-1.18.1/api/rs/slint", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
-i-slint-renderer-software = { version = "=1.18.1", path = "/home/dpower/data/GitHub/slint-1.18.1/internal/renderers/software", optional = true, default-features = false, features = ["std", "experimental"] }
+slint = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
+i-slint-renderer-software = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", optional = true, default-features = false, features = ["std", "experimental"] }
 
 [build-dependencies]
 cc = { version = "1.2", optional = true }

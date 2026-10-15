@@ -33,12 +33,12 @@ slint_bridge/
 
 ## 接入库
 
-适配代码集中在本仓库，Slint 和厂商 SDK 是外部依赖。当前使用 `/home/dpower/data/GitHub/slint-1.18.1` 的同源 Slint / 软件 renderer；该源码包含所需扩展，不能只凭相同版本号替换为另一个来源。
+适配代码集中在本仓库，Slint 和厂商 SDK 是外部依赖。当前从 [Slint 仓库](http://192.168.253.238/wshl/slint-last.git) 获取同源 Slint / 软件 renderer，依赖清单不指定提交哈希；该源码包含所需扩展，不能只凭相同版本号替换为另一个来源。首次构建前联网执行 `cargo fetch --locked`，之后可使用文档中的离线构建命令。
 
 ```toml
 [dependencies]
 slint-bridge = { path = "/home/dpower/data/OMNI_STACK_GEN/slint_bridge", default-features = false, features = ["nx5"] }
-slint = { version = "=1.18.1", path = "/home/dpower/data/GitHub/slint-1.18.1/api/rs/slint", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
+slint = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
 ```
 
 在 UI 线程、创建 Slint 根组件前安装平台：
