@@ -1,5 +1,7 @@
 # NX5 测试程序体积分析
 
+外部源码引用使用采集时的仓库名、相对路径和行号，版本由正文注明；这些调查材料不随本仓库分发，也不是当前构建前提。
+
 > 文中的 `NX5_SDK_INCLUDE` 外部路径保留采集环境；当前构建默认使用仓库资源，配置方法见 [使用指南](getting-started.md)。
 
 本记录分析 2026-10-14 的 `showcase` 测试程序。测量对象是去符号后的 ARM 可执行文件，不是整机固件镜像；外置字体、厂商 SDK 及系统动态库不计入该文件。平台与运行限制见 [平台实现说明](software-platform.md) 和 [NX5 设备说明](../test-app/devices/nx5/README.md)。
@@ -115,9 +117,9 @@ cargo tree --locked --offline -p slint-bridge-test-app \
 
 上述依赖源于本轮 Slint 源码 `/home/dpower/data/GitHub/slint-1.18.1`，HEAD `9a1a3b14c454a751f9a804a5309a4eaae0faeded`。直接依据：
 
-- [Slint workspace 的 image/resvg 声明](/home/dpower/data/GitHub/slint-1.18.1/Cargo.toml:123)；[软件 renderer 字体 feature 链](/home/dpower/data/GitHub/slint-1.18.1/internal/renderers/software/Cargo.toml:19)；[核心的 shared-parley feature](/home/dpower/data/GitHub/slint-1.18.1/internal/core/Cargo.toml:90)。
-- [MCP 依赖声明](/home/dpower/data/GitHub/slint-1.18.1/internal/backends/testing/Cargo.toml:42)；[截图编码调用](/home/dpower/data/GitHub/slint-1.18.1/internal/backends/testing/introspection/mod.rs:373)；[MCP 固定请求 PNG](/home/dpower/data/GitHub/slint-1.18.1/internal/backends/testing/mcp_server.rs:382)。
-- [应用 PNG/SVG 加载](/home/dpower/data/OMNI_STACK_GEN/slint_bridge/test-app/src/showcase.rs:101)；[SVG 文字的 Fontique 接入](/home/dpower/data/GitHub/slint-1.18.1/internal/common/sharedfontique/svg.rs:5)。
+- Slint workspace 的 image/resvg 声明（`Slint/Cargo.toml:123`）；软件 renderer 字体 feature 链（`Slint/internal/renderers/software/Cargo.toml:19`）；核心的 shared-parley feature（`Slint/internal/core/Cargo.toml:90`）。
+- MCP 依赖声明（`Slint/internal/backends/testing/Cargo.toml:42`）；截图编码调用（`Slint/internal/backends/testing/introspection/mod.rs:373`）；MCP 固定请求 PNG（`Slint/internal/backends/testing/mcp_server.rs:382`）。
+- [应用 PNG/SVG 加载](../test-app/src/showcase.rs#L101)；SVG 文字的 Fontique 接入（`Slint/internal/common/sharedfontique/svg.rs:5`）。
 
 ## 保持功能与显示效果的缩减边界
 
@@ -139,7 +141,7 @@ cargo tree --locked --offline -p slint-bridge-test-app \
 
 应排除出“保持当前测试功能不变”收益的选项：
 
-- **关闭 MCP 或 `SLINT_EMIT_DEBUG_INFO`。** 前者移除查询/交互/截图，后者使元素 ID 查询等能力缺少 UI 元数据；这是 `.slint` 运行时元数据，与 ELF 的 DWARF/符号表不同。[当前 MCP 构建约定](slint-mcp.md#启用及连接)、[无元数据时拒绝元素 ID 查询](/home/dpower/data/GitHub/slint-1.18.1/internal/backends/testing/introspection/mod.rs:364)。
+- **关闭 MCP 或 `SLINT_EMIT_DEBUG_INFO`。** 前者移除查询/交互/截图，后者使元素 ID 查询等能力缺少 UI 元数据；这是 `.slint` 运行时元数据，与 ELF 的 DWARF/符号表不同。[当前 MCP 构建约定](slint-mcp.md#启用及连接)、无元数据时拒绝元素 ID 查询（`Slint/internal/backends/testing/introspection/mod.rs:364`）。
 - **删除 PNG 编码器。** 当前 MCP 截图确实调用 PNG 编码；即使应用从不“保存图片”，该功能仍在使用编码器。
 - **改成 `panic = "abort"`。** 该策略从栈展开改为立即结束进程；当前 presentation worker 的退出通知、板级会话持有和析构回归覆盖 panic 路径，不能当作保持生命周期语义的纯体积开关。[Rust/Cargo panic 策略](https://doc.rust-lang.org/cargo/reference/profiles.html#panic)、[当前 worker 与退出保护](../src/presentation.rs:21)、[页生命周期回归](../src/tests/framebuffer_lifecycle.rs:393)。
 - **减小 SVG 栅格缓存、TDE 源槽或 framebuffer。** 这些是运行期内存，容量并不以同等字节存入可执行文件；减少它们不能把之前的 MiB 内存占用直接扣减成固件体积。

@@ -63,11 +63,11 @@
     "horizontal_total": 1344,
     "vertical_total": 635,
     "refresh_periods_per_blocking_flip": 2,
-    "blocking_flip_analysis": "docs/nx5-flip.md",
+    "blocking_flip_analysis": "docs/nx5-display.md#nx5-flip",
     "frame_interval_us": 16667,
     "nx5_frame_interval_clamp": false,
     "single_cycle_investigation": {
-      "report": "docs/nx5-single-cycle.md",
+      "report": "docs/nx5-display.md#nx5-single-cycle",
       "achieved": false,
       "flips_verified": 128,
       "steady_flip_fps": 29.000312701568195,
@@ -77,7 +77,7 @@
       "current_ui_restored": true
     },
     "pan_note": "Instantaneous read while the UI is running, not a scanout retirement proof.",
-    "blocking_flip_measurement_scope": "Remeasured on 2026-10-12: 128 flips, 120 after warmup, mean 34479.450 us; see docs/nx5-hardware.md.",
+    "blocking_flip_measurement_scope": "Remeasured on 2026-10-12: 128 flips, 120 after warmup, mean 34479.450 us; see docs/nx5-validation.md#nx5-hardware.",
     "configured_path": "/tmp/slint-bridge-c03c3bb/dev/panel",
     "scanout_alpha": {
       "range": [
@@ -89,7 +89,7 @@
         255
       ],
       "encoding": "round(alpha * 128 / 255)",
-      "report": "docs/nx5-alpha.md",
+      "report": "docs/nx5-display.md#nx5-alpha",
       "scope": "Measured paired RGB patches over existing black VO background; video decoding/nonblack underlay not tested."
     }
   },
@@ -114,7 +114,7 @@
       "evidence": "evidence/nx5-image-background/2026-10-13/results.json"
     },
     "automated_touch_validation": {
-      "report": "docs/nx5-input-latency.md",
+      "report": "docs/nx5-performance.md#nx5-input-latency",
       "evidence": "evidence/nx5-input-latency/2026-10-13/results.json",
       "method": "Linux evdev write injection, independent kernel observer with initial axes, native Slint recording; excludes touch sensor and LCD scanout",
       "contacts": 112,
@@ -193,7 +193,7 @@
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
-    "One reboot recovered a diagnostic VO shared-handle deadlock; DHCP and ADB were restored. See docs/nx5-display.md.",
+    "One reboot recovered a diagnostic VO shared-handle deadlock; DHCP and ADB were restored. See docs/nx5-display.md#nx5-display.",
     "Only one SDK display owner at a time; loading another SDK process resets SYS/VO.",
     "On 2026-10-12 all three ignored TDE/flip tests were independently run and passed. Each finished at the 4900 KiB MMZ baseline with VO/WBC disabled and no new kernel MMZ forced reclamation; the original display/MCP was restored.",
     "Latest c03c3bb deployment uses /tmp/slint-bridge-c03c3bb. Its three finite runs returned to baseline without forced MMZ reclamation; the old PID 3351 SIGTERM reclamation is recorded separately. Original binary is retained for recovery.",
@@ -222,14 +222,14 @@
     "generic_build_steady_fps": 29.0,
     "generic_cpu_percent_one_core_before": 44.687915006636224,
     "generic_cpu_percent_one_core_after": 50.56403450564132,
-    "report": "docs/nx5-scheduling.md",
+    "report": "docs/nx5-performance.md#nx5-scheduling",
     "task_batch_budget_us": 2000,
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
   "observation_scope": "Application-side image background clipping: host retained-buffer pixels, 23 drained physical double-page stages and continuous native MCP interaction. No video decoding, nonblack underlay, WBC, LCD scanout, evdev or physical finger validation in this task.",
   "hardware_regression": {
-    "report": "docs/nx5-hardware.md",
+    "report": "docs/nx5-validation.md#nx5-hardware",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
     "tested_commit": "a9fd3c8d8534c4a0cd0f072da304e78a86b9d5f9",
     "library_implementation_commit": "949ceb98b320bb61e9006e984fecfc284ec904db",
@@ -306,23 +306,23 @@
     "rebooted": false,
     "previous_startup_validation": {
       "tested_commit": "949ceb98b320bb61e9006e984fecfc284ec904db",
-      "report": "docs/nx5-startup.md",
+      "report": "docs/nx5-validation.md#nx5-startup",
       "evidence": "evidence/nx5-startup/2026-10-11-949ceb9/results.json",
       "scope": "Historical 2026-10-11 startup, WBC and 60-second texture results; not rerun here."
     },
     "previous_eio_validation": {
       "commit": "177c18a92d77e1d102481b79e53498cd64da0310",
-      "report": "docs/nx5-tde-exit.md",
+      "report": "docs/nx5-validation.md#nx5-tde-exit",
       "scope": "Historical EIO exit results; not rerun here."
     },
     "mixed_control_reference": {
       "commit": "2cd98fae4959073f7070c3e3540a50b384e8bb03",
-      "report": "docs/nx5-regression.md",
+      "report": "docs/nx5-validation.md#nx5-regression",
       "scope": "Historical 30/30 mixed-frame negative control; not repeated in this startup regression."
     }
   },
   "configured_paths_validation": {
-    "report": "docs/nx5-configured-paths.md",
+    "report": "docs/nx5-validation.md#nx5-configured-paths",
     "evidence": "evidence/nx5-configured-paths/2026-10-12-c03c3bb/results.json",
     "tested_commit": "c03c3bb9559a23be65ee2363af0d329ab161eccc",
     "driver_changed": false,
@@ -330,7 +330,7 @@
     "passed": true
   },
   "review_fixes_validation": {
-    "report": "docs/nx5-review-fixes.md",
+    "report": "docs/nx5-validation.md#nx5-review-fixes",
     "evidence": "evidence/review-fixes/2026-10-12/results.json",
     "tested_commit": "bccf6b98b54438ab58b4a19ee55d1ed1cdbff5b8",
     "driver_changed": false,
@@ -340,7 +340,7 @@
     "screenshot_oom_recovered": true
   },
   "screenshot_memory_validation": {
-    "report": "docs/nx5-screenshot-memory.md",
+    "report": "docs/nx5-validation.md#nx5-screenshot-memory",
     "evidence": "evidence/nx5-screenshot-memory/2026-10-12/results.json",
     "source_commit": "bccf6b98b54438ab58b4a19ee55d1ed1cdbff5b8",
     "passed": true,
@@ -365,10 +365,10 @@
     "slint_commit": "9a1a3b14c454a751f9a804a5309a4eaae0faeded",
     "sha256": "e2a0f1245c3a471329091f215b68311f16362db954837901e63b4fcc53449f39",
     "startup_script": "/tmp/slint-bridge-rich-render-2fddc04/start.sh",
-    "procedure": "docs/nx5-background-holes.md#常驻与恢复"
+    "procedure": "docs/nx5-validation.md#nx5-background-holes"
   },
   "alpha_validation": {
-    "report": "docs/nx5-alpha.md",
+    "report": "docs/nx5-display.md#nx5-alpha",
     "evidence": "evidence/nx5-alpha-deploy/2026-10-12-287da8c/results.json",
     "source_commit": "f96355855d4c3ebee9296c90b400270b8e0dc59f",
     "software_and_tde_passed": true,
@@ -382,7 +382,7 @@
     "final_physical_latency_measured": false
   },
   "showcase_validation": {
-    "report": "docs/nx5-showcase.md",
+    "report": "docs/nx5-validation.md#nx5-showcase",
     "evidence": "evidence/nx5-showcase/2026-10-13",
     "tested_commit": "308afe5f0b07795f7d6c8ecb345bc73a1d75d402",
     "host_feature_matrix": "passed",
@@ -400,7 +400,7 @@
     "rebooted": false
   },
   "showcase_performance": {
-    "report": "docs/nx5-showcase-performance.md",
+    "report": "docs/nx5-performance.md#nx5-showcase-performance",
     "evidence": "evidence/nx5-showcase-performance/2026-10-13/results.json",
     "tested_commit": "308afe5f0b07795f7d6c8ecb345bc73a1d75d402",
     "fps": 29.0,
@@ -419,7 +419,7 @@
     "application_or_library_changed": false
   },
   "image_background_validation": {
-    "report": "docs/nx5-image-background.md",
+    "report": "docs/nx5-performance.md#nx5-image-background",
     "evidence": "evidence/nx5-image-background/2026-10-13/results.json",
     "tested_commit": "41f87b20d1c9189e9adcddb3954014a41596f67f",
     "asset": "test-app/ui/assets/coastal-background.png",
@@ -451,7 +451,7 @@
     "library_or_sdk_changed": false
   },
   "image_optimization_validation": {
-    "report": "docs/nx5-image-optimization.md",
+    "report": "docs/nx5-performance.md#nx5-image-optimization",
     "evidence": "evidence/nx5-image-optimization/2026-10-13/results-verified.json",
     "tested_commit": "acab18a622b79a0b904b60df00777f6a6813b858",
     "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
@@ -479,7 +479,7 @@
     "physical_feedback": "evidence/nx5-image-optimization/2026-10-13/user-observation.json"
   },
   "controls_ring_validation": {
-    "report": "docs/nx5-controls-ring.md",
+    "report": "docs/nx5-validation.md#nx5-controls-ring",
     "source_commit": "0e8516decb8a82b6eb31d2246d877001f8f3ab38",
     "binary_sha256": "ed17b5242a781b84d8242d2633e809c283ef902a3a16f5b7d57a6be72454a7ae",
     "evidence": "evidence/nx5-ring/2026-10-13/device/results.json",
@@ -507,7 +507,7 @@
     "restored_power": true
   },
   "fill_blend_validation": {
-    "report": "docs/nx5-fill-blend.md",
+    "report": "docs/nx5-performance.md#nx5-fill-blend",
     "manifest": "evidence/nx5-fill-blend/2026-10-13/manifest.json",
     "source_commit": "fdb0f0e2bc93e2a1243de890a74d3c2948d68508",
     "fill_area_groups": 22,
@@ -524,7 +524,7 @@
     "motion_fps": 28.962
   },
   "shared_canvas_validation": {
-    "report": "docs/nx5-shared-canvas.md",
+    "report": "docs/nx5-performance.md#nx5-shared-canvas",
     "manifest": "evidence/nx5-shared-canvas/2026-10-13/manifest.json",
     "source_commit": "d34f436a8c2a8ba00a2c3a18a4c7a621fd0af182",
     "physical_pixels_compared": 3686400,
@@ -544,7 +544,7 @@
     "list_cpu_percent": 76.83859071814604
   },
   "tde_writeback_validation": {
-    "report": "docs/nx5-tde-writeback.md",
+    "report": "docs/nx5-performance.md#nx5-tde-writeback",
     "manifest": "evidence/nx5-tde-writeback/2026-10-13/manifest.json",
     "single_operation_conversion_correct_paths": 0,
     "format_combinations": 100,
@@ -564,7 +564,7 @@
     "nonzero_back_page_sentinel": true
   },
   "neon_unpremultiply_validation": {
-    "report": "docs/nx5-neon-unpremultiply.md",
+    "report": "docs/nx5-performance.md#nx5-neon-unpremultiply",
     "manifest": "evidence/nx5-neon-unpremultiply/2026-10-13/manifest.json",
     "source_commit": "4a2eda2b1330fa001d521bca6371d27f92db7347",
     "physical_pixels_compared": 8601600,
@@ -585,7 +585,7 @@
     "finite_forced_mmz_cleanup": false
   },
   "cleanup_deployment_validation": {
-    "report": "docs/nx5-cleanup-deploy.md",
+    "report": "docs/nx5-validation.md#nx5-cleanup-deploy",
     "evidence": "evidence/nx5-cleanup-deploy/2026-10-13/results.json",
     "source_commit": "c0870718920558ee1dc6259fd34a4410adfa3ebd",
     "stripped_binary_identical_to_neon": true,
@@ -606,7 +606,7 @@
     "physical_user_confirmation": "已完成，显示和触摸都正常"
   },
   "input_latency_validation": {
-    "report": "docs/nx5-input-latency.md",
+    "report": "docs/nx5-performance.md#nx5-input-latency",
     "evidence": "evidence/nx5-input-latency/2026-10-13/results.json",
     "source_commit": "a0e880cfea5761c21b3ed570c1bde46136b6bae5",
     "framebuffer_write_budget_us": 1000,
@@ -626,7 +626,7 @@
     "runtime_instrumentation_removed": true
   },
   "release_overhead_validation": {
-    "report": "docs/nx5-release-overhead.md",
+    "report": "docs/nx5-performance.md#nx5-release-overhead",
     "manifest": "evidence/nx5-release-overhead/2026-10-14/manifest.json",
     "old_commit": "c0870718920558ee1dc6259fd34a4410adfa3ebd",
     "new_commit": "a0e880cfea5761c21b3ed570c1bde46136b6bae5",
@@ -690,7 +690,7 @@
     "cleanup_archived_files": 55
   },
   "horizontal_scroll_validation": {
-    "report": "docs/nx5-horizontal-scroll.md",
+    "report": "docs/nx5-performance.md#nx5-horizontal-scroll",
     "manifest": "evidence/nx5-horizontal/2026-10-14/manifest.json",
     "source_commit": "38927806ed3766d991b0de28d04c024151c708ab",
     "content_width_px": 4380,
@@ -716,7 +716,7 @@
   },
   "runtime_scaling_validation": {
     "source_commit": "abb2e334b2e9f29af2521f5dd12166a17e9f10cd",
-    "report": "docs/nx5-runtime-scaling.md",
+    "report": "docs/nx5-performance.md#nx5-runtime-scaling",
     "manifest": "evidence/nx5-runtime-scaling/2026-10-14/manifest.json",
     "pages": 7,
     "snapshots": 17,
@@ -740,7 +740,7 @@
     "new_wbc_test": false
   },
   "scaling_formats_validation": {
-    "report": "docs/nx5-scaling-formats.md",
+    "report": "docs/nx5-performance.md#nx5-scaling-formats",
     "manifest": "evidence/nx5-scaling-formats/2026-10-14/manifest.json",
     "diagnostic_base_commit": "cb94371b6872a2ba6b58e61fd40d7b6f0c301f4a",
     "diagnostic_binary_sha256": "ddb7523ed922ef96593db3851f043558290bb76026207c797251dab86edb8a15",
@@ -803,7 +803,7 @@
       "sha256": "824812d68d7f5c8c2c2d52a27d19fb56972a8eadb4a99bef76662fe222d0ff41",
       "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
       "startup_script": "/tmp/slint-bridge-horizontal-3892780/start-live.sh",
-      "procedure": "docs/nx5-runtime-scaling.md#证据与恢复",
+      "procedure": "docs/nx5-performance.md#nx5-runtime-scaling",
       "device_availability": "tmpfs copy disappeared after reported device reboot; not redeployed"
     },
     {
@@ -812,7 +812,7 @@
       "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
       "sha256": "729f5088bc670c74ddef6fa002d69859fd67e692e351286ae219ee5bc3c81b7f",
       "startup_script": "/tmp/slint-bridge-clean-c087071/start-live.sh",
-      "procedure": "docs/nx5-input-latency.md#常驻与回退",
+      "procedure": "docs/nx5-performance.md#nx5-input-latency",
       "explicitly_retained_in_keep": true,
       "device_availability": "tmpfs copy disappeared after reported device reboot; not redeployed"
     },
@@ -822,13 +822,13 @@
       "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
       "sha256": "71582ca6f70b8ab5aec9b0408b43429743bf5cb7491486cd6da09bed837fd584",
       "startup_script": "/tmp/slint-bridge-input-a0e880c/start-live.sh",
-      "procedure": "docs/nx5-horizontal-scroll.md#常驻与回退",
+      "procedure": "docs/nx5-performance.md#nx5-horizontal-scroll",
       "explicitly_retained_in_keep": true,
       "device_availability": "tmpfs copy disappeared after reported device reboot; not redeployed"
     }
   ],
   "rich_list_validation": {
-    "report": "docs/nx5-rich-list.md",
+    "report": "docs/nx5-performance.md#nx5-rich-list",
     "manifest": "evidence/nx5-rich-list/2026-10-14/manifest.json",
     "source_commit": "8d6bd47493ca21fe17105df71f20c4679976431a",
     "boot": "4aa4f5d2-8de2-42cb-9c2b-44c3e74d6e2b",
@@ -926,7 +926,7 @@
     ]
   },
   "odd_blend_validation": {
-    "report": "docs/nx5-odd-blend.md",
+    "report": "docs/nx5-performance.md#nx5-odd-blend",
     "source_commit": "b1164e431cce33a394ec08bd020e4b8131d20327",
     "manifest": "evidence/nx5-odd-blend/2026-10-14/manifest.json",
     "boot": "4aa4f5d2-8de2-42cb-9c2b-44c3e74d6e2b",
@@ -1140,11 +1140,11 @@
     "resource_snapshot_phase": "before final diagnostic cleanup"
   },
   "rich_source_cache_validation": {
-    "report": "docs/nx5-rich-bottleneck.md",
+    "report": "docs/nx5-performance.md#nx5-rich-bottleneck",
     "source_commit": "1225593a9478746fec908707671f7219e520cc20",
     "manifest": "evidence/nx5-rich-bottleneck/2026-10-14/manifest.json",
     "boot": "4aa4f5d2-8de2-42cb-9c2b-44c3e74d6e2b",
-    "baseline_report": "docs/nx5-odd-blend.md",
+    "baseline_report": "docs/nx5-performance.md#nx5-odd-blend",
     "hardware_tests_passed": 2,
     "double_page_frames": 100,
     "max_hardware_channel_error": 1,
@@ -1254,7 +1254,7 @@
       "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
       "sha256": "f5518f6e9bae9e49aa528f94a132675f9fec7e25aa46bb86195a509e1fb68dbf",
       "startup_script": "/tmp/slint-bridge-scaling-abb2e33/start-live.sh",
-      "procedure": "docs/nx5-rich-list.md#常驻与证据",
+      "procedure": "docs/nx5-performance.md#nx5-rich-list",
       "device_availability": "Binary archived and SHA256-verified on host, then removed from device; redeploy before recovery",
       "host_archive": "evidence/nx5-rich-render/2026-10-14/archive-older/files/tmp/slint-bridge-scaling-abb2e33/showcase"
     },
@@ -1264,7 +1264,7 @@
       "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
       "sha256": "46c3ba46a0aeba6d5f664e197acfeada30b9f7ef699623aaf065e054249d6901",
       "startup_script": "/run/slint-bridge-rich-8d6bd47/start-live.sh",
-      "procedure": "docs/nx5-odd-blend.md#常驻与证据",
+      "procedure": "docs/nx5-performance.md#nx5-odd-blend",
       "device_availability": "Binary archived and SHA256-verified on host, then removed from device; redeploy before recovery",
       "host_archive": "evidence/nx5-rich-render/2026-10-14/archive-older/files/run/slint-bridge-rich-8d6bd47/showcase"
     },
@@ -1274,7 +1274,7 @@
       "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
       "sha256": "d7224ea8ba92447ccb7d62aec918fa7d574f78e8a37a3cebef223e5eaad1e245",
       "startup_script": "/tmp/slint-bridge-odd-b1164e4/start.sh",
-      "procedure": "docs/nx5-rich-bottleneck.md#常驻与证据",
+      "procedure": "docs/nx5-performance.md#nx5-rich-bottleneck",
       "device_availability": "Binary archived and SHA256-verified on host, then removed from device; redeploy before recovery",
       "host_archive": "evidence/nx5-rich-render/2026-10-14/final/cleanup-final/files/tmp/slint-bridge-odd-b1164e4/showcase"
     },
@@ -1284,18 +1284,18 @@
       "slint_commit": "22804ff0f0b5d21270798cb4fec75e69c47f70f6",
       "sha256": "7ede47e1555804ba075fc5697c93b03d6778e8b71ad4152dc594396e344b4b3b",
       "startup_script": "/tmp/slint-bridge-rich-cache-1225593/start.sh",
-      "procedure": "docs/nx5-rich-render.md#正式版性能与常驻",
+      "procedure": "docs/nx5-performance.md#nx5-rich-render",
       "device_availability": "Binary archived and SHA256-verified on host, then removed from device; redeploy before recovery",
       "host_archive": "evidence/background-holes/2026-10-15/cleanup-final/files/tmp/slint-bridge-rich-cache-1225593/showcase"
     }
   ],
   "rich_render_validation": {
-    "report": "docs/nx5-rich-render.md",
+    "report": "docs/nx5-performance.md#nx5-rich-render",
     "source_commit": "2fddc04b8816d70ae6a00712ddc215c02c696b7e",
     "slint_source_commit": "9a1a3b14c454a751f9a804a5309a4eaae0faeded",
     "manifest": "evidence/nx5-rich-render/2026-10-14/final/manifest.json",
     "boot": "4aa4f5d2-8de2-42cb-9c2b-44c3e74d6e2b",
-    "baseline_report": "docs/nx5-rich-bottleneck.md",
+    "baseline_report": "docs/nx5-performance.md#nx5-rich-bottleneck",
     "hardware_tests_passed": 2,
     "double_page_frames": 100,
     "max_hardware_channel_error": 1,
@@ -1405,7 +1405,7 @@
     "throughput_target_evidence": "evidence/nx5-rich-render/2026-10-14/final/fps-target-check.log"
   },
   "x9_compatibility_validation": {
-    "report": "docs/nx5-x9-regression.md",
+    "report": "docs/nx5-validation.md#nx5-x9-regression",
     "evidence": "evidence/nx5-x9-regression/2026-10-15",
     "tested_library_source": "cacf98f2fedfc99a6d965468cd709adfd7c5466f",
     "tested_slint_source": "fa6a6d0158c9730fed62ef1eb1c9730c80214e20",
@@ -1559,12 +1559,12 @@
     "normal_exit_mmz_blocks": 2,
     "normal_exit_new_kernel_warnings": 0,
     "slint_source_changed": false,
-    "report": "docs/nx5-background-holes.md",
+    "report": "docs/nx5-validation.md#nx5-background-holes",
     "evidence": "evidence/background-holes/2026-10-15",
     "cleanup_archived_files": 11
   },
   "texture_neon_validation": {
-    "report": "docs/nx5-texture-neon.md",
+    "report": "docs/slint-optimization.md#nx5-texture-neon",
     "evidence": "evidence/nx5-texture-neon/2026-10-15",
     "application_commit": "1736f56",
     "slint_before": "fa6a6d0158c9730fed62ef1eb1c9730c80214e20",
@@ -1670,7 +1670,7 @@
     "scope": "Current nx5-tde, 1024x600, 0 degrees. No new WBC, physical finger, dynamic scanout or rotated NX5 display validation. X9 was not operated."
   },
   "pixel_batch_validation": {
-    "report": "docs/nx5-pixel-batch.md",
+    "report": "docs/slint-optimization.md#nx5-pixel-batch",
     "evidence": "evidence/nx5-pixel-batch/2026-10-15",
     "baseline_bridge_commit": "9a4cdcc3a7ce1320421e99fc876e90e93270d657",
     "slint_commit": "5cfde5f2f2a9417373d4fd914730919327e935f8",

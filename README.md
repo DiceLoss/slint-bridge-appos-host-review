@@ -66,7 +66,7 @@ slint_bridge::init(Config {
 
 必须选择一个板级 feature；`fbdev` 与 `nx5` 互斥。NX5 按 SDK/驱动接口和双页布局运行，不比对内核版本、驱动名称或文件摘要；`fbdev` 仅准入已验证的 X9 Lombo 固件与布局，其他 framebuffer 仍拒绝。SDK 目录由系统动态库搜索路径决定，见 [平台说明](docs/software-platform.md#准入边界)。
 
-`Config::frame_interval` 是最小渲染启动间隔，默认 16667 微秒；没有 NX5 专用 30 FPS 钳制。当前驱动的实际提交上限约为 29 FPS，原因及尚未实现的单周期改动见 [驱动调查](docs/nx5-single-cycle.md)。
+`Config::frame_interval` 是最小渲染启动间隔，默认 16667 微秒；没有 NX5 专用 30 FPS 钳制。当前驱动的实际提交上限约为 29 FPS，原因及尚未实现的单周期改动见 [驱动调查](docs/nx5-display.md#nx5-single-cycle)。
 
 同时最多一次翻页提交和一帧预渲染。提交完成前不改写两张物理显示页，成功后才复用旧页；不提供单缓冲或忽略完成错误的回退。framebuffer 与触摸设备路径由 `Config` 指定，分辨率和行跨度读取设备当前模式；接口、像素格式和输入范围见 [平台说明](docs/software-platform.md)。
 
@@ -76,7 +76,7 @@ slint_bridge::init(Config {
 
 完整界面展示使用 `--bin showcase`：包含总览、控件/表单、设备列表、动画、图像/透明、交互记录、运行时图片缩放和富内容长列表八页。主机原生 MCP 预览、自动交互检查及 NX5 / X9 运行方式见 [展示应用说明](test-app/README.md#展示应用-showcase)；`display` 保留为原有诊断场景。
 
-图片背景中的多个透明区域使用独立 `--bin background-holes` 演示：应用组件只裁剪背景，前景控件和弹窗正常叠加，见 [接入与约束](test-app/README.md#图片背景中的多个透明区域) 及 [NX5 实测](docs/nx5-background-holes.md)。
+图片背景中的多个透明区域使用独立 `--bin background-holes` 演示：应用组件只裁剪背景，前景控件和弹窗正常叠加，见 [接入与约束](test-app/README.md#图片背景中的多个透明区域) 及 [NX5 实测](docs/nx5-validation.md#nx5-background-holes)。
 
 ```sh
 # 独立测试工程的公共接口回归。

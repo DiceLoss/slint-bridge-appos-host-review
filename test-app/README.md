@@ -110,7 +110,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 Rich list 首次进入时才加载两套 PNG 底图和五个原始 SVG，并建立 100 项模型。1024×600 面板上可视区为 800×340；纵向总长 11992 px、可滚动 11652 px（约 34.3 屏），横向总长 25588 px、可滚动 24788 px（约 31.0 屏）。两套底图交替使用；每张卡片都含 32×32 SVG 主图标、16×16 SVG 箭头和文本，透明边缘与阴影参与合成。每张卡片限定自身裁剪边界，使 renderer 跳过屏外子树，保留原图像、阴影、文字和命中区域。当前固定 100 个卡片实例，没有列表虚拟化；这是本例的负载范围，不代表无限列表的内存特性。方向切换回到起点，选择状态在离开页面后仍保留；侧栏导航高度为 44 px，以容纳八页。
 
-Controls 预览圆环从顶部顺时针显示配置百分比：0% 只显示底轨，100% 显示完整着色环。关闭输出时仍保留配置进度，并改用灰色；下方线性 Meter 显示关闭后的零输出。修复与设备验证见 [圆环报告](../docs/nx5-controls-ring.md)。
+Controls 预览圆环从顶部顺时针显示配置百分比：0% 只显示底轨，100% 显示完整着色环。关闭输出时仍保留配置进度，并改用灰色；下方线性 Meter 显示关闭后的零输出。修复与设备验证见 [圆环报告](../docs/nx5-validation.md#nx5-controls-ring)。
 
 Devices 默认显示纵向列表，点击 `Horizontal cards` 切为横向卡片，左右连续滑动可查看全部 18 项；点击 `Vertical list` 切回。两种模式共用搜索、在线筛选和详情回调，切换后从对应列表的起点开始。重新进入 Devices 页默认恢复纵向模式。
 
@@ -150,9 +150,9 @@ python3 test-app/tools/check-showcase.py --binary target/debug/showcase \
 
 `tests/showcase.rs` 使用 Slint 内存软件窗口检查表单校验、状态保留、重置取消、键盘编辑、列表筛选、稳定 ID、日志上限及透明开口的实际 RGBA 像素。`tests/showcase_scaling.rs` 在同一个保留缓冲 renderer 中依次切换 50%→100%→125%→200%→125%→50%→100%，检查原始素材尺寸固定、PNG/SVG 实际色块随缩放变化，并与独立全量重绘逐像素对照，覆盖缩小后的残留清除。`tests/showcase_repaint.rs` 另外通过确定性的文字模型更新和独立参考 renderer，验证缓存淘汰后切页标题仍刷新；不会用截图清空被测 renderer 的缓存。`tests/showcase_rich_repaint.rs` 比较 25 个横纵滚动、奇数/小数偏移、首末端、选中、屏外模型修改及重新进入状态的保留缓冲与独立全量重绘，并验证滚动确实改变画面、屏外修改不改变当前画面。默认 feature 矩阵包含这些测试；MCP 交互检查单独运行。这些检查均不代替 evdev、TDE/DMA、物理双页和扫描输出验证。
 
-`tests/texture_blend.rs` 对预乘 RGBA 纹理建立独立整数混合参考：四种旋转、裁剪偏移、透明/半透明/不透明背景，以及保留缓冲重绘逐像素一致；批量采样覆盖全部 256×256 字节乘积、透明和不透明目标、32 像素批次边界与未对齐尾部。X9 release 测试程序还在实机执行，覆盖实际 NEON 代码；性能和部署验证见 [X9 纹理 NEON 报告](../docs/x9-texture-neon.md)。
+`tests/texture_blend.rs` 对预乘 RGBA 纹理建立独立整数混合参考：四种旋转、裁剪偏移、透明/半透明/不透明背景，以及保留缓冲重绘逐像素一致；批量采样覆盖全部 256×256 字节乘积、透明和不透明目标、32 像素批次边界与未对齐尾部。X9 release 测试程序还在实机执行，覆盖实际 NEON 代码；性能和部署验证见 [X9 纹理 NEON 报告](../docs/slint-optimization.md#x9-texture-neon)。
 
-NX5 的私有 `Pixel` 包装另由库内 `sampled_pixel_blending_matches_scalar_with_guards` 检查批量委托、采样顺序和切片保护区；实现及验证范围见 [NX5 Pixel 批量纹理混合](../docs/nx5-pixel-batch.md)。
+NX5 的私有 `Pixel` 包装另由库内 `sampled_pixel_blending_matches_scalar_with_guards` 检查批量委托、采样顺序和切片保护区；实现及验证范围见 [NX5 Pixel 批量纹理混合](../docs/slint-optimization.md#nx5-pixel-batch)。
 
 界面固定使用 Fluent 标准控件，图标以 SVG 数据嵌入二进制；测试工程启用同源 `i-slint-core` 的图像/SVG 解码能力，不引入桌面或 GPU 后端。图片背景使用编译时嵌入的 [coastal-background.png](ui/assets/coastal-background.png)，保留的源图为 1638×960 PNG；构建脚本在主机将它转换为 1024×600 RGBA PNG 后嵌入，默认面板不再反复缩放背景，且满足 TDE 复制的尺寸/格式条件。独立 Image scaling 页另用两份未经构建期变换的 256×160 原始 PNG/SVG，运行时加载后由同一尺寸滑块缩放；它与背景优化分开。其他窗口尺寸仍按 `cover` 适配；生成来源与提示词见 [素材说明](ui/assets/README.md)。动画区复用同一图片，卡片与列表行采用半透明底色，保证动画/滚动时图片实际参与绘制。径向 alpha 叠加图仍由 Rust 生成；Layers 透明开口会隐藏背景图片。无需另行部署素材文件，字体仍按设备说明提供。
 
@@ -162,11 +162,11 @@ WBC 按无版本库名 `libobserver.so` 通过系统搜索路径加载，部署�
 
 `--split` 与 `--pattern` 配合使用；`--observe=N` 仅在 NX5 构建中启用，在启动约 2 秒后创建观察线程。`--seconds=N` 请求事件循环退出；进程还会等待在途提交和已启动的观察线程结束。正常退出显式等待 WBC，事件循环返回错误时由观察器资源所有者自动等待，保证采集线程结束后才返回应用错误。若观察线程也 panic，清理时记录该错误并保留原 UI 错误；正常退出时观察线程 panic 仍会作为错误返回。
 
-上述清理发生在事件循环正常退出或返回错误的路径。应用没有将 SIGINT/SIGTERM 转换为 `slint::quit_event_loop()` 的信号处理器，不能把信号终止当作同样的 Rust 析构验证；有限时长验证使用 `--seconds=N`。常驻程序切换时的暂停、提交空闲检查和回退流程见 [部署实测](../docs/nx5-touch-response.md#回退)。
+上述清理发生在事件循环正常退出或返回错误的路径。应用没有将 SIGINT/SIGTERM 转换为 `slint::quit_event_loop()` 的信号处理器，不能把信号终止当作同样的 Rust 析构验证；有限时长验证使用 `--seconds=N`。常驻程序切换时的暂停、提交空闲检查和回退流程见 [部署实测](../docs/nx5-validation.md#nx5-touch-response)。
 
 观察器的采样结果写入日志，当前应用不会将非零采样结果转换成非零退出码，验收需使用 [check-run.py](tools/nx5/display/check-run.py) 检查日志。
 
-`startup-regression` 是独占 NX5 的专用验证程序，不加入日常显示流程。参数为 `show-error|retry|queued|timer|queued-retry` 加输出目录，可追加 `--framebuffer=PATH`、`--touch=PATH`；`show-error` 保留预期布局错误并返回 1，其余用例应返回 0。它通过公开平台接口运行真实组件，按设备 ioctl 获取实际宽高、stride 和前台页，逐行检查实际像素并保存 TDE 状态；完整退出由外层脚本检查。构建、采集与结果见 [启动实机回归](../docs/nx5-startup.md)。
+`startup-regression` 是独占 NX5 的专用验证程序，不加入日常显示流程。参数为 `show-error|retry|queued|timer|queued-retry` 加输出目录，可追加 `--framebuffer=PATH`、`--touch=PATH`；`show-error` 保留预期布局错误并返回 1，其余用例应返回 0。它通过公开平台接口运行真实组件，按设备 ioctl 获取实际宽高、stride 和前台页，逐行检查实际像素并保存 TDE 状态；完整退出由外层脚本检查。构建、采集与结果见 [启动实机回归](../docs/nx5-validation.md#nx5-startup)。
 
 `init-retry OUTPUT_DIRECTORY [--framebuffer=PATH] [--touch=PATH]` 需要已有的输出目录并独占设备。它连续执行两次 framebuffer 路径错误和两次输入路径错误，然后成功启动并结束一个 UI 线程；在进程仍存活时断言 VO 已关闭、无 TDE MMZ 分配，核对重复失败及 UI 退出后的设备描述符缓存不增长，并保存 `.vo`、`.mmz`、`.fds` 快照。按设备说明构建时将 `--bin display` 换为 `--bin init-retry`；正常应返回 0，不能与显示进程同时运行。
 
@@ -187,7 +187,7 @@ BackgroundWithHoles { source: wallpaper; holes: video-regions; }
 
 当前组件覆盖轴对齐矩形和原尺寸图片；不同画布请先准备对应尺寸的源图，不能直接把每个片段各自 `cover` 缩放。旋转、任意缩放、圆角区域以及与解码器的坐标/生命周期同步不属于本例。组件只使用 Slint 公共 API，没有修改 Slint 源码或 framebuffer 提交逻辑。
 
-主机 `tests/background_holes.rs` 用独立的逐点区域并集判定，核对 22 个连续状态的 RGBA 输出，包含模型原地修改、重叠、越界、整数边界、隐藏恢复、图片替换、前景和弹窗；复用同一渲染缓冲，检查旧像素被修复。实机命令见 [NX5 工具](tools/nx5/README.md#图片背景透明区域的双页检查)，结果见 [实测报告](../docs/nx5-background-holes.md)。
+主机 `tests/background_holes.rs` 用独立的逐点区域并集判定，核对 22 个连续状态的 RGBA 输出，包含模型原地修改、重叠、越界、整数边界、隐藏恢复、图片替换、前景和弹窗；复用同一渲染缓冲，检查旧像素被修复。实机命令见 [NX5 工具](tools/nx5/README.md#图片背景透明区域的双页检查)，结果见 [实测报告](../docs/nx5-validation.md#nx5-background-holes)。
 
 基础窗口适合新设备接入检查；运动/纹理场景使用窗口实际尺寸显示分辨率、安排绘图区和限制运动范围。默认不打开触摸设备，检查暂停/恢复时需指定 `--touch`，或使用 MCP 注入交互。
 
@@ -223,9 +223,7 @@ NX5 部署与测试后的归档清理统一使用 [deploy.py](tools/nx5/README.m
 
 NX5 TDE、观察器插件、部署与 MCP 运行命令见 [devices/nx5/README.md](devices/nx5/README.md)。NX5 SDK 头文件/动态库和两设备字体已随 [third-party/](../third-party/README.md) 保存。所有构建均从仓库配置的同一个 Slint Git 来源解析依赖，不指定 `rev`；首次联网准备及更新锁文件的方法见 [平台说明](../docs/software-platform.md#构建依赖)。
 
-[此前启动实机回归](../docs/nx5-startup.md) 验证了 `949ceb9` 的五个启动用例各两轮、10 帧全幅实际像素和完整进程清理，另有 WBC 与纹理运行。三项 ignored TDE/翻页测试已在 [2026-10-12 补测](../docs/nx5-hardware.md) 中全部通过；EIO 的历史结果仍见 [前一轮报告](../docs/nx5-tde-exit.md)。
-
-`c03c3bb` 的自定义设备路径、两页实际像素、用户真实点触与 WBC 动态库采样见 [此前路径实机验证](../docs/nx5-configured-paths.md)。`bccf6b9` 的同进程初始化重试、描述符缓存、WBC 与纹理退出回归见 [审查修复报告](../docs/nx5-review-fixes.md)；随后 [清理历史临时产物并完成十次截图复验](../docs/nx5-screenshot-memory.md)，截图 OOM 原始记录保留。此前 `2de9168` 的 [常驻切换和实体触摸验证](../docs/nx5-touch-response.md) 保留原记录；`f963558` 的 [透明 UI 量程修复、WBC 与帧率实测](../docs/nx5-alpha.md) 保留原有范围。当前优化结果见 [图片列表优化](../docs/nx5-image-optimization.md)，首次图片版结果见 [图片背景复测](../docs/nx5-image-background.md)，首次六页用例结果见 [showcase 部署报告](../docs/nx5-showcase.md)，实际运行版本及回退以 [设备说明](devices/nx5/README.md) 为准。
+启动、退出、路径、输入和物理页的历史验证统一见 [NX5 验证记录](../docs/nx5-validation.md)；显示合成见 [NX5 显示调查](../docs/nx5-display.md)，性能见 [NX5 性能记录](../docs/nx5-performance.md) 和 [Slint 两设备对照](../docs/slint-optimization.md)。当前操作只采用设备说明中的流程，历史 PID 和测试计数不作为当前运行状态。
 
 ## 增加设备或用例
 
@@ -241,6 +239,6 @@ MCP 不能替代 evdev 解码、物理页所有权、TDE/DMA 失败及实际扫�
 
 `nx5-tde` 的等尺寸 RGBA 图像现支持整体透明度，透明度变化会重新准备源缓存。已有 Media 展示中的缩放图片仍走软件回退；完整支持边界见 [平台说明](../docs/software-platform.md)，不能用滑块操作或 MCP 截图代替硬件命中检查。
 
-需要比较纯色填充时，在上述设备启动命令前加 `SLINT_BRIDGE_TDE_FILL=1 SLINT_BRIDGE_TRACE=1`；TDE 统计行的 `fill` 显示硬件填充次数。正常运行不设置此变量，保留本板实测更快的 CPU 填充。初次接入见 [填充/混合报告](../docs/nx5-fill-blend.md)，当前共享 MMZ 路径的填充复测见 [共享画布报告](../docs/nx5-shared-canvas.md)。
+需要比较纯色填充时，在上述设备启动命令前加 `SLINT_BRIDGE_TDE_FILL=1 SLINT_BRIDGE_TRACE=1`；TDE 统计行的 `fill` 显示硬件填充次数。正常运行不设置此变量，保留本板实测更快的 CPU 填充。初次接入见 [填充/混合报告](../docs/nx5-performance.md#nx5-fill-blend)，当前共享 MMZ 路径的填充复测见 [共享画布报告](../docs/nx5-performance.md#nx5-shared-canvas)。
 
 X9 富列表的离屏阶段对照入口为 `examples/x9-render-bench.rs`，构建、参数和测量边界见 [X9 绘制阶段对照](tools/x9/README.md#绘制阶段对照)。它使用同一 Showcase 界面与软件 renderer，通过 0°/90° 对照定位旋转成本，不访问显示设备。

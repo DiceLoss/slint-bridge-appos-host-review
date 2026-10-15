@@ -1,6 +1,6 @@
 # X9 / Lombo N7 测试目标
 
-2026-10-15 当前常驻 `/tmp/slint-bridge-x9-20261014/showcase-08`，观测 PID **5679**，无退出定时器或性能探针，停在富列表纵向起点、无选择，Controls 48%。纹理采样与 NEON 混合优化后，本轮纵向 **12.83 FPS / 98.20% CPU / 17.58 MiB RSS**，横向 **19.93 FPS / 98.16% / 17.84 MiB**；CPU 为单核口径，相比本轮重新测得的 `showcase-07` 提升约 25% / 28%。八页 MCP、ARM 像素回归、evdev 导航和两张物理页共 2,048,000 像素对照通过。详见 [纹理 NEON 报告](../../../docs/x9-texture-neon.md)；前阶段结果仍见 [绘制/写页优化报告](../../../docs/x9-optimization.md)。保留 `showcase-07` 回退；05/06 及本轮诊断产物已校验归档。操作前须重新识别进程，不能直接使用这里的 PID。
+本文件维护已验证 X9 的构建、部署、运行和控制台恢复前提。观测版本、路径及恢复材料见带时间戳的 [current-target.json](current-target.json)，操作前重新核对实际所有者。性能与流水线分析见 [X9 性能记录](../../../docs/x9-performance.md)，后续批量混合见 [Slint 两设备对照](../../../docs/slint-optimization.md)。
 
 本目录与 NX5 独立。当前设备为 ADB `192.168.1.143:5555`、双 Cortex-A7、Linux `3.10.100 #452 SMP PREEMPT Mon Dec 12 11:32:50 CST 2022`，显示驱动 `lombo-drm`。身份与运行进程均须在每次操作前重新核对；[current-target.json](current-target.json) 是观测快照，不能直接沿用其中的 PID。
 

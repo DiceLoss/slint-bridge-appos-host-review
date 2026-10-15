@@ -1,5 +1,9 @@
 # X9 / Lombo N7 纯软件 framebuffer 接入调查
 
+外部源码引用使用采集时的仓库名、相对路径和行号，版本由正文注明；这些调查材料不随本仓库分发，也不是当前构建前提。
+
+本文保留 2026-10-14 接入阶段的硬件依据和验证。后续性能见 [X9 性能记录](x9-performance.md#x9-performance) 和 [Slint 对照](slint-optimization.md#x9-texture-neon)，实际部署与恢复按 [设备说明](../test-app/devices/x9/README.md) 重新核对。
+
 ## 驱动完成契约与接入范围
 
 本节记录 2026-10-14 对新设备显示完成语义的只读源码调查。目标不是 NX5：主任务现场只读识别为 LomboTech-N7、双 Cortex-A7、Linux `3.10.100 #452`（2022-12-12），`fb0` 绑定 `lombo-drm`，800×1280、32 位像素、stride 3200、虚拟高度 2560。该设备的 `/proc/kallsyms` 存在 `drm_fb_helper_pan_display`、`lombo_crtc_mode_set_base`、`lombo_crtc_page_flip`、`lombo_crtc_handle_vblank_events`、`lombo_dc_page_flip_worker`、`lombo_crtc_commit_sw`；这些名字说明存在相关实现，不能证明某个 ioctl 的完成含义或实际调用链。身份与布局应在每次实机操作前重新读取。
@@ -12,9 +16,9 @@ Linux 上游 v3.10 的 `drm_fb_helper_pan_display()` 给模式设置结构写入
 
 同版本 `fb_pan_display()` 校验偏移后调用驱动 `fb_pan_display`，再更新 `info->var.xoffset/yoffset`；`FBIOGET_VSCREENINFO` 读取的是这个内存结构。因而页号读回可用于发现错误偏移，不能单独证明硬件已经停止访问旧页。以上是上游通用路径的源码事实，不是目标厂商内核的等同证明。[上游 `fbmem.c`，827–858、1029–1034 行](https://raw.githubusercontent.com/torvalds/linux/v3.10/drivers/video/fbmem.c)
 
-标准 fbdev 没有与这一笔 PAN 绑定的完成事件队列。v3.10 的 `fb_fops` 不提供事件 `poll`/`read`，其 `read` 用来读取像素；`FBIO_WAITFORVSYNC`、`FBIOGET_VBLANK` 未由通用 ioctl 分支实现，而是转给驱动自己的 `fb_ioctl`。`FB_ACTIVATE_VBL` 只是请求下个 vblank 激活的标志；该 DRM fbdev helper 没有读取该标志，因此也不能据此增加通用完成保证。[同一上游 `fbmem.c`，1132–1140、1395–1413 行](https://raw.githubusercontent.com/torvalds/linux/v3.10/drivers/video/fbmem.c)、[X9 工具链 fb.h](/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/arm-linux-gnueabihf/libc/usr/include/linux/fb.h:27)。
+标准 fbdev 没有与这一笔 PAN 绑定的完成事件队列。v3.10 的 `fb_fops` 不提供事件 `poll`/`read`，其 `read` 用来读取像素；`FBIO_WAITFORVSYNC`、`FBIOGET_VBLANK` 未由通用 ioctl 分支实现，而是转给驱动自己的 `fb_ioctl`。`FB_ACTIVATE_VBL` 只是请求下个 vblank 激活的标志；该 DRM fbdev helper 没有读取该标志，因此也不能据此增加通用完成保证。[同一上游 `fbmem.c`，1132–1140、1395–1413 行](https://raw.githubusercontent.com/torvalds/linux/v3.10/drivers/video/fbmem.c)、X9 工具链 fb.h（`X9-sysroot/usr/include/linux/fb.h:27`）。
 
-纯软件绘制不要求使用 G2D，但也不免除扫描输出的完成同步。DRM 的 legacy page flip 另有与请求绑定的完成事件：提交 `DRM_MODE_PAGE_FLIP_EVENT` 后，完成时返回携带对应 `user_data` 的 `DRM_EVENT_FLIP_COMPLETE`。这与任意一次 `DRM_EVENT_VBLANK` 不同，不能在 fbdev PAN 后等待一个无关联 DRM vblank 就声称完成。X9 工具链自带 [drm_mode.h:463](/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/arm-linux-gnueabihf/libc/usr/include/drm/drm_mode.h:463) 和 [drm.h:800](/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/arm-linux-gnueabihf/libc/usr/include/drm/drm.h:800) 描述了该 UAPI；其 `linux/version.h` 是 4.0 头文件版本，不能替代 3.10.100 厂商实现的核验。Linux 官方文档也区分 vblank 与 page-flip completion 事件：[DRM 文件操作与事件](https://www.kernel.org/doc/html/v6.14/gpu/drm-internals.html#open-close-file-operations-and-ioctls)。
+纯软件绘制不要求使用 G2D，但也不免除扫描输出的完成同步。DRM 的 legacy page flip 另有与请求绑定的完成事件：提交 `DRM_MODE_PAGE_FLIP_EVENT` 后，完成时返回携带对应 `user_data` 的 `DRM_EVENT_FLIP_COMPLETE`。这与任意一次 `DRM_EVENT_VBLANK` 不同，不能在 fbdev PAN 后等待一个无关联 DRM vblank 就声称完成。X9 工具链自带 drm_mode.h:463（`X9-sysroot/usr/include/drm/drm_mode.h:463`） 和 drm.h:800（`X9-sysroot/usr/include/drm/drm.h:800`） 描述了该 UAPI；其 `linux/version.h` 是 4.0 头文件版本，不能替代 3.10.100 厂商实现的核验。Linux 官方文档也区分 vblank 与 page-flip completion 事件：[DRM 文件操作与事件](https://www.kernel.org/doc/html/v6.14/gpu/drm-internals.html#open-close-file-operations-and-ioctls)。
 
 官方 legacy `page_flip` 契约明确要求：驱动在 flip 完成时发送随请求传入的事件，应用收到该事件后才复用旧 buffer；开启 `DRM_MODE_PAGE_FLIP_ASYNC` 会取消等待 vblank、可能撕裂，因此不能采用。该文档明确讨论 legacy 接口，提供的是接口规范；仍须与目标实现及实机观测结合，不能套用较新 atomic helper 的内部行为。[Linux KMS 的 CRTC functions，`page_flip`](https://www.kernel.org/doc/html/v6.14/gpu/drm-kms.html#crtc-functions-reference)
 
@@ -28,10 +32,10 @@ Linux 上游 v3.10 的 `drm_fb_helper_pan_display()` 给模式设置结构写入
 
 | 既有源码 | 实际做法 | 对本次完成契约的意义 |
 | --- | --- | --- |
-| [旧 X9 framebuffer.rs:179](/home/dpower/data/GitLab/slint_x9/framebuffer.rs:179) | PAN 后调用一次 `FBIO_WAITFORVSYNC`，再换可写页 | 用户态使用范例；缺少驱动等待与锁存证明，不能原样作为板级完成依据 |
-| [旧 X9 FramebufferManager:631](/home/dpower/data/GitLab/slint_x9/src/framebuffer/mod.rs:631) | PAN 后立即同步另一缓冲页 | 依赖 PAN 隐含阻塞假设；自身没有验证该假设 |
-| [LGUI3 通用显示代码:530](/home/dpower/data/GitLab/LGUI3/c_library/src/lgui/lgui_disp/lgui_disp_fb.c:530) | 按平台宏使用 PUT/PAN；部分分支另等 VSYNC | 面向多个平台的应用层逻辑，不是 Lombo 内核契约 |
-| [DpowerOS framebuffer:239](/home/dpower/data/DPower_OS/DpowerOS/src/framebuffer/mod.rs:239) | PAN 后切换页身份；VSYNC 不支持时允许忽略 | 现有项目策略与本仓库的严格退休要求不同，不能据此放宽当前要求 |
+| 旧 X9 framebuffer.rs:179（`slint_x9/framebuffer.rs:179`） | PAN 后调用一次 `FBIO_WAITFORVSYNC`，再换可写页 | 用户态使用范例；缺少驱动等待与锁存证明，不能原样作为板级完成依据 |
+| 旧 X9 FramebufferManager:631（`slint_x9/src/framebuffer/mod.rs:631`） | PAN 后立即同步另一缓冲页 | 依赖 PAN 隐含阻塞假设；自身没有验证该假设 |
+| LGUI3 通用显示代码:530（`LGUI3/c_library/src/lgui/lgui_disp/lgui_disp_fb.c:530`） | 按平台宏使用 PUT/PAN；部分分支另等 VSYNC | 面向多个平台的应用层逻辑，不是 Lombo 内核契约 |
+| DpowerOS framebuffer:239（`DpowerOS/src/framebuffer/mod.rs:239`） | PAN 后切换页身份；VSYNC 不支持时允许忽略 | 现有项目策略与本仓库的严格退休要求不同，不能据此放宽当前要求 |
 
 网上按精确符号和 Lombo/N7 BSP 关键词检索，未取得可核验的官方/厂商驱动实现。其他设备的启动日志或同芯片名称不构成该固件完成证据。
 
@@ -88,7 +92,7 @@ PAN 约 70 µs 返回，匹配完成约 15.7 ms，直接否定了 PAN 同步完�
 
 ## 最终设备与验证结果
 
-当前常驻路径 `/tmp/slint-bridge-x9-20261014/showcase-06`，SHA256 `568791f1c3e64c23154ae537af46f882023c346a58be6e15205d24732f1cb289`，13,697,892 字节；观测 PID 2029。命令为 `--touch=/dev/input/event1 --rotation=90`，无退出定时器、trace 或故障注入环境。进程持有 fbdev 双描述符、DRM 同一会话的两个描述符、触摸设备和 graphics 控制台；maps 中没有 VideoDec、EGL、GLES、GBM 或注入库。完整环境见 [设备快照](../test-app/devices/x9/current-target.json)，PID 不可直接复用。
+接入验收时的常驻路径 `/tmp/slint-bridge-x9-20261014/showcase-06`，SHA256 `568791f1c3e64c23154ae537af46f882023c346a58be6e15205d24732f1cb289`，13,697,892 字节；观测 PID 2029。命令为 `--touch=/dev/input/event1 --rotation=90`，无退出定时器、trace 或故障注入环境。进程持有 fbdev 双描述符、DRM 同一会话的两个描述符、触摸设备和 graphics 控制台；maps 中没有 VideoDec、EGL、GLES、GBM 或注入库。完整环境见 [设备快照](../test-app/devices/x9/current-target.json)，PID 不可直接复用。
 
 | 验证 | 结果与范围 |
 | --- | --- |

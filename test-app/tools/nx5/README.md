@@ -71,7 +71,7 @@ sh -n test-app/tools/nx5/deploy-device.sh
 sh -n test-app/tools/nx5/deploy-control.sh
 ```
 
-2026-10-12 实机验证完成日志归档清理、校验上传约 5.8 MB 程序副本、受内存检查保护的原生截图，以及下一轮归档移除该非活动副本；PID 3972、当前程序和恢复文件未变。原始记录在 `evidence/nx5-deploy-script/2026-10-12/`，需另行取得；此前手工清理与十次截图的证据保持在 [内存报告](../../../docs/nx5-screenshot-memory.md)。
+2026-10-12 实机验证完成日志归档清理、校验上传约 5.8 MB 程序副本、受内存检查保护的原生截图，以及下一轮归档移除该非活动副本；PID 3972、当前程序和恢复文件未变。原始记录在 `evidence/nx5-deploy-script/2026-10-12/`，需另行取得；此前手工清理与十次截图的证据保持在 [内存报告](../../../docs/nx5-validation.md#nx5-screenshot-memory)。
 
 同日脚本审查修复后，29 项主机回归通过；在 #233 固件上另行验证目录外依赖保护、归档后链接改指拒绝、两轮归档清理、小型文件上传，以及缺失辅助脚本、空目录和仅余清理凭据的 `discard` 恢复。当前/恢复程序摘要和显示进程保持不变，本次测试文件已归档移除。记录在 `evidence/nx5-deploy-review/2026-10-12/`，需另行取得。重启、SIGKILL、传输损坏及计划截断使用主机故障回归验证；本轮未重启设备或触发实机 OOM，也未重复显示硬件及截图验证。
 
@@ -116,26 +116,36 @@ python3 -m unittest discover -s test-app/tools/nx5/display \
   -p 'test_showcase_performance.py' -v
 ```
 
-仅汇总自动窗口时同时省略两个 `--touch-*` 参数。分析器测试覆盖阶段边界批次、缺失批次、实际采样间隔/内核时钟频率、SYN_REPORT 配对和不完整记录拒绝。首次实测结果见 [展示应用性能报告](../../../docs/nx5-showcase-performance.md)。
+仅汇总自动窗口时同时省略两个 `--touch-*` 参数。分析器测试覆盖阶段边界批次、缺失批次、实际采样间隔/内核时钟频率、SYN_REPORT 配对和不完整记录拒绝。首次实测结果见 [展示应用性能报告](../../../docs/nx5-performance.md#nx5-showcase-performance)。
 
 ## 硬件诊断与证据重放
 
 | 目录 | 用途 | 对应记录 |
 | --- | --- | --- |
-| `display/` | 进程内 WBC 采样、混色负对照、输入 EIO/TDE 退出、窗口启动回归与日志检查 | [最新实机回归](../../../docs/nx5-startup.md) |
-| `tde/` | SDK 搜索路径/会话复用、原生故障注入及 TDE 输出结果重放 | [TDE 验证](../../../docs/nx5-tde.md) · [三项实机补测](../../../docs/nx5-hardware.md) |
-| `present/` | 早期板级准入调查与原始观测判读 | [早期准入记录](../../../docs/nx5-present-validation.md) |
-| `flip/` | 阻塞 PAN 周期与实际刷新时序分析 | [翻页分析](../../../docs/nx5-flip.md) |
-| `single-cycle/` | 队列、待锁存与当前页状态诊断 | [单周期调查](../../../docs/nx5-single-cycle.md) |
-| `fps/` | 已保存的整屏优化证据重放 | [帧率记录](../../../docs/nx5-fps.md) |
-| `parallel/` | 已保存的并行渲染/翻页证据重放 | [并行记录](../../../docs/nx5-parallel.md) |
-| `scheduling/` | 定时等待探针及已保存调度证据重放 | [调度记录](../../../docs/nx5-scheduling.md) |
+| `display/` | 进程内 WBC 采样、混色负对照、输入 EIO/TDE 退出、窗口启动回归与日志检查 | [启动与退出记录](../../../docs/nx5-validation.md) |
+| `tde/` | SDK 搜索路径/会话复用、原生故障注入及 TDE 输出结果重放 | [TDE 验证](../../../docs/nx5-performance.md#nx5-tde) · [三项实机补测](../../../docs/nx5-validation.md#nx5-hardware) |
+| `present/` | 早期板级准入调查与原始观测判读 | [早期准入记录](../../../docs/nx5-display.md#nx5-present-validation) |
+| `flip/` | 阻塞 PAN 周期与实际刷新时序分析 | [翻页分析](../../../docs/nx5-display.md#nx5-flip) |
+| `single-cycle/` | 队列、待锁存与当前页状态诊断 | [单周期调查](../../../docs/nx5-display.md#nx5-single-cycle) |
+| `fps/` | 已保存的整屏优化证据重放 | [帧率记录](../../../docs/nx5-performance.md#nx5-fps) |
+| `parallel/` | 已保存的并行渲染/翻页证据重放 | [并行记录](../../../docs/nx5-performance.md#nx5-parallel) |
+| `scheduling/` | 定时等待探针及已保存调度证据重放 | [调度记录](../../../docs/nx5-performance.md#nx5-scheduling) |
 
 UI 截图、元素查询和交互直接使用 [Slint MCP](../../../docs/slint-mcp.md)。不要把硬件专有工具放入通用测试入口，也不要默认批量执行设备探针；部分工具要求暂停显示、独占设备或特定固件。
 
-`display/run-startup.sh` 驱动专用 `startup-regression` 应用，保存首次显示失败、重试和延迟创建的资源及内核记录；`display/check-startup.py` 检查窗口状态、真实像素、任务执行及 TDE 清理，拒绝旧画面或缺失证据。新日志包含实际宽高，检查器按这些尺寸核对页偏移及像素数；旧日志没有尺寸时须用 `--size WIDTHxHEIGHT` 指定当时设备的记录值。步骤见 [启动实机回归](../../../docs/nx5-startup.md)。
+`display/run-startup.sh` 驱动专用 `startup-regression` 应用，保存首次显示失败、重试和延迟创建的资源及内核记录；`display/check-startup.py` 检查窗口状态、真实像素、任务执行及 TDE 清理，拒绝旧画面或缺失证据。新日志包含实际宽高，检查器按这些尺寸核对页偏移及像素数；旧日志没有尺寸时须用 `--size WIDTHxHEIGHT` 指定当时设备的记录值。构建 `--bin startup-regression` 并按设备流程部署，`run-startup.sh STARTUP_BINARY OUTPUT_ROOT MODE` 每次执行一个模式，依次选择 show-error、retry、queued、timer、queued-retry；输出根目录须已存在，show-error 预期退出 1，其余预期 0，仍需结合检查器核对像素和资源。历史覆盖见 [启动回归](../../../docs/nx5-validation.md#nx5-startup)。
 
-`display/run-regression.sh` 在设备上执行有限时长用例并保存日志、退出码和资源快照；`display/inject-read-error.c` 只用于诊断进程内的一次 evdev EIO。`display/check-exit.py` 核对活动 TDE 分配、退出后的 MMZ、连续内核记录及 EIO/WBC 清理顺序。构建、部署、预期失败和证据判据见最新实机回归报告。原始寄存器读数不能替代实际 WBC 帧、驱动计数及分配状态。
+`display/run-regression.sh` 在设备上执行有限时长用例并保存日志、退出码和资源快照；`display/inject-read-error.c` 只用于诊断进程内的一次 evdev EIO。`display/check-exit.py` 核对活动 TDE 分配、退出后的 MMZ、连续内核记录及 EIO/WBC 清理顺序。构建与部署按设备说明，预期失败和清理判据按检查器及 [生命周期记录](../../../docs/nx5-validation.md#nx5-tde-exit) 核对。原始寄存器读数不能替代实际 WBC 帧、驱动计数及分配状态。
+
+`run-regression.sh DISPLAY_BINARY OUTPUT_DIRECTORY MODE` 每次选择 pattern、mixed、fault 或 textures，输出目录须已存在且不能覆盖旧结果。pattern/mixed/fault 需要同进程观察器；fault 还需设置 `NX5_TOUCH_DEVICE`，并将下列 `inject-read-error.so` 放入输出目录。脚本仅为该测试子进程设置预加载和一次 EIO 触发；fault 预期退出 1，mixed 必须检查观察器拒绝结果，不能把进程退出码 0 当作负对照失败。
+
+```sh
+: "${NX5_CC:=/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-gcc}"
+mkdir -p target/nx5-display
+"$NX5_CC" -std=gnu11 -O2 -Wall -Wextra -Werror -shared -fPIC \
+  test-app/tools/nx5/display/inject-read-error.c -ldl \
+  -o target/nx5-display/inject-read-error.so
+```
 
 从仓库根重放现有证据：
 
@@ -165,13 +175,39 @@ sh test-app/tools/nx5/display/build-alpha-observer.sh
 
 按设备说明交叉构建 `--bin alpha-regression`，分别使用 `nx5` 和 `nx5-tde` 验证软件/TDE feature 的输出。部署插件和程序、确认原显示所有者退出后，设置同一个 SDK/字体环境和插件搜索路径，运行 `alpha-regression OUTPUT_DIRECTORY [--framebuffer=PATH] [--touch=PATH]`；输出目录必须已存在。可用 `run-alpha.sh BINARY_DIRECTORY tde|software` 保存资源和内核快照；目录内分别放置 `alpha-tde`、`alpha-software` 及插件，同一结果目录拒绝覆盖。成功返回 0，日志应有五个 `passed=true` 阶段、每帧 `bad=0`，保存五份 WBC CSV；在主机运行 `python3 test-app/tools/nx5/display/check-alpha.py <结果目录>` 核对实际页、样本完整性、误差和退出资源。此测试只接受对应 8×6 色块网格可整除的诊断尺寸，不限制库支持的面板大小。
 
-共享 MMZ 画布的面积、NEON 边界和真实写页回归入口见 [TDE 报告](../../../docs/nx5-tde.md#构建与接入)。真实写页测试使用生产像素转换与完成契约，交替呈现 210 帧色块；需独占显示，测完恢复常驻程序。NEON 边界项仅执行 CPU 转换，不加载 SDK。
+## ARM TDE 与翻页回归
 
-分段写页另有 ignored 测试 `framebuffer::nx5_writeback::budgeted_shared_mmz_writeback_preserves_pixels`：在实际双页逐段写入六帧 alpha 0/127/255 色块，检查前台页及源画布不变、整页提交后的像素完全一致。按同一 TDE 测试构建流程运行，要求独占 NX5；它与上方 210 帧历史性能基准分开记录。输入分派、取消部分写入和后续两页修复的回归属于默认主机测试，见 [输入延迟报告](../../../docs/nx5-input-latency.md)。
+从仓库根构建当前库的测试 ELF；头文件默认使用仓库资源：
+
+```sh
+cargo --config .cargo/nx5.toml test --locked --offline --release \
+  -p slint-bridge --features nx5-tde --target arm-unknown-linux-gnueabi --lib --no-run
+```
+
+将 Cargo 输出的测试 ELF 按部署流程上传为 `tde-tests`。除 CPU-only NEON 边界项外，以下用例需要先释放显示所有者、逐项独占运行；每项使用新进程，正常退出并核对 VO/MMZ 回到本轮基线后再运行下一项。
+
+| 完整测试名称 | 范围 |
+| --- | --- |
+| `backends::nx5::tde::tests::neon_writeback_boundaries` | ARM CPU 像素边界，不加载 SDK |
+| `backends::nx5::tde::tests::nx5_hardware_compare` | 真实 TDE 像素、缓存及回退 |
+| `backends::nx5::tde::tests::nx5_demo_pages_match_full_frames` | 真实 TDE 与内存双页对照，不写物理页 |
+| `backends::nx5::tde::tests::nx5_fill_area_crossover` | CPU 堆/MMZ 与 TDE 的填充对照 |
+| `framebuffer::nx5_writeback::budgeted_shared_mmz_writeback_preserves_pixels` | 六帧逐段物理写页，前台和源不变 |
+| `framebuffer::nx5_writeback::shared_mmz_writeback_matches_staged_pixels` | 210 次物理提交和像素对照 |
+| `backends::nx5::tests::blocking_flip_cadence` | 交替现有页并测完成节拍，不写像素 |
+
+设备 root 会话保留已核对的 SDK/字体环境，用实际设备路径运行一个完整名称，例如：
+
+```sh
+SLINT_BRIDGE_TEST_FRAMEBUFFER=/dev/fb0 ./tde-tests \
+  backends::nx5::tests::blocking_flip_cadence --exact --ignored --nocapture --test-threads=1
+```
+
+`flip/` 与 `single-cycle/` 探针仅适用其匹配固件。使用翻页诊断前，先通过 MCP 暂停当前 UI、确认提交排空，再暂停已核对的全部进程线程；设置 `NX5_STOPPED_OWNER` 为本次实际 PID。只有探针成功并通过其完成/丢样本检查、报告 `restored=1` 后才恢复该进程，再恢复 UI。探针不加载 SDK、不写像素或寄存器，不使用历史 PID/地址操作其他固件。历史结果见 [显示调查](../../../docs/nx5-display.md#nx5-single-cycle)。
 
 ## TDE 转换与物理写页探针
 
-`probe-format.c` 只操作独立 MMZ，记录单次 TDE 转换的拒绝码和像素误差；`probe-writeback.c` 对照 CPU 直接写 framebuffer 与 CPU 转换 MMZ 后 TDE 拷贝。两者都会加载 SDK，必须先退出当前显示所有者，不能与展示程序或另一 SDK 进程并行。探针内部再次检查 VO 和独占锁。写页探针明确限定当前已验证的 1024×600、32 位 BGRA 模式，短暂显示测试图案；实测范围及结果见 [写页调查](../../../docs/nx5-tde-writeback.md)。
+`probe-format.c` 只操作独立 MMZ，记录单次 TDE 转换的拒绝码和像素误差；`probe-writeback.c` 对照 CPU 直接写 framebuffer 与 CPU 转换 MMZ 后 TDE 拷贝。两者都会加载 SDK，必须先退出当前显示所有者，不能与展示程序或另一 SDK 进程并行。探针内部再次检查 VO 和独占锁。写页探针明确限定当前已验证的 1024×600、32 位 BGRA 模式，短暂显示测试图案；实测范围及结果见 [写页调查](../../../docs/nx5-performance.md#nx5-tde-writeback)。
 
 从仓库根构建（使用当前 SDK 头文件）：
 

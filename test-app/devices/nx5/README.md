@@ -1,38 +1,8 @@
 # NX5 测试目标
 
-本目录保存 [current-target.json](current-target.json)；路径相对于仓库根。观测时间随记录列出；PID、摘要和资源在操作前须重新核对。
+本文件维护构建、部署和运行前提。设备观测保存在带时间戳的 [current-target.json](current-target.json)，恢复文件保护策略见 [deploy-retain.json](deploy-retain.json)；操作前重新核对身份、PID、显示所有者及依赖，不能把快照当作实时状态。
 
-2026-10-15 随后完成 [NX5 Pixel 批量混合接入与回归](../../../docs/nx5-pixel-batch.md)：正式 ARM 纹理循环已生成 NEON，纵向 27.53 → 27.58 FPS、CPU 79.31% → 78.66%；横向 25.81 → 26.13 FPS、CPU 86.28% → 86.08%。本轮收益较小，不视为稳定加速。ARM 像素边界、六项硬件、八页交互、evdev 与背景双页检查通过。已恢复原常驻 ELF，观测 PID **18345**，日志 `live-after-pixel-batch.log`；614,400 像素与测试前截图完全相同，测试文件已归档清理。以下为此前验证记录；再次操作前仍须重新核对设备身份和实际显示所有者。
-
-2026-10-15 已完成 [纹理 NEON 优化后的 NX5 实机回归](../../../docs/nx5-texture-neon.md)：同源应用优化前后纵向 27.48 → 27.45 FPS、CPU 79.35% → 79.42%；横向 25.88 → 25.77 FPS、CPU 86.11% → 86.26%。六项硬件、两项 ARM 纹理、八页交互、evdev 和背景 23 阶段物理双页通过。本轮未发现明显退化，未获得 X9 那样的加速。已恢复原 `background-holes`，观测 PID **26898**，原 ELF 和启动脚本未变；两区域初始状态、Change 44、前景计数 0、弹窗关闭，完整截图与测试前相同。日志 `live-after-neon-regression.log`，无时限或探针；诊断文件已归档清理。操作前仍须重新核对身份及实际所有者。
-
-以下为同日此前的背景演示部署记录：
-
-2026-10-15 已完成 [图片背景裁剪与多个透明区域验收](../../../docs/nx5-background-holes.md)。当前为独立 `background-holes` 演示，路径 `/tmp/slint-bridge-holes-20261015/background-holes`，观测 PID **412**；启动用 `sh /tmp/slint-bridge-holes-20261015/start.sh`。两区域已复位，前景按钮计数为 0、弹窗关闭，无退出定时器或探针。原 `2fddc04` showcase 作为恢复版本，`1225593` 已校验归档移除。23 阶段真实双页及原生交互通过；本轮未接入视频源。运行前仍需重新核对设备身份和显示所有者。
-
-以下为同日此前的兼容性回归与历史部署记录：
-
-2026-10-15 已完成 [X9 改动后的 NX5 链路回归](../../../docs/nx5-x9-regression.md)：六项实机硬件回归、实际页及 evdev 验证通过。当前源码与旧版的纵向 FPS 为 27.52 / 27.46，横向为 25.84 / 26.03；CPU 接近，本轮 RSS 约多 0.16 MiB。验证后恢复原 `2fddc04` + Slint `9a1a3b1`，观测 PID **22711**，日志 `live-after-x9-regression.log`，Rich list 纵向起点、Controls 48%。新候选已归档，回退仍为 `1225593`；操作前重新核对 PID 和所有者。
-
-以下为原版本 2026-10-14 的部署和性能记录：
-
-2026-10-14 富列表脏区与绘制优化收尾：当前 `2fddc04` + Slint `9a1a3b1`，路径 `/tmp/slint-bridge-rich-render-2fddc04/showcase`，观测 PID **6607**。保留 100 项及原有视觉内容；条目子树裁剪、SVG 栅格缓存及 TDE CPU 路径优化已部署。Rich list 纵向起点、Controls 48%，无退出定时器、trace 或临时探针。
-
-独立窗口纵向 **27.52 FPS / 78.66% CPU / 17.91 MiB 平均 RSS**，横向 **26.03 FPS / 85.99% CPU / 18.27 MiB 平均 RSS**。基线 17.52 / 15.51 FPS。主机 25 状态整帧像素一致，最终硬件与 100 帧双页、完整列表交互、两方向完整物理页比对通过；详见[脏区与绘制优化报告](../../../docs/nx5-rich-render.md)。
-
-MMZ **12760 KiB / 6 块**，新增小源槽占 620 KiB；另有最多 2 MiB / 32 项的 SVG 像素缓存。清理后常驻 RSS 18904 KiB、VmHWM 18904 KiB（本次常驻峰值），可用内存 38692 KiB。板上保留当前和 `1225593` 恢复程序，更早二进制经 SHA256 校验后归档到主机。启动 ID `4aa4f5d2-8de2-42cb-9c2b-44c3e74d6e2b`；操作前重新核对身份、实际所有者和退出资源。
-
-当前保留项见 [deploy-retain.json](deploy-retain.json)。
-
-此前关闭 trace 的新旧正式版资源对照见[资源报告](../../../docs/nx5-release-overhead.md)，输入延迟及真实页像素验证见[输入延迟报告](../../../docs/nx5-input-latency.md)；清理版实体触摸确认和 NEON 性能保留在[部署报告](../../../docs/nx5-cleanup-deploy.md)、[NEON 报告](../../../docs/nx5-neon-unpremultiply.md)。
-
-纯色版本的 [性能报告](../../../docs/nx5-showcase-performance.md) 和 [首次部署报告](../../../docs/nx5-showcase.md) 保留原场景与提交的数据，不改记为图片背景成绩。
-
-原 `f963558` 的 alpha 量程、实际页/WBC 和 29 FPS 成绩仍属于 [2026-10-12 透明 UI 实测](../../../docs/nx5-alpha.md)，不改记为六页新界面的测量。
-
-此前同进程初始化重试、VO/描述符清理、WBC 正负对照及纹理退出见 [审查修复实机报告](../../../docs/nx5-review-fixes.md)；当时截图 OOM 及清理后 [十次截图复验](../../../docs/nx5-screenshot-memory.md) 保留原始记录。双页像素和三项独立 ignored 测试等也保留各自此前报告口径，不作为本次触摸部署的新结果。
-
-当前板为 DPower Terminal `/dev/ttyUSB1`、ADB `192.168.1.151:5555`、内核 #233。运行行为见 [平台说明](../../../docs/software-platform.md#准入边界)，部署快照及恢复前提见 [当前环境](../../../docs/current-environment.md)。
+现有验证目标为 USB1 root、ADB `192.168.1.151:5555`、Linux #233。当前接口与约束见 [平台说明](../../../docs/software-platform.md)，显示完成/合成依据见 [显示调查](../../../docs/nx5-display.md)，阶段结果分别见 [性能记录](../../../docs/nx5-performance.md)、[功能验证](../../../docs/nx5-validation.md) 和 [Slint 两设备对照](../../../docs/slint-optimization.md)。
 
 构建默认使用 [仓库内 SDK 头文件与动态库](../../../third-party/README.md)，无需设置 `NX5_SDK_INCLUDE`。新机器仍需安装本文件指定的交叉工具链。字体及版权说明使用 `third-party/fonts/` 中的文件；部署 SDK 时保留版本库与 `libVideoDec.so` 别名，设备上的 `LD_LIBRARY_PATH` 指向实际部署目录。
 
@@ -98,4 +68,4 @@ SLINT_BRIDGE_TRACE=1 LD_LIBRARY_PATH=/run/slint-bridge-display:/system/app/clib 
 
 把日志取回主机后执行 `python3 test-app/tools/nx5/display/check-run.py <日志路径> --wbc`。检查器要求至少 300 个样本、黑白均有、无混色、采集速率为 28–32 FPS，以及提交统计窗口至少为默认的 28 FPS。`--split` 负对照应检出混色；不能只用应用退出码判断采样成功。
 
-硬件回归位于库内部，可构建为专用测试二进制，但必须在显示所有者退出后单独运行；入口及覆盖范围见 [TDE 报告](../../../docs/nx5-tde.md)。双 framebuffer 和无撕裂条件不因为测试工程迁移而放宽。当前实际显示吞吐约 29 FPS；单周期优化已停止在 [已记录的调查结论](../../../docs/nx5-single-cycle.md)。
+硬件回归位于库内部，可构建为专用测试二进制，但必须在显示所有者退出后单独运行；入口及覆盖范围见 [TDE 报告](../../../docs/nx5-performance.md#nx5-tde)。双 framebuffer 和无撕裂条件不因为测试工程迁移而放宽。当前实际显示吞吐约 29 FPS；单周期优化已停止在 [已记录的调查结论](../../../docs/nx5-display.md#nx5-single-cycle)。
