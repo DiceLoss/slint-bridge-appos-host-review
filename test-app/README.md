@@ -221,7 +221,7 @@ cargo build --locked --offline --release -p slint-bridge-test-app \
 
 NX5 部署与测试后的归档清理统一使用 [deploy.py](tools/nx5/README.md#部署归档清理和截图)，保留当前程序、一份恢复版本及其依赖；截图子命令会即时检查设备可用内存。
 
-NX5 TDE、观察器插件、部署与 MCP 运行命令见 [devices/nx5/README.md](devices/nx5/README.md)。所有构建均从仓库配置的同一个 Slint Git 来源解析依赖，不指定 `rev`；首次联网准备及更新锁文件的方法见 [平台说明](../docs/software-platform.md#构建依赖)。
+NX5 TDE、观察器插件、部署与 MCP 运行命令见 [devices/nx5/README.md](devices/nx5/README.md)。NX5 SDK 头文件/动态库和两设备字体已随 [third-party/](../third-party/README.md) 保存。所有构建均从仓库配置的同一个 Slint Git 来源解析依赖，不指定 `rev`；首次联网准备及更新锁文件的方法见 [平台说明](../docs/software-platform.md#构建依赖)。
 
 [此前启动实机回归](../docs/nx5-startup.md) 验证了 `949ceb9` 的五个启动用例各两轮、10 帧全幅实际像素和完整进程清理，另有 WBC 与纹理运行。三项 ignored TDE/翻页测试已在 [2026-10-12 补测](../docs/nx5-hardware.md) 中全部通过；EIO 的历史结果仍见 [前一轮报告](../docs/nx5-tde-exit.md)。
 

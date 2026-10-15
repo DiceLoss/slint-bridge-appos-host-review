@@ -1,0 +1,4 @@
+# Keep upstream resources byte-for-byte, including vendor header whitespace.
+nx5/include/** -text -whitespace
+nx5/lib/* -text
+fonts/* -text -whitespace

@@ -23,6 +23,7 @@ slint_bridge/
 │   │   ├── nx5/              # NX5 翻页、SDK 会话及 tde/
 │   │   └── x9/               # X9 纯 CPU framebuffer 与 DRM 完成事件
 │   └── tests/                # 按职责拆分的库内回归
+├── third-party/              # NX5 SDK 头文件/动态库、部署字体及版权说明
 ├── test-app/                 # 独立测试程序、.slint 界面、设备工具
 ├── docs/                     # 使用说明、设计和实测报告
 ├── evidence/                 # 本地原始测试证据，不入库
@@ -33,7 +34,7 @@ slint_bridge/
 
 ## 接入库
 
-适配代码集中在本仓库，Slint 和厂商 SDK 是外部依赖。当前从 [Slint 仓库](http://192.168.253.238/wshl/slint-last.git) 获取同源 Slint / 软件 renderer，依赖清单不指定提交哈希；该源码包含所需扩展，不能只凭相同版本号替换为另一个来源。首次构建前联网执行 `cargo fetch --locked`，之后可使用文档中的离线构建命令。
+适配代码集中在本仓库；NX5 SDK 所需头文件、动态库及部署字体保存在 [third-party/](third-party/README.md)，构建脚本默认使用仓库内资源。当前从 [Slint 仓库](http://192.168.253.238/wshl/slint-last.git) 获取同源 Slint / 软件 renderer，依赖清单不指定提交哈希；该源码包含所需扩展，不能只凭相同版本号替换为另一个来源。首次构建前联网执行 `cargo fetch --locked`，之后可使用文档中的离线构建命令。
 
 ```toml
 [dependencies]
@@ -82,13 +83,12 @@ cargo test --locked --offline --workspace --features nx5-tde
 python3 test-app/tools/check-feature-matrix.py
 
 # 独立测试程序的 ARM 构建。
-NX5_SDK_INCLUDE=/home/dpower/data/GitLab/LGUI3/c_library/third_party/include/NX5/codec \
 cargo --config .cargo/nx5.toml build --locked --offline --release \
   -p slint-bridge-test-app --features nx5-tde \
   --target arm-unknown-linux-gnueabi --bin display
 ```
 
-`--offline` 复用当前缓存；新机器需先获取锁定依赖。工具链配置保留在根 `.cargo/`。库被其他 workspace 引用时，消费方仍须配置自己的交叉链接器。
+`--offline` 复用当前缓存；新机器需先获取锁定依赖。工具链配置保留在根 `.cargo/`，新机器所需安装项见 [资源说明](third-party/README.md#新机器仍需安装的工具)。库被其他 workspace 引用时，消费方仍须配置自己的交叉链接器。
 
 UI 检查使用 [Slint 原生 MCP](docs/slint-mcp.md)：元素查询、截图、交互与事件录制。底层页生命周期、evdev 解码、TDE 故障注入和实际输出采样继续使用相应回归，不能用 UI 截图代替。
 

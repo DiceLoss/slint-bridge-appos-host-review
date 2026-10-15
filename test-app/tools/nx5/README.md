@@ -2,6 +2,8 @@
 
 这些工具验证 Slint MCP 不覆盖的硬件路径。目录内的 `build.sh`、`build-observer.sh` 和 `check-native.sh` 会定位仓库根；诊断输出继续放在根 `target/nx5-*`，历史证据继续从根 `evidence/nx5-*` 读取。
 
+原生检查和观察器构建默认使用 [third-party/](../../../third-party/README.md) 的 SDK 头文件与动态库，保留环境变量覆盖。运行 `present/build.sh` 会同时构建其 SDK 探针；构建不会运行这些程序。
+
 `target/` 和 `evidence/` 均不纳入 Git。下方证据重放命令需要已有的本地档案；它们不采集新数据，也不证明当前二进制已通过实机测试。当前进程内 WBC 插件的构建、动态库搜索路径和判读命令见 [NX5 设备说明](../../devices/nx5/README.md)。`present/` 中的独立 SDK 探针属于 #22 旧环境，不能直接套用于正在运行 UI 的 #233 设备。
 
 ## 部署、归档清理和截图
@@ -149,7 +151,7 @@ python3 test-app/tools/nx5/single-cycle/analyze.py evidence/nx5-single-cycle/sta
 python3 test-app/tools/nx5/single-cycle/analyze.py evidence/nx5-single-cycle/stages.log --min-fps 55
 ```
 
-`NX5_SDK_INCLUDE=<codec头文件目录> sh test-app/tools/nx5/tde/check-native.sh` 在主机运行原生故障注入和像素转换边界检查，并用替身 SDK 验证：从两个临时目录（含空格路径）加载无版本库名 `libVideoDec.so`，TDE 在显示会话加载前拒绝自行加载、加载后复用同一会话，构造函数只运行一次，引用正确释放。原生检查还覆盖批量 alpha 检查/恢复与预乘直接复制的短尾部、非对齐地址和保护区，小源槽的容量拒绝，以及 256 组奇偶坐标、源裁剪及透明度像素对照，多裁剪区域和未知 DMA 时禁止 CPU 写边缘；SDK 替身断言硬件混合矩形始终偶数对齐，裁剪外像素不变。该检查不加载真实 SDK，也不访问设备。
+`sh test-app/tools/nx5/tde/check-native.sh` 在主机运行原生故障注入和像素转换边界检查，并用替身 SDK 验证：从两个临时目录（含空格路径）加载无版本库名 `libVideoDec.so`，TDE 在显示会话加载前拒绝自行加载、加载后复用同一会话，构造函数只运行一次，引用正确释放。原生检查还覆盖批量 alpha 检查/恢复与预乘直接复制的短尾部、非对齐地址和保护区，小源槽的容量拒绝，以及 256 组奇偶坐标、源裁剪及透明度像素对照，多裁剪区域和未知 DMA 时禁止 CPU 写边缘；SDK 替身断言硬件混合矩形始终偶数对齐，裁剪外像素不变。该检查不加载真实 SDK，也不访问设备。
 
 维护中的 `display/run-regression.sh` 与 `display/run-startup.sh` 接受 `NX5_FRAMEBUFFER`（默认 `/dev/fb0`）和可选的 `NX5_TOUCH_DEVICE`；输入 EIO 用例必须指定触摸设备。脚本继承调用者的 `LD_LIBRARY_PATH` 和 `SLINT_DEFAULT_FONT`，不覆盖 SDK、插件或字体目录。显示回归使用板上已有的 `ls -ldnL` 获取所选设备的主次设备号并定位 sysfs，支持设备链接；不依赖该固件缺少的 `stat` 命令。退出检查将 MMZ 用量和块数与同次初始快照比较，不再假定某一分辨率下的固定显存占用。历史原始记录保持不变。
 
@@ -158,8 +160,6 @@ python3 test-app/tools/nx5/single-cycle/analyze.py evidence/nx5-single-cycle/sta
 `display/build-alpha-observer.sh` 构建 `libalpha-observer.so`，由 `alpha-regression` 在已取得显示所有权的进程内加载。它只读取物理前台页、VO 公共属性，并临时使用空闲 WBC；不初始化/关闭共用 VO，不改图层 alpha，也不接入解码器。framebuffer 检查采用当前 NX5 的 0–128 alpha 编码，WBC 比较半透明 RGB 色块与对应黑底不透明参考色的 Y/UV，要求设备现有底色为黑，通道误差至多 2。全透明阶段还检查输出为黑；不透明原色必须可见，避免全黑采样误判通过。UI 在每阶段事件循环退出并等待提交完成后采样；这是静态阶段和交替前台页验证，不是连续运动中每个扫描帧的验证。
 
 ```sh
-NX5_SDK_INCLUDE=/home/dpower/data/GitLab/LGUI3/c_library/third_party/include/NX5/codec \
-NX5_SDK_LIBRARY=/home/dpower/data/GitLab/LGUI3/c_library/third_party/lib/NX5/codec_rorate/libVideoDec-1.6.6.so \
 sh test-app/tools/nx5/display/build-alpha-observer.sh
 ```
 
@@ -181,7 +181,7 @@ for name in probe-format probe-writeback; do
   /opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-gcc \
     -std=gnu11 -O2 -Wall -Wextra -Werror -march=armv7-a -mtune=cortex-a7 \
     -mfpu=neon-vfpv4 -mfloat-abi=softfp \
-    -I /home/dpower/data/GitLab/LGUI3/c_library/third_party/include/NX5/codec \
+    -I third-party/nx5/include \
     "test-app/tools/nx5/tde/$name.c" -ldl -o "target/nx5-tde-writeback/$name"
 done
 ```

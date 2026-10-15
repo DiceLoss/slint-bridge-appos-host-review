@@ -30,7 +30,8 @@ ADB shell 为 uid 2000，不能直接访问 root 所有的 fbdev / evdev。上�
 
 ```sh
 adb -s 192.168.1.143:5555 push target/arm-unknown-linux-gnueabihf/release/showcase RUN_DIR/showcase
-adb -s 192.168.1.143:5555 push /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf RUN_DIR/DejaVuSans.ttf
+adb -s 192.168.1.143:5555 push third-party/fonts/DejaVuSans.ttf RUN_DIR/DejaVuSans.ttf
+adb -s 192.168.1.143:5555 push third-party/fonts/DejaVu-COPYRIGHT RUN_DIR/DejaVu-COPYRIGHT
 ```
 
 在目标 root 会话中启动，先使用 `--seconds=20` 验证正常退出，确认描述符和控制台恢复后再去掉时限常驻：

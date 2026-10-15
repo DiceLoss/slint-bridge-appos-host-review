@@ -27,9 +27,9 @@
 ```sh
 mkdir -p target/x9-reference-fonts target/slint-bridge-x9-fontconfig
 # 目标链接不存在时创建，勿覆盖其他字体目录。
-ln -s /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf target/x9-reference-fonts/DejaVuSans.ttf
+ln -s "$(pwd)/third-party/fonts/DejaVuSans.ttf" target/x9-reference-fonts/DejaVuSans.ttf
 XDG_CACHE_HOME="$PWD/target" FONTCONFIG_FILE="$PWD/test-app/tools/x9/fonts.conf" \
-SLINT_DEFAULT_FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf \
+SLINT_DEFAULT_FONT=third-party/fonts/DejaVuSans.ttf \
 cargo run --locked --offline -p slint-bridge-test-app --features fbdev \
   --example x9-reference -- target/x9-reference-new
 ```

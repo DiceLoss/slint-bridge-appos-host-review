@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 cd "$(dirname "$0")/../../../.."
-: "${NX5_SDK_INCLUDE:?set the matching NX5 codec header directory}"
+: "${NX5_SDK_INCLUDE:=$PWD/third-party/nx5/include}"
 test_dir=$(mktemp -d /tmp/slint-bridge-tde-native.XXXXXX)
 test_binary="$test_dir/test-native"
 trap 'rm -rf "$test_dir"' EXIT

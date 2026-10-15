@@ -34,6 +34,8 @@ MMZ **12760 KiB / 6 块**，新增小源槽占 620 KiB；另有最多 2 MiB / 32
 
 当前板为 DPower Terminal `/dev/ttyUSB1`、ADB `192.168.1.151:5555`、内核 #233。运行行为见 [平台说明](../../../docs/software-platform.md#准入边界)，部署快照及恢复前提见 [当前环境](../../../docs/current-environment.md)。
 
+构建默认使用 [仓库内 SDK 头文件与动态库](../../../third-party/README.md)，无需设置 `NX5_SDK_INCLUDE`。新机器仍需安装本文件指定的交叉工具链。字体及版权说明使用 `third-party/fonts/` 中的文件；部署 SDK 时保留版本库与 `libVideoDec.so` 别名，设备上的 `LD_LIBRARY_PATH` 指向实际部署目录。
+
 以下命令从仓库根执行：
 
 ```sh
@@ -43,7 +45,6 @@ cargo build --locked --offline --release -p slint-bridge-test-app \
 
 # Cortex-A7/NEON、TDE 和 Slint 原生 MCP。
 SLINT_EMIT_DEBUG_INFO=1 \
-NX5_SDK_INCLUDE=/home/dpower/data/GitLab/LGUI3/c_library/third_party/include/NX5/codec \
 cargo --config .cargo/nx5.toml build --locked --offline --release \
   -p slint-bridge-test-app --features nx5-tde,slint/mcp \
   --target arm-unknown-linux-gnueabi --bin display
@@ -80,11 +81,9 @@ NX5 工具集中在 [tools/nx5/](../../tools/nx5/README.md)。WBC 必须在显�
 
 已启动的观察线程在正常退出和事件循环出错时都会被等待，先完成插件清理再结束应用。应用错误与观察线程 panic 的处理及主机回归入口见 [测试工程说明](../../README.md)。
 
-使用 `--observe=N` 前，先在主机构建插件。`NX5_SDK_LIBRARY` 可指向任意位置的兼容 SDK 文件；必须与显示进程加载的 SDK 为同一份库，并确保该库的 SONAME 与 `libVideoDec.so` 解析到同一文件，以复用会话：
+使用 `--observe=N` 前，先在主机构建插件。默认链接仓库内 SDK；`NX5_SDK_LIBRARY` 仍可指向其他位置的兼容 SDK 文件；必须与显示进程加载的 SDK 为同一份库，并确保该库的 SONAME 与 `libVideoDec.so` 解析到同一文件，以复用会话：
 
 ```sh
-NX5_SDK_INCLUDE=/home/dpower/data/GitLab/LGUI3/c_library/third_party/include/NX5/codec \
-NX5_SDK_LIBRARY=/home/dpower/data/GitLab/LGUI3/c_library/third_party/lib/NX5/codec_rorate/libVideoDec-1.6.6.so \
 sh test-app/tools/nx5/display/build-observer.sh
 ```
 
