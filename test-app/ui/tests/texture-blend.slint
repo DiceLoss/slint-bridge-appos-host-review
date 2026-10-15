@@ -1,0 +1,14 @@
+export component TextureBlendTest inherits Window {
+    width: 128px; height: 96px;
+    in property <color> base;
+    in property <image> picture;
+    in property <int> offset-x;
+    in property <int> offset-y;
+    background: root.base;
+    Image {
+        source: root.picture;
+        x: root.offset-x * 1px; y: root.offset-y * 1px;
+        width: 128px; height: 96px;
+        image-fit: fill;
+    }
+}

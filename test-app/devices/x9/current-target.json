@@ -1,5 +1,5 @@
 {
-  "observed_at_utc": "2026-10-14T16:38:13Z",
+  "observed_at_utc": "2026-10-15T04:07:38Z",
   "scope": "observation only; recheck identity, PID, and ownership before operation",
   "adb_serial": "192.168.1.143:5555",
   "hostname": "virgo",
@@ -14,8 +14,8 @@
     "fbdev",
     "slint/mcp"
   ],
-  "slint_commit": "fa6a6d0158c9730fed62ef1eb1c9730c80214e20",
-  "library_source": "cacf98f2fedfc99a6d965468cd709adfd7c5466f",
+  "slint_commit": "5cfde5f2f2a9417373d4fd914730919327e935f8",
+  "library_source": "6ae646b5a0862a21e1a08f33c5b30ee808141cf6",
   "display": {
     "driver": "lombo-drm",
     "drm": "lombo 1.0.0",
@@ -55,10 +55,10 @@
     }
   },
   "process": {
-    "pid": 3103,
-    "executable": "/tmp/slint-bridge-x9-20261014/showcase-07",
-    "sha256": "0ea44d41b3252118e26cdb501b4401aaeb09456d83303adbd804ce751f12156e",
-    "bytes": 13698344,
+    "pid": 5679,
+    "executable": "/tmp/slint-bridge-x9-20261014/showcase-08",
+    "sha256": "6893765bddc82ed36d097f46fd6c682620c0385818300a7580580d09c1e09d86",
+    "bytes": 13730380,
     "arguments": [
       "--framebuffer=/dev/fb0",
       "--touch=/dev/input/event1",
@@ -69,24 +69,25 @@
       "SLINT_DEFAULT_FONT": "/tmp/slint-bridge-x9-20261014/DejaVuSans.ttf"
     },
     "font_sha256": "ae7b7855e115a5966d8b1b3f80f254ccc117ec86f9965e202ee2940453837280",
-    "log": "/tmp/slint-bridge-x9-20261014/showcase-07-resumed.log",
-    "rss_kib": 17832,
-    "peak_rss_kib": 17832,
+    "log": "/tmp/slint-bridge-x9-20261014/showcase-08-live.log",
+    "rss_kib": 17884,
+    "peak_rss_kib": 17884,
     "threads": 3,
     "console_mode": "KD_GRAPHICS",
-    "page": "Rich list, vertical start, no selection"
+    "page": "Rich list, vertical start, no selection; Controls 48%"
   },
   "mcp": {
     "host_port": 19316,
     "device_port": 9315
   },
   "backup": {
-    "executable": "/tmp/slint-bridge-x9-20261014/showcase-06",
-    "sha256": "568791f1c3e64c23154ae537af46f882023c346a58be6e15205d24732f1cb289",
-    "limitation": "before rotated-texture and opaque-write performance optimization",
+    "executable": "/tmp/slint-bridge-x9-20261014/showcase-07",
+    "sha256": "0ea44d41b3252118e26cdb501b4401aaeb09456d83303adbd804ce751f12156e",
+    "limitation": "Before sampled-texture NEON blending optimization; retains rotated texture tiles and opaque framebuffer writes.",
     "initial_pixels": "/tmp/slint-bridge-x9-probe/before.fb",
     "recover_console": "/tmp/slint-bridge-x9-probe/recover-console"
   },
-  "evidence": "evidence/x9-framebuffer/2026-10-14, evidence/x9-performance/2026-10-14, and evidence/x9-optimization/2026-10-14 (local ignored archives, acquired separately)",
-  "performance_report": "docs/x9-optimization.md"
+  "evidence": "evidence/x9-framebuffer/2026-10-14, evidence/x9-performance/2026-10-14, and evidence/x9-optimization/2026-10-14 (local ignored archives, acquired separately); evidence/x9-neon/2026-10-15 (local ignored archive, acquired separately)",
+  "performance_report": "docs/x9-texture-neon.md",
+  "application_source_note": "Built from library_source plus the TextureBlendTest regression fixture; runtime and showcase UI unchanged."
 }

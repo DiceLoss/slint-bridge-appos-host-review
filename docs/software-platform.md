@@ -145,7 +145,7 @@ flowchart LR
 
 两个 package 均要求 Linux、Rust 1.92 或更新版本，默认 features 为空，必须显式选择 `fbdev` 或 `nx5`；`nx5-tde` 包含 `nx5`。`fbdev,nx5` 和 `fbdev,nx5-tde` 组合编译失败。根 workspace 的默认成员只有库；检查测试工程使用 `-p slint-bridge-test-app`，检查两者使用 `--workspace`。
 
-Slint 使用用户指定的本地源码树 `/home/dpower/data/GitHub/slint-1.18.1`，当前核对的 HEAD 为 `fa6a6d0158c9730fed62ef1eb1c9730c80214e20`。依赖关闭默认桌面后端，启用 `std`、`renderer-software` 和 `compat-1-18`。`nx5-tde` 额外启用同源软件 renderer 的 `experimental`，ARM 构建额外编译使用外部 SDK 头文件的 C 接口，运行时复用已加载的 SDK 会话。
+Slint 使用用户指定的本地源码树 `/home/dpower/data/GitHub/slint-1.18.1`，当前核对的 HEAD 为 `5cfde5f2f2a9417373d4fd914730919327e935f8`。依赖关闭默认桌面后端，启用 `std`、`renderer-software` 和 `compat-1-18`。`nx5-tde` 额外启用同源软件 renderer 的 `experimental`，ARM 构建额外编译使用外部 SDK 头文件的 C 接口，运行时复用已加载的 SDK 会话。
 
 `fontique` 固定到 Slint 当前使用的 0.11.1，并启用 `fontconfig-dlopen`，避免 ARM 构建依赖主机的 Fontconfig 链接配置。没有系统字体库的设备仍需由应用提供字体，例如设置 `SLINT_DEFAULT_FONT` 或在 `.slint` 中导入字体资源。
 
@@ -154,6 +154,8 @@ Cargo.lock 不固定外部 path 依赖的 Git 提交，构建环境需同时保�
 该源码还修复软件 renderer 的旋转截图：原生 `Window::take_snapshot()` 按窗口逻辑方向绘制，随后恢复面板旋转及 repaint 模式，避免 90°/270° 的 stride 断言以及 180° 截图倒置。`test-app/tests/rotation_snapshot.rs` 对四个旋转方向比较完整截图，并核对截图前后物理缓冲绘制一致；X9 原生 MCP 使用同一修复。旋转输出的 SVG 使用旋转前的目标尺寸栅格化，再由纹理路径旋转；避免 90°/270° 先交换栅格尺寸造成二次缩放和边缘失真。相同回归还比较四个方向的 PNG/SVG 全图像素。
 
 该源码对 90°/270°、宽高均不少于 64 像素的 RGB/RGBA 纹理按 32×32 块调用原采样与混合函数，提高源图列读取的缓存局部性；不增加纹理缓存或修改采样坐标。软件 renderer 的 `texture_tiles_tests` 对照旧扫描行路径，覆盖格式、旋转、缩放、透明度、着色和脏区裁剪。X9 阶段耗时与整机复测见 [优化报告](x9-optimization.md)。
+
+预乘 RGBA、无着色、整体 alpha=255 的纹理混合通过 `TargetPixel::blend_sampled_slice` 接收原有采样闭包。默认实现维持逐像素混合；`PremultipliedRgbaColor` 每批收集最多 32 个像素到 128 字节栈缓冲，全不透明时直接复制，其余用精确整数混合，便于编译器生成 SIMD。坐标、缩放、旋转和裁剪仍由原采样器处理；其他纹理格式与整体透明度路径沿用原实现。X9 Cortex-A7 release 已确认生成 NEON；没有新增帧缓存、线程或物理页，提交契约不变。热点计时、像素回归与实机性能见 [纹理 NEON 报告](x9-texture-neon.md)。
 
 该 Slint 版本还缓存运行时 SVG 的栅格结果：按解析源的弱引用身份和请求的物理尺寸匹配，每个源保留一个尺寸，最多 32 项、像素预算 2 MiB。尺寸或源改变会重新栅格化，超预算结果直接返回而不缓存；缓存不保留解析源树，失效源在插入时清除。返回像素仍采用共享缓冲的写时复制语义。没有 `std` 的构建沿用原有直接栅格化路径。
 
