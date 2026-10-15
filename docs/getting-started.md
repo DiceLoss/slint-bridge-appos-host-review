@@ -195,7 +195,7 @@ rust-version = "1.92"
 [features]
 default = ["nx5-tde"]
 nx5 = ["slint-bridge/nx5"]
-nx5-tde = ["slint-bridge/nx5-tde"]
+nx5-tde = ["nx5", "slint-bridge/nx5-tde"]
 fbdev = ["slint-bridge/fbdev"]
 
 [dependencies]
@@ -212,7 +212,7 @@ codegen-units = 1
 
 `"slint-bridge/nx5-tde"` 中的斜杠表示“依赖包 / feature”，不是目录。它引用同一清单 `[dependencies]` 中的 Git 包；仅定义 feature 名称不会启用它，还需要 `default` 或构建参数选择。
 
-本例默认 `nx5-tde`，因此不传 `--features` 也会选择 NX5 TDE。若希望每次构建显式选板，可把应用的 `default` 改回 `[]`，并始终传 `--features nx5-tde` 或 `--features fbdev`。适配库本身仍不默认选择设备。仅使用 NX5 的应用也可以不声明这些转发项，直接在 `slint-bridge` 依赖中写 `features = ["nx5-tde"]`。
+本例默认 `nx5-tde`，因此不传 `--features` 也会选择 NX5 TDE。转发同时启用应用自身的 `nx5`，与测试工程的包含关系一致；适配库和测试工程自身仍为 `default = []`，不能把业务模板的默认值套到前面的仓库构建命令。若希望每次构建显式选板，可把应用的 `default` 改回 `[]`，并始终传 `--features nx5-tde` 或 `--features fbdev`。适配库本身仍不默认选择设备。仅使用 NX5 的应用也可以不声明这些转发项，直接在 `slint-bridge` 依赖中写 `features = ["nx5-tde"]`。
 
 ### build.rs
 

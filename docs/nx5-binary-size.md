@@ -1,5 +1,7 @@
 # NX5 测试程序体积分析
 
+> 文中的 `NX5_SDK_INCLUDE` 外部路径保留采集环境；当前构建默认使用仓库资源，配置方法见 [使用指南](getting-started.md)。
+
 本记录分析 2026-10-14 的 `showcase` 测试程序。测量对象是去符号后的 ARM 可执行文件，不是整机固件镜像；外置字体、厂商 SDK 及系统动态库不计入该文件。平台与运行限制见 [平台实现说明](software-platform.md) 和 [NX5 设备说明](../test-app/devices/nx5/README.md)。
 
 ## 当前文件的实测组成

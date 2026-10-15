@@ -1,5 +1,7 @@
 # NX5 三项 TDE/翻页实机回归：2026-10-12
 
+> 文中的 `NX5_SDK_INCLUDE` 外部路径保留采集环境；当前构建默认使用仓库资源，配置方法见 [使用指南](getting-started.md)。
+
 此前未在 `949ceb9` 启动回归中重跑的三项 ignored 硬件测试已全部补齐。基于 `a9fd3c8d8534c4a0cd0f072da304e78a86b9d5f9` 重新构建 ARM 测试程序，逐项独占运行，每次只选择一个完整测试名称。该提交的库实现与 `949ceb9` 一致；本轮未修改运行时、测试代码、Slint、SDK、驱动或内核。
 
 原始记录在本地 `evidence/nx5-hardware/2026-10-12-a9fd3c8/`，不随 Git 分发。证据链接需要该档案：[结构化结果](../evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json)、[构建与恢复清单](../evidence/nx5-hardware/2026-10-12-a9fd3c8/deployment-manifest.json)。

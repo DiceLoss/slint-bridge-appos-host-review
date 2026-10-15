@@ -119,7 +119,7 @@ LGUI3 参考源码同样是外部目录，当前只读 HEAD 为 `476e327ebec2886
 
 `f0e9311decc0c98db0099bc6cbed2496596b4504` 把 `crates/slint-nx5-core/src/platform.rs:204–207` 的计时起点移到循环开头；此前 `c4247f65455e7e00d6c9bac19b1d6a42e823bab9` 的同文件 `:235–243` 在工作后才开始计时，几乎总额外 sleep 一个完整帧间隔。不过新旧版本 `:237–246` 仍在触摸/惯性期间关闭 pacing，不宜搬到当前最小渲染间隔契约中。当前行为以[事件循环说明](software-platform.md#事件循环)及 [runtime.rs](../src/runtime.rs)为准，测性能应统计成功完成提交，区分渲染、等待及输入分派。
 
-同一 `f0e9311decc0c98db0099bc6cbed2496596b4504` 固定配对 Slint rev、Rust 1.92 和 fontconfig-dlopen；随后的 `d247651fee87b5722ae22250fa60fe2aa51f2c40` 把 `Cargo.toml:70–73` 改为 master。`README.md:19–30` 指出依赖库 patch 不会传递给消费方。当前 [Cargo.toml](../Cargo.toml#L20) 和测试工程使用同源本地 Slint；路径依赖不是不可变快照，重现实验还应记录外部源码提交及 dirty 状态，不能仅凭 `=1.18.1` 和 Cargo.lock 断言同源。不要为了复用旧缓存接口自动更新外部 Slint。
+同一 `f0e9311decc0c98db0099bc6cbed2496596b4504` 固定配对 Slint rev、Rust 1.92 和 fontconfig-dlopen；随后的 `d247651fee87b5722ae22250fa60fe2aa51f2c40` 把 `Cargo.toml:70–73` 改为 master。`README.md:19–30` 指出依赖库 patch 不会传递给消费方。本报告采集时使用同源本地 Slint，路径依赖不提供不可变快照，当时重现实验需另记外部源码提交及 dirty 状态。现行 [Cargo.toml](../Cargo.toml) 和测试工程已统一使用 Slint Git 来源，解析提交由 Cargo.lock 记录；当前获取和更新方式见 [构建依赖](software-platform.md#构建依赖)。
 
 旧 `spec.md` 在 HEAD 仍保留 Rust 1.75/Slint 1.15 构建示例（`d247651fee87b5722ae22250fa60fe2aa51f2c40`，`:1110–1125`）以及 JPEG 未实现占位（`:560–574`），与后续代码不一致。规格描述设计意图，实际 API/ABI/能力必须回到对应清单、实现和测试。
 

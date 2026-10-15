@@ -1,6 +1,6 @@
 # Slint Bridge 测试工程
 
-这是独立的 Cargo package `slint-bridge-test-app`，通过 `path = ".."` 依赖适配库，按真实应用的方式调用 `slint_bridge::init(Config)`。它与库处于同一 workspace，共用仓库根的 `Cargo.lock` 和 `target/`。
+这是独立的 Cargo package `slint-bridge-test-app`，通过 `path = ".."` 依赖适配库，按真实应用的方式调用 `slint_bridge::init(Config)`。它与库处于同一 workspace，共用仓库根的 `Cargo.lock` 和 `target/`。这里使用 path 是为了测试本仓库尚未发布的改动；外部业务应用使用 [Git 接入配置](../docs/getting-started.md#在自己的-rust-应用中接入)，不需要本测试工程或本地适配层目录。
 
 界面、应用逻辑、测试素材及设备工具分别存放：
 
@@ -72,7 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | 触摸设备 | `--touch=/dev/input/event0`，默认不开启输入设备 |
 | Slint MCP | 构建加 `slint/mcp`，并按 [MCP 指南](../docs/slint-mcp.md) 设置环境变量 |
 
-必须选择一个板级 feature；`fbdev` 和 `nx5` 互斥。NX5 使用板级阻塞翻页契约，不比对固定内核版本、驱动名称或文件摘要；`fbdev` 在真实设备运行时仍会拒绝未验证的提交契约。测试工程不绕过这个检查。
+本库和测试工程的 `default = []`，必须在构建命令中选择一个板级 feature；`fbdev` 和 `nx5` 互斥。业务模板中的默认 NX5 TDE 仅属于该业务应用，不会改变本测试工程。NX5 使用板级阻塞翻页契约，不比对固定内核版本、驱动名称或文件摘要；`fbdev` 在真实设备运行时仍会拒绝未验证的提交契约。测试工程不绕过这个检查。
 
 ## 用例与预期
 

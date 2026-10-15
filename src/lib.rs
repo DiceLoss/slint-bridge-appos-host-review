@@ -7,7 +7,10 @@
 #[cfg(not(target_os = "linux"))]
 compile_error!("slint-bridge currently supports Linux only");
 #[cfg(not(any(feature = "fbdev", feature = "nx5")))]
-compile_error!("select one board feature: fbdev or nx5 (nx5-tde implies nx5)");
+compile_error!(
+    "select one board feature: fbdev or nx5 (nx5-tde implies nx5). \
+     Enable it in the slint-bridge dependency's features, or select an application feature that forwards to it."
+);
 #[cfg(all(feature = "fbdev", feature = "nx5"))]
 compile_error!("fbdev and nx5 are mutually exclusive board features");
 

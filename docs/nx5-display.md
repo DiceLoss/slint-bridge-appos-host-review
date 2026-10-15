@@ -47,14 +47,12 @@ ARGB8888 写页改为对齐的 32 位存储，避免 ARM 对 framebuffer 的逐�
 
 ## 构建和运行
 
-以下命令按当前目录整理；执行它们会构建当前源码，不会复现本报告当时的源码快照。日常部署及 WBC 插件的固定位置见 [NX5 设备说明](../test-app/devices/nx5/README.md)。
+以下命令按当前目录整理；执行它们会构建当前源码，不会复现本报告当时的源码快照。观察器默认使用仓库内 SDK 头文件和动态库；日常部署及 WBC 插件的搜索路径见 [NX5 设备说明](../test-app/devices/nx5/README.md)。
 
 ```sh
 cargo build --locked --offline --release --features nx5 \
   --target arm-unknown-linux-gnueabi -p slint-bridge-test-app --bin display
 
-NX5_SDK_INCLUDE=/home/dpower/data/GitLab/LGUI3/c_library/third_party/include/NX5/codec \
-NX5_SDK_LIBRARY=/home/dpower/data/GitLab/LGUI3/c_library/third_party/lib/NX5/codec_rorate/libVideoDec-1.6.6.so \
 sh test-app/tools/nx5/display/build-observer.sh
 ```
 

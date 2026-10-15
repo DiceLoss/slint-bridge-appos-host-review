@@ -1,5 +1,7 @@
 # NX5 窗口启动实机回归：949ceb9
 
+> 文中的 `NX5_SDK_INCLUDE` 外部路径保留采集环境；当前构建默认使用仓库资源，配置方法见 [使用指南](getting-started.md)。
+
 提交 `949ceb98b320bb61e9006e984fecfc284ec904db` 已部署到 NX5。首次显示失败清理、同一组件重试和延迟创建窗口的五个用例各运行两轮，全部通过；另外完成正常 WBC 采样和 60 秒纹理运行，最后恢复常驻界面及 Slint MCP。
 
 本轮没有修改适配库实现、Slint、厂商 SDK 或驱动。新增 [startup-regression](../test-app/src/bin/startup-regression.rs) 专用应用，通过库的公开 `init(Config)`、Slint 组件和真实 `/dev/fb0` 验证 `949ceb9`；界面定义独立保存在 [startup.slint](../test-app/ui/startup.slint)。它没有替换板级准入、提交回调或 TDE 资源。

@@ -14,7 +14,7 @@ NX5 专用的 30 FPS 钳制已移除。`Config::frame_interval` 原样传入运�
 
 ## 启用及连接
 
-MCP 作为开发工具通过构建参数启用，不加入默认 Cargo features。构建使用同一个 Slint 源码树，并保留 UI 元数据：
+MCP 作为开发工具通过构建参数启用，不加入默认 Cargo features。构建使用 Cargo 配置的同源 Slint Git 依赖，并保留 UI 元数据：
 
 ```sh
 SLINT_EMIT_DEBUG_INFO=1 \
@@ -101,7 +101,7 @@ python3 test-app/tools/nx5/deploy.py --serial 192.168.1.151:5555 screenshot \
 
 此检查覆盖部署脚本发出的顺序截图。其他 MCP 客户端仍应在截图前执行同样的设备内存检查，避免并发截图或其他进程占用使检查后的余量失效。当前实测峰值增加约 5 MiB；16 MiB 是本板当前尺寸的保守操作余量，不是任意场景的保证。最新实测和历史清理清单见 [截图内存报告](nx5-screenshot-memory.md)。
 
-## 本地 Slint 版本的 18 个工具
+## 采集时 Slint 版本的 18 个工具
 
 以下清单来自设备的 `tools/list` 响应，而非仅根据文档推断。
 

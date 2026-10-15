@@ -1,6 +1,6 @@
 # NX5 TDE 接入与实机验证
 
-> 性能表和测试计数是 TDE 初次接入阶段的记录。后续整屏优化达到约 29 FPS，NX5 专用限帧也已移除；现行运行行为见 [平台说明](software-platform.md)。现行绘制范围见本文对应小节及平台说明，构建命令与当前实现一致，原始证据为不随 Git 分发的本地档案。
+> 性能表、测试计数和下方绘制/缓冲方案保留 TDE 初次接入及共享画布阶段的记录。现行绘制准入、奇数边缘处理、三源缓存和 MMZ 占用统一见 [平台说明](software-platform.md#准入边界)。文末构建入口按当前仓库配置维护，原始证据为不随 Git 分发的本地档案。
 
 `nx5-tde` 已接入当前 NX5 #233 固件，并通过真实硬件绘制、软件参考图像、缓存更新、双页输出和软件回退验证。该 feature 包含 `nx5`；应用仍使用相同的 `init(Config)` 和 Slint 组件 API。
 
@@ -26,7 +26,7 @@
 
 ## 绘制范围与精度
 
-纹理加速入口是本地 Slint 1.18.1 的 `TargetPixelBuffer::draw_texture()`，支持 RGBA 和预乘 RGBA 的等尺寸纹理。当前策略仅提交不少于 32768 个有效像素、最多 16 个互不重叠裁剪矩形的操作。源宽需为 4 的倍数，源高需为偶数，且源尺寸不能超过目标画布。复制使用 `FY_TDE2_QuickCopy`；透明混合使用 `FY_TDE2_Bitblit`，混合的坐标和尺寸需为偶数，目标像素需不透明。
+初次接入的纹理加速入口是当时 Slint 1.18.1 的 `TargetPixelBuffer::draw_texture()`，支持 RGBA 和预乘 RGBA 的等尺寸纹理。初次接入策略仅提交不少于 32768 个有效像素、最多 16 个互不重叠裁剪矩形的操作。源宽需为 4 的倍数，源高需为偶数，且源尺寸不能超过目标画布。复制使用 `FY_TDE2_QuickCopy`；透明混合使用 `FY_TDE2_Bitblit`，混合的坐标和尺寸需为偶数，目标像素需不透明。
 
 整体透明度现已支持：准备源像素时合并 opacity，并把 opacity 纳入两槽缓存键；不直接使用 SDK 的全局 alpha 开关。缩放、旋转、着色、平铺、其他源格式、小图和不满足硬件限制的裁剪返回软件 renderer 处理。字体、路径、圆角/透明矩形继续使用软件实现，不扩大裁剪区域。
 
@@ -40,11 +40,11 @@
 
 ## 缓冲与错误处理
 
-当前 ARM 实现在 TDE 初始化成功时，由 CPU 和 TDE 共用一块 cached MMZ 保留画布，两个 MMZ 源槽位继续缓存纹理。SDK 分配同时返回物理地址与 CPU 虚拟映射，无需再次 mmap；软件绘制与同步硬件作业按缓存所有权交替访问。成功后直接从该画布进行像素转换并写入可用的 framebuffer 后台页，不再经过堆内存回拷；没有使用 TDE 直接写扫描页。所有权、错误处理及新实测见 [共享 MMZ 画布报告](nx5-shared-canvas.md)。上方初次接入性能表仍属于旧的独立暂存目标实现。
+共享画布接入阶段的 ARM 实现在 TDE 初始化成功时，由 CPU 和 TDE 共用一块 cached MMZ 保留画布，两个 MMZ 源槽位继续缓存纹理。SDK 分配同时返回物理地址与 CPU 虚拟映射，无需再次 mmap；软件绘制与同步硬件作业按缓存所有权交替访问。成功后直接从该画布进行像素转换并写入可用的 framebuffer 后台页，不再经过堆内存回拷；没有使用 TDE 直接写扫描页。所有权、错误处理及新实测见 [共享 MMZ 画布报告](nx5-shared-canvas.md)。上方初次接入性能表仍属于旧的独立暂存目标实现。
 
-源缓存使用本地 Slint 扩展 `TextureCacheKey` 保留不可变图像身份，包含源视图。实际槽位键还包含整体透明度；`TextureCacheKey` 保留源图像存储，写时复制会产生新身份。两个源槽位按最近使用次序替换，命中时也刷新替换位置，避免新前景驱逐刚使用过的固定背景；缓存不比较大块像素内容。新回归的上传量计数与范围见 [历史经验吸收](slint-nx5-lessons.md#7-已吸收的效率改进命中时刷新两槽替换次序)。
+该阶段的源缓存使用 Slint 扩展 `TextureCacheKey` 保留不可变图像身份，包含源视图。实际槽位键还包含整体透明度；`TextureCacheKey` 保留源图像存储，写时复制会产生新身份。两个源槽位按最近使用次序替换，命中时也刷新替换位置，避免新前景驱逐刚使用过的固定背景；缓存不比较大块像素内容。新回归的上传量计数与范围见 [历史经验吸收](slint-nx5-lessons.md#7-已吸收的效率改进命中时刷新两槽替换次序)。
 
-1024×600 时，TDE 的三个 MMZ 块合计 7200 KiB，加上原显示/VPPU 的 4900 KiB，正常总量为 12100 KiB。共享画布不再另占约 2400 KiB 的堆内存，仅增加一行错误隔离区（1024 像素时 4 KiB）。创建失败会记录原因并使用软件绘制。当前 SDK 会在首次加载时初始化 SYS/VO，因此 C 接口只允许 `RTLD_NOLOAD` 复用 `nx5` 已初始化的库，不能单独加载或关闭 SYS/VO。
+该共享画布阶段在 1024×600 时，TDE 的三个 MMZ 块合计 7200 KiB，加上原显示/VPPU 的 4900 KiB，正常总量为 12100 KiB。共享画布不再另占约 2400 KiB 的堆内存，仅增加一行错误隔离区（1024 像素时 4 KiB）。创建失败会记录原因并使用软件绘制。当前 SDK 会在首次加载时初始化 SYS/VO，因此 C 接口只允许 `RTLD_NOLOAD` 复用 `nx5` 已初始化的库，不能单独加载或关闭 SYS/VO。
 
 已知尚未提交或已经完成的错误，不会提交部分硬件结果；立即禁用 TDE，并在同一映射上全量软件重绘整帧。提交后的等待失败、取消失败等不确定状态返回 `AccelerationFailed`，整帧不显示，保留 MMZ、TDE 句柄与库引用。实现不调用全局 Reset，也不会在 `EndJob` 之后尝试 Cancel。
 
@@ -66,12 +66,11 @@ DMA 已知结束后的 MMZ 清理逐块执行；任一释放失败均不重试�
 ## 构建与接入
 
 ```sh
-NX5_SDK_INCLUDE=/home/dpower/data/GitLab/LGUI3/c_library/third_party/include/NX5/codec \
-cargo build --locked --offline --release --features nx5-tde \
+cargo --config .cargo/nx5.toml build --locked --offline --release --features nx5-tde \
   --target arm-unknown-linux-gnueabi -p slint-bridge-test-app --bin display
 ```
 
-`NX5_SDK_INCLUDE` 仅在 ARM `nx5-tde` 构建时需要；通用 fbdev、纯软件 nx5、主机测试不依赖 SDK 头文件或厂商链接库。C 接口使用匹配 SDK 的结构和函数签名，动态查找现有 SDK 会话中的符号；不新增 ELF 的 VideoDec 依赖。
+ARM `nx5-tde` 构建默认使用 [仓库内 SDK 头文件](../third-party/README.md)，`NX5_SDK_INCLUDE` 仅作为显式覆盖项；通用 fbdev、纯软件 nx5 和主机 Rust 构建不编译该原生 TDE 桥。C 接口使用匹配 SDK 的结构和函数签名，动态查找现有 SDK 会话中的符号；不新增 ELF 的 VideoDec 依赖。
 
 部署到设备临时目录后，通过 DPower Terminal 启动纹理示例：
 
@@ -86,7 +85,6 @@ SLINT_BRIDGE_TRACE=1 LD_LIBRARY_PATH=/system/app/clib \
 下列回归均默认忽略。除 CPU-only NEON 边界项外，SDK/显示用例须先退出显示所有者，并逐项独占运行；NEON 边界项不加载 SDK，可保持已有显示程序运行。ARM NEON 项需要下方的板级预设：
 
 ```sh
-NX5_SDK_INCLUDE=/home/dpower/data/GitLab/LGUI3/c_library/third_party/include/NX5/codec \
 cargo --config .cargo/nx5.toml test --locked --offline --release -p slint-bridge --features nx5-tde \
   --target arm-unknown-linux-gnueabi --lib --no-run
 # 部署上述命令打印的测试可执行文件为 tde-tests 后，在设备运行：

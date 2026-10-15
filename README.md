@@ -40,9 +40,11 @@ slint_bridge/
 
 ```toml
 [dependencies]
-slint-bridge = { path = "/home/dpower/data/OMNI_STACK_GEN/slint_bridge", default-features = false, features = ["nx5"] }
+slint-bridge = { git = "http://192.168.253.238/wshl/slint_bridge.git", default-features = false, features = ["nx5-tde"] }
 slint = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
 ```
+
+上例直接为业务应用启用 NX5 TDE，不需要将适配层源码放入业务目录，也不需要再定义应用 feature 转发。X9 将依赖的 `features` 改为 `["fbdev"]`；需要同一应用切换设备时使用 [业务模板](docs/getting-started.md#在自己的-rust-应用中接入)。本仓库的库和 `test-app` 默认均不选板，运行仓库构建命令时必须显式传 `--features`，具体分层规则见 [平台说明](docs/software-platform.md#构建依赖)。
 
 在 UI 线程、创建 Slint 根组件前安装平台：
 
