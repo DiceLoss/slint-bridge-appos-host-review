@@ -14,7 +14,7 @@
 
 ## 设计调查
 
-- [NX5 图片背景与多个视频透明区域](nx5-video-regions.md)：LGUI3 vdec 的覆盖清除语义、Slint 背景排除/专用 Clear 控件、上下层职责与 SDK 限制；静态分析，尚未实现或实机验收。
+- [NX5 图片背景与多个视频透明区域](nx5-video-regions.md)：官方 Slint 扩展方式、图片背景裁剪/遮罩的主机像素验证、LGUI3 vdec 语义和下层 SDK 限制；尚未做视频实机验收。
 
 ## NX5 实测与调查记录
 

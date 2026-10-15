@@ -1,80 +1,97 @@
 # NX5 图片背景与多个视频透明区域
 
-2026-10-15。用户已明确：先处理 NX5；同一个 Slint 界面内有一个或多个视频区域，视频帧在 UI 下方的独立视频层。当前重点是图片背景如何留下透明区域，以及应在哪一层实现。本轮只做源码、接口与二进制静态分析，未修改运行代码或设备状态。
+2026-10-15。范围：NX5、一个 Slint 界面内多个视频区域；视频帧在 UI 下方的独立视频层。结合官方 Slint 1.18.1 文档、本地源码与主机像素试验后，**当前图片背景需求优先使用公开组件和 Image，不需要先增加 compiler/core 原生元素**。本轮没有更改运行库、Slint 源码或设备状态。
 
-## 结论：透明开口属于 UI 场景，像素操作属于 renderer
+## 推荐方案与分层
 
-保留一个全屏 Slint 根窗口和现有双 framebuffer。视频不进入 Slint 图片缓冲，解码/VPPU/VO 负责下层画面。上层 UI 的视频开口位置必须最终输出 RGBA 全零，其上方的文字、按钮、边框与弹窗仍按正常顺序绘制。
+将背景从前景 UI 中明确分离。应用统一维护视频区域矩形，供背景透明处理与 NX5 视频窗口布局共同使用；边框、按钮、字幕和弹窗仍正常绘制。保留一个全屏 Slint 根窗口和既有双 framebuffer。
 
-图片背景可采用两种方案：
+| 候选 | 实现位置 | 优点与限制 |
+| --- | --- | --- |
+| **屏幕尺寸背景 + 洞外矩形裁剪** | 应用 Rust 计算矩形差集；普通 `.slint` 组件组合 `Rectangle { clip: true }` 与 `Image` | 不修改 Slint；移动时主要更新几何，不重建整张透明位图。须先把背景统一为屏幕像素尺寸，片段保持同一源图坐标；实际 TDE 调用数和小片段成本仍需测量 |
+| **背景 RGBA 遮罩 + 单个 Image** | 应用 Rust 使用 `SharedPixelBuffer`，普通 `.slint Image` 显示 | 多洞和任意背景缩放容易控制；只处理背景，上层控件不受影响。需要额外缓冲、更新时可能复制，当前 NX5 TDE 也可能因透明目标而软件回退 |
+| 自定义 Clear 原生元素 | Slint compiler/core/renderer | 仅在必须对任意已有 UI 树执行“擦掉之前所有内容、保留后续内容”且背景不能分离时再考虑。不是当前图片背景需求的首选 |
 
-| 方案 | 透明如何产生 | 处理位置 | 适用范围 |
-| --- | --- | --- | --- |
-| 背景排除视频区域 | 背景图只绘制屏幕减去视频区域的部分，开口处保持根画布透明 | 应用 `.slint` 的背景布局/裁剪，沿用现有 renderer | 视频布局受控，愿意让背景与视频区域共用布局数据；改动小 |
-| 类似 LGUI3 的专用 `VideoHole` | 背景图先画，随后在控件的绘制顺序处用 Clear/Src 语义写零，再画上方控件 | UI 定义控件，Slint 软件 renderer 执行明确的清除操作；NX5 只实现其像素落地 | 需要把透明区域当作可复用组件，放在任意图片/容器背景上；最接近 `vdec` 语义 |
-
-**若目标是复现 LGUI3 `vdec` 的“放置控件即开孔”，建议采用第二种。若只需当前固定页面的双分屏，第一种更简单。** 两种都不需要为每个视频创建一个 Slint 顶层窗口，也不需要增加物理 framebuffer。[当前单窗口约束](../src/runtime.rs:326)
+官方自定义控件支持组合现有元素、属性、回调；Rectangle 提供子项矩形裁剪。CPU 自定义绘图的官方示例是把内容画入 `SharedPixelBuffer`，再通过 `Image` 显示。这里的内容仅是背景，不包含视频帧。[Custom Controls](https://docs.slint.dev/latest/docs/slint/guide/development/custom-controls/)、[Rectangle.clip](https://docs.slint.dev/latest/docs/slint/reference/elements/rectangle/#clip)、[Image CPU 绘图](https://docs.slint.dev/latest/docs/rust/slint/struct.Image)
 
 ```mermaid
 flowchart TB
-    subgraph UI[上层 UI 的绘制顺序]
-        B[图片背景] --> H[VideoHole：按区域写透明]
-        H --> F[边框 / 标签 / 视频控制按钮]
-        F --> D[弹窗 / 页面遮罩]
-        D --> G[既有双 framebuffer / 图形层]
-    end
-    subgraph Video[独立下层视频]
-        A[码流 A → 解码 / VPPU] --> V1[视频区域 1]
-        C[码流 B → 解码 / VPPU] --> V2[视频区域 2]
-    end
+    L[应用的统一视频布局] --> B[背景组件：裁剪或背景 alpha 遮罩]
+    L --> V[独立下层视频窗口布局]
+    B --> I[普通 Slint Image / Rectangle]
+    I --> F[前景按钮 / 字幕 / 弹窗]
+    F --> G[既有 UI 双 framebuffer]
     G --> M[VO 显示合成]
-    V1 --> M
-    V2 --> M
+    V --> M
     M --> LCD[面板]
 ```
 
-图中的 `VideoHole` 是拟议控件，目前 Slint Bridge 没有此内建元素。图表示目标结构，不代表多路视频已在当前固件验收。
+职责如下：
 
-## LGUI3 的 vdec 实际做了什么
+- **应用/UI 模块**：封装普通 `BackgroundWithHoles` / `VideoArea` 组件，维护同一份区域数据；控制可见性、裁剪和前景层级。
+- **应用 Rust 背景处理**：背景加载或屏幕尺寸改变时准备目标尺寸图片；按洞列表计算可见矩形，或生成带 alpha=0 洞的背景缓冲。背景与布局不变时直接复用，视频每帧更新不应触发背景重建。
+- **Slint renderer**：沿用公开 Image/Rectangle 的正常绘制和局部重绘，无须新增 Item。
+- **slint_bridge/NX5**：继续保留 alpha、处理双页提交，并由视频模块同步下层矩形；不在最终 framebuffer 上统一挖孔。
 
-核对的 LGUI3 为 `476e327e`。`vdec` 属性只定义宽高，位置和隐藏状态沿用通用控件模型；它的代码没有创建解码通道或向 VO 送帧。[属性定义](/home/dpower/data/GitLab/LGUI3/c_library/include/lgui/lgui_ctrl/lgui_ctrl.h:1058)、[位置/大小/隐藏](/home/dpower/data/GitLab/LGUI3/c_library/src/lgui/lgui_ctrl/lgui_ctrl_vdec.c:44)
+前提是开口下面没有其他不透明 UI 填充。存在不透明父容器或额外背景时，它们也必须避开开口；本方案不是能穿透任意既有 UI 树的橡皮擦。
 
-创建时把控件移到兄弟控件底部，设置 `bg_opa=LV_OPA_COVER`、颜色值 `0x00000000`，并关闭圆角和边框。这里的关键是“以覆盖路径写零色”，不是普通 source-over 的透明叠加。[vdec 绘制设置](/home/dpower/data/GitLab/LGUI3/c_library/src/lgui/lgui_ctrl/lgui_ctrl_vdec.c:64)
+## 图片分片与背景遮罩的细节
 
-存在 vdec 控件时，LGUI3 的普通填充会跳过部分 GPU 路径；在无遮罩且覆盖不透明度的分支，调用 `lv_color_fill` 直接把包含 alpha 的整像素写入目标，因此零色能够清掉此前画出的背景。[填充路径](/home/dpower/data/GitLab/LGUI3/c_library/src/lvgl/lv_draw/lv_draw_blend.c:359)、[像素赋值](/home/dpower/data/GitLab/LGUI3/c_library/src/lvgl/lv_misc/lv_color.c:40)
+分片法计算“屏幕矩形减去所有视频矩形的并集”，产生若干不相交可见矩形。各矩形只裁剪同一张背景图，背景图片在所有片段中保持相同的全屏位置和尺寸，不能把完整图片分别 fit 到每个片段。布局变化只更新矩形模型，源图仍复用。
 
-全局 `vdec_index` 还影响其他 GPU 混合选择，这属于该实现的配套处理。迁移时应复用“明确清除 + 正确绘制顺序”的语义，不直接照搬“一有视频控件就全局停用 GPU”的策略。[GPU 混合条件](/home/dpower/data/GitLab/LGUI3/c_library/src/lvgl/lv_draw/lv_draw_blend.c:415)
+**当前软件路径存在一个已经复现的限制：直接对非整数 `cover` 缩放的背景分片，不能保证与单个全图 Image 逐像素相同。** 因此需要先把背景准备为目标像素尺寸，再做 1:1 裁剪。具体离屏试验见下一节；这不是对官方所有后端的普遍结论，也未在本轮修复该采样问题。
 
-现有 LGUI3 测试创建了两个 vdec，分别设置矩形并测试隐藏、缩小和移动；这证明 UI 控件模型支持多个开口，不是两路解码与输出性能的实测证据。[双区域测试](/home/dpower/data/GitLab/LGUI3/c_library/test/test_c_vdec.c:5)
+背景遮罩法保留一份没有洞的基准背景，生成只带背景内容和透明洞的 RGBA 图片。洞移动时恢复旧区域、清除新区域，再正常绘制前景控件。`SharedPixelBuffer` 是引用计数容器，共享时修改可能触发整张复制，不能承诺永久零拷贝。[SharedPixelBuffer 的复制行为](https://docs.slint.dev/latest/docs/rust/slint/struct.SharedPixelBuffer#method.make_mut_slice)
 
-## 为什么普通透明 Rectangle 不够
+一张 1024×600 RGBA 缓冲为 2,457,600 字节，约 2.34 MiB；基准图、输出图和临时复制可能同时存在。这是普通内存成本，不是新增物理 framebuffer。高频拖动时还要计入重建、上传和绘制成本。
 
-假设已经画出不透明背景图，再画一个 `background: transparent` 的 Rectangle。Slint 的正常 source-over 混合在源 alpha=0 时保留目标 RGB 和 alpha；背景图仍然是不透明的。`opacity: 0` 同样不等于擦除。[软件 renderer 的实际公式](/home/dpower/data/GitHub/slint-1.18.1/internal/renderers/software/draw_functions.rs:874)
+NX5 当前 TDE 对带透明源的混合要求目标区域不透明，透明目标走精确软件合成。因此整张带洞背景可能改变硬件加速命中，不能只凭减少 Image 数量就判定它最快；应与不透明分片方案实测比较。[现有 TDE 条件](../src/backends/nx5/tde/native.c:427)
 
-当前 Showcase 根窗口虽然透明，通常仍绘制一张全屏 wallpaper；现有 cutout 模式是把整张 wallpaper 隐藏，所以不能直接等同于图片背景上的多个局部开口。[根透明设置](../test-app/ui/showcase.slint:20)、[wallpaper 条件](../test-app/ui/showcase.slint:77)
+## 本地主机像素试验
 
-也不应在最终 `write_row` 或提交前，对所有视频矩形统一清零：这时背景、文字、按钮和弹窗已经合成在一起，清零会连上层控件一起擦掉。只改 alpha 而保留 RGB 还会破坏预乘像素约束；专用清除应把 RGBA 都置零。
+使用当前本地 Slint 1.18.1（`fa6a6d0`）、公开 API、`MinimalSoftwareWindow` 和 `ReusedBuffer`，离屏 128×96。两种确定性背景各执行 9 个连续状态：无洞、单洞、双洞、移动/缩放、洞重叠、越界裁剪、全屏洞、隐藏后恢复、重新显示。额外叠加不透明控件、半透明控件和可切换的模态矩形；以完整背景参考和独立逐像素合成计算预期。
 
-## 建议的职责划分
+| 试验 | 结果 |
+| --- | --- |
+| 128×96 背景按 1:1 映射 + 普通 Rectangle.clip 分片 | 18 个状态、221,184 像素全部精确一致；旧洞恢复、透明区域和上方控件均符合预期 |
+| 目标分辨率 SharedPixelBuffer 背景遮罩 + 单个 Image | 同样 18 个状态、221,184 像素精确一致 |
+| 97×53 图片直接 `cover` 到 128×96 后分片 | 对照失败；第一个单洞状态，洞外 (119,9) 的 RGB 为 (90,102,22)，全图参考为 (127,161,105)，与测试图的一源像素步进一致 |
 
-- **应用/UI 场景层**：声明视频区域的 `id`、位置、尺寸、可见性和裁剪关系；决定哪些边框、按钮、弹窗位于区域上方。该组件只描述透明开口，不负责解码。
-- **Slint renderer 层**：在该控件的绘制顺序处执行 Clear；服从实际脏区和祖先裁剪。移动/缩放/隐藏时同时失效旧、新区域，使旧位置恢复背景，新位置产生透明。清除参与原有保留画布和 TDE/CPU 顺序，不能越过未知 DMA 状态。
-- **通用 framebuffer 层**：继续做既有 alpha 保留、格式转换、双页修复及完成等待，不增加视频矩形后处理，不改变两页复用约束。
-- **NX5 视频模块**：把同一份布局数据映射到 `(VoLayer, VoChn)` 与物理屏幕坐标，管理源帧和窗口生命周期；复用当前 SDK 会话。硬件约束导致矩形调整时，UI 与视频必须使用同一个确认后的矩形。
+第二种试验先取得同尺寸的全图背景参考，再在独立背景缓冲上清洞；它验证透明组件与保留缓冲语义，未替生产背景缩放器或缓存策略做性能验收。第一种试验说明 1:1 分片候选可行，不能据此承诺任意缩放都无接缝。
 
-若选择背景排除法，最直接的是把可绘制背景分成几个不相交矩形，各块裁剪同一张全屏定位的图片，保持源图坐标连续。不能让每块各自重新 `cover` 缩放，否则接缝处会显示不同位置的图像。无需每次移动都重解码 PNG 或生成一张带洞的新大位图。多个开口的重叠区域先求并集；背景、开口和前景控件分别维护绘制顺序。该方式会增加背景绘制片段数，需要测量开销，不能预设性能与一张全屏 Image 相同。
+原始探针源码和输出保存在本地忽略目录 `evidence/slint-video-options/2026-10-15/`，另行获取后可复现；三份源码分别为 `background-probe.rs`（1:1）、`background-masked-probe.rs`、`background-cover-probe.rs`（保留的失败对照）。本轮未测试 NX5 TDE 实机性能、真实视频层或面板扫描输出。
 
-首版专用控件建议仅支持矩形、移动/缩放、隐藏和祖先矩形裁剪；圆角可以先由上方 UI 装饰遮挡。任意圆角清除、父级整体 opacity/offscreen 组合、旋转和重叠视频需要明确语义后再扩展，不能直接沿用普通 Rectangle 的混合假设。Clear 需要明确的绘制命令，不能伪装成 alpha=0 的普通矩形并被原有透明裁剪/混合路径跳过。
+## LGUI3 的 vdec 与 Slint 普通透明组件为何不同
 
-## 图片背景场景的验收重点
+LGUI3 `476e327e` 的 vdec 只定义宽高，位置/隐藏沿用通用控件；该组件不创建解码通道。它把控件移至兄弟控件底部，使用 `LV_OPA_COVER` 和 `0x00000000`，关闭圆角和边框。[属性与位置](/home/dpower/data/GitLab/LGUI3/c_library/src/lgui/lgui_ctrl/lgui_ctrl_vdec.c:44)、[创建设置](/home/dpower/data/GitLab/LGUI3/c_library/src/lgui/lgui_ctrl/lgui_ctrl_vdec.c:64)
 
-1. 一张不透明图片上放置一个、两个开口；确认开口内部 UI alpha=0，外部背景与原图逐像素一致。
-2. 开口上方的文字、按钮、不透明和半透明弹窗保持可见；局部重绘、切换背景图或背景动画后，背景不能回填进未变化的开口。
-3. 移动、缩放、隐藏、删除开口，验证旧位置背景恢复；交替两页不能残留旧洞，祖先裁剪外不能被清除。
-4. 先以已知颜色的视频 underlay 检查位置、alpha 与遮挡，再接两路真实视频；MCP 只能检查上层 UI，最终合成用同进程 SDK/WBC 或面板观察验证。
-5. UI PAN 与视频布局不是已证明的同一原子事务。布局切换可先显示覆盖旧/新区域的不透明过渡层并确认 UI 提交完成，再更新并确认视频状态，最后撤掉遮罩；视频状态未确认时保持遮罩，不以固定延时冒充完成。
+无遮罩、覆盖填充分支直接把含 alpha 的整像素写入目标，因此可以清掉之前的图片背景；存在 vdec 时还跳过部分 GPU 路径。[填充](/home/dpower/data/GitLab/LGUI3/c_library/src/lvgl/lv_draw/lv_draw_blend.c:359)、[像素赋值](/home/dpower/data/GitLab/LGUI3/c_library/src/lvgl/lv_misc/lv_color.c:40)
 
-以上是后续实施建议，本轮未编写 `VideoHole` 或改变任何实机显示。当前透明像素输出已有 NX5 0–128 alpha 契约，继续复用；先前黑色 VO 背景的 alpha 验证不能替代真实视频下层合成验证。[现有契约](software-platform.md#framebuffer-软件路径)
+Slint 普通 source-over 在源 alpha=0 时保留目标像素。叠一块透明 Rectangle 或设置 opacity=0 都不会擦除已绘制的照片；当前 Showcase 的 cutout 实际是隐藏整张 wallpaper。[混合公式](/home/dpower/data/GitHub/slint-1.18.1/internal/renderers/software/draw_functions.rs:874)、[当前 wallpaper](../test-app/ui/showcase.slint:77)
+
+不能在最终写页时把视频矩形统一清零，因为背景和按钮/弹窗已经混在一起。仅改 alpha 而保留 RGB 也违反预乘约束。公开背景方案通过“背景自身带洞/不画洞内内容”实现所需效果，而不要求复刻 LGUI3 覆盖擦除任意 UI 的全部语义。
+
+## 官方自定义绘制接口核对
+
+本次 `latest` Rust 文档显示 1.18.1；链接可能随官方更新，实现边界同时核对固定 `v1.18.1` 源码。
+
+| 接口 | 当前适用性 |
+| --- | --- |
+| 普通 `.slint` 自定义组件 | 官方支持组合现有元素、属性与回调；适合背景/视频区域组件。[Custom Controls](https://docs.slint.dev/latest/docs/slint/guide/development/custom-controls/) |
+| CPU 自定义绘图 | 官方 Image 文档给出 SharedPixelBuffer/tiny-skia 示例；可在应用中生成背景图。[Image](https://docs.slint.dev/latest/docs/rust/slint/struct.Image) |
+| 原生 Canvas / Item paint 回调 | 未找到 1.18.1 已发布的通用公开接口；官方 [#13495](https://github.com/slint-ui/slint/issues/13495) 本次查询仍为 Open 提案，不是已发布能力 |
+| 自定义整个 renderer | 公开 `Renderer` 是 sealed；普通应用应使用已有 renderer，内部实现扩展会增加维护范围。[Renderer](https://docs.slint.dev/latest/docs/rust/slint/platform/trait.Renderer) |
+| `set_rendering_notifier` | 窗口级前/后通知，软件 renderer 未覆盖默认 Unsupported；也不是背景与前景之间的 Item 回调。[Window](https://docs.slint.dev/latest/docs/rust/slint/struct.Window#method.set_rendering_notifier)、[固定版本默认实现](https://raw.githubusercontent.com/slint-ui/slint/v1.18.1/internal/core/renderer.rs) |
+| `TargetPixelBuffer` | `experimental` 渲染目标/加速接口；普通透明矩形仍可能被跳过，接口没有提供业务 Item 身份或通用 Canvas 注册。[1.18.1 接口](https://raw.githubusercontent.com/slint-ui/slint/v1.18.1/internal/renderers/software/target_pixel_buffer.rs) |
+| Path / evenodd | `fill-rule` 描述 Path 自身填充；`Path.clip` 是 view-box 边界裁剪，不是按 Path 形状反向裁剪图片。透明路径也不能清掉此前背景。[Path](https://docs.slint.dev/latest/docs/slint/reference/elements/path/) |
+
+官方软件 renderer 的 Path 实现还存在 fill-rule 传递边界，未在本轮验证 evenodd 像素；因此不把复杂 Path 遮罩列为当前方案依赖。OpenGL texture/underlay 示例依赖对应图形 API，不等同 NX5 当前软件 renderer + TDE 环境。[固定版本软件实现](https://raw.githubusercontent.com/slint-ui/slint/v1.18.1/internal/renderers/software/lib.rs)、[官方 renderer 范围](https://docs.slint.dev/latest/docs/slint/guide/backends-and-renderers/backends_and_renderers/)
+
+## 何时才需要 Slint 内部扩展
+
+若后续要求一个控件能放在任意既有 UI 树中，把其之前绘制的所有背景/容器擦穿，同时保留之后的控件，而且无法分离背景，那才需要专用 Clear 原语。届时涉及 compiler/core Item 定义、软件 renderer、裁剪/脏区/缓存与相关后端行为；它不是只加一份 `.slint` 文件，也没有必要替换整个 Slint 架构。
+
+当前图片背景场景已有公开 API 候选，建议先完成 NX5 上的 1:1 分片与背景遮罩性能对照，再决定最终实现，不以原生 Item 扩展作为前置条件。视频布局与 UI PAN 仍不是已确认的同一原子事务；先显示过渡遮罩并确认 UI 提交、更新并确认视频状态、再揭开，属于后续需验证的切换策略。
 
 ## 下层多视频的实现依据与限制
 
@@ -162,4 +179,4 @@ MPI 区分视频层和图形层；视频层有优先级入口，图形层有逐�
 4. 测 `SetAttrBegin/End` 的批量布局时序、错误恢复及实际扫描变化；如果不能和 UI 翻页同步，采用有确认的过渡遮罩，避免暴露旧位置。
 5. 所有视频 API 复用显示进程的 SDK 会话。验证退出顺序与在途帧释放，不以返回成功、固定延时或一次 VSYNC 替代已确认的缓冲所有权。
 
-本轮验证仅包括主源阅读、外部仓库状态/ELF 指纹核对和静态反汇编。没有执行主机回归或实机测试，因为本轮没有修改运行代码，也未对设备发起操作。
+本节 SDK 结论仅包括主源阅读、外部仓库状态/ELF 指纹核对和静态反汇编；前文背景组件另有主机离屏像素试验。本轮没有修改 Slint/Bridge 运行代码，也没有对设备发起操作或验证真实视频 API。
