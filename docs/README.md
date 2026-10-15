@@ -12,6 +12,10 @@
 - [NX5 设备说明](../test-app/devices/nx5/README.md) 与 [当前环境](current-environment.md)。
 - [项目结构图](diagrams/project-structure.html) 与 [运行时序图](diagrams/runtime-sequence.html)。
 
+## 设计调查
+
+- [NX5 图片背景与多个视频透明区域](nx5-video-regions.md)：LGUI3 vdec 的覆盖清除语义、Slint 背景排除/专用 Clear 控件、上下层职责与 SDK 限制；静态分析，尚未实现或实机验收。
+
 ## NX5 实测与调查记录
 
 这些报告记录各轮实验的条件、结果及限制。根 `evidence/` 是被 Git 忽略的本地档案，包含原始日志、截图和摘要；仅检出仓库不会获得这些文件，报告中的证据链接和离线重放命令需另行取得对应档案。诊断工具在 `test-app/tools/nx5/`，重放旧日志不等于重新验证当前二进制。
