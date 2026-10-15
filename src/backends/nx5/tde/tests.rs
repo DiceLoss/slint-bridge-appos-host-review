@@ -156,6 +156,40 @@ fn difference(a: &[PremultipliedRgbaColor], b: &[PremultipliedRgbaColor]) -> (u8
     (maximum, count)
 }
 
+#[test]
+fn sampled_pixel_blending_matches_scalar_with_guards() {
+    let color = |i: usize, alpha: u8| PremultipliedRgbaColor {
+        red: (i * 17 % (usize::from(alpha) + 1)) as u8,
+        green: (i * 71 % (usize::from(alpha) + 1)) as u8,
+        blue: (i * 137 % (usize::from(alpha) + 1)) as u8,
+        alpha,
+    };
+    for count in 0..=65 {
+        for offset in 0..4 {
+            for alpha in [Some(0), Some(1), Some(127), Some(254), Some(255), None] {
+                let mut expected: Vec<_> =
+                    (0..count + 8).map(|i| color(i, (i * 71) as u8)).collect();
+                let mut pixels: Vec<_> = expected.iter().copied().map(Pixel).collect();
+                let sources: Vec<_> = (0..count)
+                    .map(|i| color(i + 1, alpha.unwrap_or((i * 37) as u8)))
+                    .collect();
+                for (pixel, source) in expected[offset..offset + count].iter_mut().zip(&sources) {
+                    pixel.blend(*source);
+                }
+                let mut sampled = 0;
+                Pixel::blend_sampled_slice(&mut pixels[offset..offset + count], || {
+                    let source = sources[sampled];
+                    sampled += 1;
+                    source
+                });
+                assert_eq!(sampled, count);
+                let actual: Vec<_> = pixels.iter().map(|pixel| pixel.0).collect();
+                assert_eq!(difference(&actual, &expected), (0, 0));
+            }
+        }
+    }
+}
+
 fn moving_scene(scene: &Scene) {
     scene.set_canvas_color(slint::Color::from_rgb_u8(25, 55, 77));
     scene.set_backdrop(image(512, 384, false, false));

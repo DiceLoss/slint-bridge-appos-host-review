@@ -7,7 +7,7 @@ use i_slint_renderer_software::{
 };
 use slint::Brush;
 
-// Keep Slint's exact pixel semantics while accelerating long constant-color spans.
+// Keep Slint's exact pixel semantics for both constant-color and sampled spans.
 #[repr(transparent)]
 #[derive(Clone, Copy)]
 pub(crate) struct Pixel(PremultipliedRgbaColor);
@@ -15,6 +15,14 @@ pub(crate) struct Pixel(PremultipliedRgbaColor);
 impl TargetPixel for Pixel {
     fn blend(&mut self, color: PremultipliedRgbaColor) {
         self.0.blend(color);
+    }
+
+    fn blend_sampled_slice(slice: &mut [Self], sample: impl FnMut() -> PremultipliedRgbaColor) {
+        // SAFETY: Pixel is a transparent wrapper; layout, alignment and validity
+        // match PremultipliedRgbaColor. The slice retains its exclusive borrow.
+        let pixels =
+            unsafe { std::slice::from_raw_parts_mut(slice.as_mut_ptr().cast(), slice.len()) };
+        PremultipliedRgbaColor::blend_sampled_slice(pixels, sample);
     }
 
     fn blend_slice(slice: &mut [Self], color: PremultipliedRgbaColor) {

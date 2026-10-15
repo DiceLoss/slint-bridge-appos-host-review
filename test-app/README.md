@@ -152,6 +152,8 @@ python3 test-app/tools/check-showcase.py --binary target/debug/showcase \
 
 `tests/texture_blend.rs` 对预乘 RGBA 纹理建立独立整数混合参考：四种旋转、裁剪偏移、透明/半透明/不透明背景，以及保留缓冲重绘逐像素一致；批量采样覆盖全部 256×256 字节乘积、透明和不透明目标、32 像素批次边界与未对齐尾部。X9 release 测试程序还在实机执行，覆盖实际 NEON 代码；性能和部署验证见 [X9 纹理 NEON 报告](../docs/x9-texture-neon.md)。
 
+NX5 的私有 `Pixel` 包装另由库内 `sampled_pixel_blending_matches_scalar_with_guards` 检查批量委托、采样顺序和切片保护区；实现及验证范围见 [NX5 Pixel 批量纹理混合](../docs/nx5-pixel-batch.md)。
+
 界面固定使用 Fluent 标准控件，图标以 SVG 数据嵌入二进制；测试工程启用同源 `i-slint-core` 的图像/SVG 解码能力，不引入桌面或 GPU 后端。图片背景使用编译时嵌入的 [coastal-background.png](ui/assets/coastal-background.png)，保留的源图为 1638×960 PNG；构建脚本在主机将它转换为 1024×600 RGBA PNG 后嵌入，默认面板不再反复缩放背景，且满足 TDE 复制的尺寸/格式条件。独立 Image scaling 页另用两份未经构建期变换的 256×160 原始 PNG/SVG，运行时加载后由同一尺寸滑块缩放；它与背景优化分开。其他窗口尺寸仍按 `cover` 适配；生成来源与提示词见 [素材说明](ui/assets/README.md)。动画区复用同一图片，卡片与列表行采用半透明底色，保证动画/滚动时图片实际参与绘制。径向 alpha 叠加图仍由 Rust 生成；Layers 透明开口会隐藏背景图片。无需另行部署素材文件，字体仍按设备说明提供。
 
 ## 专用诊断说明

@@ -26,6 +26,7 @@
 | [图片背景裁剪与多个透明区域](nx5-background-holes.md) | 公共 Slint 组件、22 状态主机像素、23 阶段真实双页、前景/弹窗和常驻演示 |
 | [X9 改动后的 NX5 链路回归](nx5-x9-regression.md) | 共享路径影响、六项 ARM 硬件回归、旧新性能对照、真实页及 evdev 验证 |
 | [纹理 NEON 优化后的 NX5 回归](nx5-texture-neon.md) | 同源应用前后 FPS/CPU、ARM 纹理与 TDE/双页、物理画面及原常驻恢复 |
+| [NX5 Pixel 批量纹理混合](nx5-pixel-batch.md) | NX5 软件纹理接入 Slint 批量混合、同源前后性能与物理页回归 |
 | [程序体积拆分与缩减评估](nx5-binary-size.md) | 部署 ELF 的代码与资源占比、无损 PNG、完整功能构建对照及验证边界 |
 | [富列表脏区与绘制优化](nx5-rich-render.md) | 离屏子树裁剪、SVG 栅格缓存、TDE CPU 路径及小源槽、最终 FPS 与整帧像素验证 |
 | [富列表源缓存瓶颈与优化](nx5-rich-bottleneck.md) | 分段计时、重复全屏源准备根因、两槽替换策略、无探针性能与实机像素验证 |

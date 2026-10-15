@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-15T06:14:39.787292+00:00",
+  "checked_at_utc": "2026-10-15T07:08:02.524513+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -141,7 +141,7 @@
   ],
   "running_ui": {
     "path": "/tmp/slint-bridge-holes-20261015/background-holes",
-    "pid": 26898,
+    "pid": 18345,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -155,21 +155,21 @@
     "frame_interval_us": 16667,
     "trace_enabled": false,
     "fault_injection_enabled": false,
-    "log": "/tmp/slint-bridge-holes-20261015/live-after-neon-regression.log",
+    "log": "/tmp/slint-bridge-holes-20261015/live-after-pixel-batch.log",
     "startup_script": "/tmp/slint-bridge-holes-20261015/start.sh",
     "source_base_commit": "095eca772ba3dcc23cd354debf969b69f216a032",
     "slint_source_commit": "fa6a6d0158c9730fed62ef1eb1c9730c80214e20",
     "source_manifest": "evidence/background-holes/2026-10-15/manifest.json",
-    "source_state": "Original BackgroundWithHoles resident restored after texture NEON compatibility regression; original ELF and startup script unchanged. Both initial regions visible, Change 44, foreground count 0, dialog closed; final MCP screenshot exactly matches all 614400 pre-test pixels. No exit timer, trace, recording, WBC or physical-check plugin loaded.",
+    "source_state": "Original BackgroundWithHoles resident restored after NX5 Pixel batch regression; original ELF and startup script unchanged. Initial regions, Change 44, foreground count 0, dialog closed; all 614400 screenshot pixels match the pre-test state. No timer, trace, recording, WBC or checker loaded.",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "resources": {
-      "rss_kib": 11380,
-      "vm_hwm_kib": 16188,
+      "rss_kib": 11496,
+      "vm_hwm_kib": 16300,
       "vm_peak_kib": 35808,
       "threads": 3,
       "mmz_used_kib": 12760,
       "mmz_blocks": 6,
-      "mem_available_kib": 44792,
+      "mem_available_kib": 45092,
       "wbc_running": false
     },
     "mcp": {
@@ -1668,5 +1668,133 @@
     },
     "cleanup_final_files": 64,
     "scope": "Current nx5-tde, 1024x600, 0 degrees. No new WBC, physical finger, dynamic scanout or rotated NX5 display validation. X9 was not operated."
+  },
+  "pixel_batch_validation": {
+    "report": "docs/nx5-pixel-batch.md",
+    "evidence": "evidence/nx5-pixel-batch/2026-10-15",
+    "baseline_bridge_commit": "9a4cdcc3a7ce1320421e99fc876e90e93270d657",
+    "slint_commit": "5cfde5f2f2a9417373d4fd914730919327e935f8",
+    "comparison": [
+      {
+        "axis": "vertical",
+        "before": {
+          "phase": "vertical",
+          "action_count": 26,
+          "action_seconds": 45.55243185997824,
+          "sample_seconds": 45.56999999999243,
+          "cpu_percent_one_core": 79.30656133422427,
+          "rss_mean_kib": 18399.2,
+          "rss_min_kib": 18364,
+          "rss_max_kib": 18428,
+          "hwm_kib": 18428,
+          "threads": 3,
+          "fps": 27.532781905810936,
+          "fps_frames": 1500,
+          "fps_window_seconds": 61.020000000004075
+        },
+        "after": {
+          "phase": "vertical",
+          "action_count": 26,
+          "action_seconds": 45.1353025730059,
+          "sample_seconds": 45.13000000000466,
+          "cpu_percent_one_core": 78.66164413914544,
+          "rss_mean_kib": 18116.81818181818,
+          "rss_min_kib": 18072,
+          "rss_max_kib": 18144,
+          "hwm_kib": 18144,
+          "threads": 3,
+          "fps": 27.575809752158513,
+          "fps_frames": 1500,
+          "fps_window_seconds": 61.05999999999767
+        },
+        "cpu_delta_pp": -0.6449171950788326,
+        "rss_delta_kib": -282.38181818182056,
+        "fps_delta_percent": 0.15627860088667234
+      },
+      {
+        "axis": "horizontal",
+        "before": {
+          "phase": "horizontal",
+          "action_count": 8,
+          "action_seconds": 47.49852294300217,
+          "sample_seconds": 47.50999999999476,
+          "cpu_percent_one_core": 86.27657335298784,
+          "rss_mean_kib": 18670.72340425532,
+          "rss_min_kib": 18624,
+          "rss_max_kib": 18716,
+          "hwm_kib": 18716,
+          "threads": 3,
+          "fps": 25.808437834934296,
+          "fps_frames": 1500,
+          "fps_window_seconds": 65.30999999999767
+        },
+        "after": {
+          "phase": "horizontal",
+          "action_count": 8,
+          "action_seconds": 47.111676553002326,
+          "sample_seconds": 47.11999999999534,
+          "cpu_percent_one_core": 86.07809847199492,
+          "rss_mean_kib": 18453.565217391304,
+          "rss_min_kib": 18408,
+          "rss_max_kib": 18500,
+          "hwm_kib": 18500,
+          "threads": 3,
+          "fps": 26.129804056272544,
+          "fps_frames": 1500,
+          "fps_window_seconds": 64.47000000000116
+        },
+        "cpu_delta_pp": -0.19847488099291866,
+        "rss_delta_kib": -217.1581868640169,
+        "fps_delta_percent": 1.2451982696265684
+      }
+    ],
+    "arm_pixel_cases": 1584,
+    "hardware_tests": 6,
+    "ui_pages": 8,
+    "ui_screenshots": 19,
+    "physical_comparison_pixels": 1228800,
+    "physical_different_bytes": 0,
+    "evdev": {
+      "contacts": 3,
+      "events": 21,
+      "accepted_edges": 6,
+      "dropped": 0,
+      "unknown": 0,
+      "taps": 2,
+      "drags": 1,
+      "scope": "Linux legacy evdev injection through actual driver; no physical finger/sensor latency claim"
+    },
+    "background": {
+      "stages": 23,
+      "pages": 45,
+      "pixels": 27648000,
+      "pages_alternated": true,
+      "negative_control_rejected": true,
+      "rgb_max_error": 0,
+      "alpha_exact": true,
+      "normal_exit": 0,
+      "mmz_kib": 4900,
+      "mmz_blocks": 2,
+      "vo_off": true,
+      "kernel_new_lines": 13,
+      "kernel_warnings": 0
+    },
+    "kernel": {
+      "overlap_lines": 1298,
+      "old_lines_evicted": 112,
+      "new_lines": 153,
+      "warnings": 0
+    },
+    "restored_pid": 18345,
+    "restored_ui": {
+      "original_revision": 44,
+      "restored_revision": 44,
+      "pixels": 614400,
+      "different_pixels": 0,
+      "exact": true
+    },
+    "original_resident_restored": true,
+    "final_cleanup_files": 69,
+    "scope": "NX5 nx5-tde 1024x600 0 degrees. No new WBC, physical finger, real video layer, dynamic scanout or rotated NX5 display validation."
   }
 }

@@ -26,6 +26,8 @@
     "/tmp/slint-bridge-holes-20261015/live.log",
     "/tmp/slint-bridge-holes-20261015/live.pid",
     "/tmp/slint-bridge-holes-20261015/live-after-neon-regression.log",
-    "/tmp/slint-bridge-holes-20261015/live-after-neon-regression.pid"
+    "/tmp/slint-bridge-holes-20261015/live-after-neon-regression.pid",
+    "/tmp/slint-bridge-holes-20261015/live-after-pixel-batch.log",
+    "/tmp/slint-bridge-holes-20261015/live-after-pixel-batch.pid"
   ]
 }
