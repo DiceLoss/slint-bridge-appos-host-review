@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-15T02:44:13.935978+00:00",
+  "checked_at_utc": "2026-10-15T06:14:39.787292+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -141,7 +141,7 @@
   ],
   "running_ui": {
     "path": "/tmp/slint-bridge-holes-20261015/background-holes",
-    "pid": 412,
+    "pid": 26898,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -155,21 +155,21 @@
     "frame_interval_us": 16667,
     "trace_enabled": false,
     "fault_injection_enabled": false,
-    "log": "/tmp/slint-bridge-holes-20261015/live.log",
+    "log": "/tmp/slint-bridge-holes-20261015/live-after-neon-regression.log",
     "startup_script": "/tmp/slint-bridge-holes-20261015/start.sh",
     "source_base_commit": "095eca772ba3dcc23cd354debf969b69f216a032",
     "slint_source_commit": "fa6a6d0158c9730fed62ef1eb1c9730c80214e20",
     "source_manifest": "evidence/background-holes/2026-10-15/manifest.json",
-    "source_state": "BackgroundWithHoles application component and interactive two-region demo; no library or Slint source changes in this task. Initial regions visible, foreground count 0, dialog closed. No exit timer, trace, recording, WBC or physical-check plugin loaded.",
+    "source_state": "Original BackgroundWithHoles resident restored after texture NEON compatibility regression; original ELF and startup script unchanged. Both initial regions visible, Change 44, foreground count 0, dialog closed; final MCP screenshot exactly matches all 614400 pre-test pixels. No exit timer, trace, recording, WBC or physical-check plugin loaded.",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "resources": {
-      "rss_kib": 12008,
-      "vm_hwm_kib": 16816,
-      "vm_peak_kib": 36336,
+      "rss_kib": 11380,
+      "vm_hwm_kib": 16188,
+      "vm_peak_kib": 35808,
       "threads": 3,
       "mmz_used_kib": 12760,
       "mmz_blocks": 6,
-      "mem_available_kib": 44636,
+      "mem_available_kib": 44792,
       "wbc_running": false
     },
     "mcp": {
@@ -1562,5 +1562,111 @@
     "report": "docs/nx5-background-holes.md",
     "evidence": "evidence/background-holes/2026-10-15",
     "cleanup_archived_files": 11
+  },
+  "texture_neon_validation": {
+    "report": "docs/nx5-texture-neon.md",
+    "evidence": "evidence/nx5-texture-neon/2026-10-15",
+    "application_commit": "1736f56",
+    "slint_before": "fa6a6d0158c9730fed62ef1eb1c9730c80214e20",
+    "slint_after": "5cfde5f2f2a9417373d4fd914730919327e935f8",
+    "comparison": [
+      {
+        "axis": "vertical",
+        "before": {
+          "fps": 27.476428956582847,
+          "frames": 1650,
+          "batches": 11,
+          "fps_action_seconds": 61.20028218597872,
+          "cpu_percent_one_core": 79.34998894539737,
+          "rss_mean_kib": 18328.355555555554,
+          "resource_seconds": 45.229999999995925,
+          "threads": 3
+        },
+        "after": {
+          "fps": 27.44591847642279,
+          "frames": 1500,
+          "batches": 10,
+          "fps_action_seconds": 60.669092105003074,
+          "cpu_percent_one_core": 79.42086648982281,
+          "rss_mean_kib": 18404.088888888888,
+          "resource_seconds": 45.24000000000524,
+          "threads": 3
+        },
+        "fps_change_percent": -0.11104237820812601,
+        "cpu_change_percentage_points": 0.0708775444254428
+      },
+      {
+        "axis": "horizontal",
+        "before": {
+          "fps": 25.87788047821165,
+          "frames": 1500,
+          "batches": 10,
+          "fps_action_seconds": 65.1876363500196,
+          "cpu_percent_one_core": 86.10641891891787,
+          "rss_mean_kib": 18592.340425531915,
+          "resource_seconds": 47.36000000000058,
+          "threads": 3
+        },
+        "after": {
+          "fps": 25.77289897200307,
+          "frames": 1500,
+          "batches": 10,
+          "fps_action_seconds": 65.30671286399593,
+          "cpu_percent_one_core": 86.2641985696372,
+          "rss_mean_kib": 18667.23404255319,
+          "resource_seconds": 47.5399999999936,
+          "threads": 3
+        },
+        "fps_change_percent": -0.4056804663618907,
+        "cpu_change_percentage_points": 0.15777965071933409
+      }
+    ],
+    "arm_texture_tests": 2,
+    "hardware_cases": 6,
+    "showcase_mcp_pages": 8,
+    "showcase_mcp_screenshots": 19,
+    "showcase_physical_pixels": 1228800,
+    "showcase_physical_different_bytes": 0,
+    "evdev_contacts": 3,
+    "evdev_accepted_edges": 6,
+    "evdev_dropped": 0,
+    "background_physical": {
+      "stages": 23,
+      "pages": 45,
+      "pixels": 27648000,
+      "pages_alternated": true,
+      "negative_control_rejected": true,
+      "rgb_max_error": 0,
+      "alpha_exact": true,
+      "normal_exit": 0,
+      "mmz_kib": 4900,
+      "mmz_blocks": 2,
+      "vo_off": true,
+      "kernel_new_lines": 13,
+      "kernel_warnings": 0
+    },
+    "kernel": {
+      "overlap_lines": 1267,
+      "evicted_old_lines": 32,
+      "new_lines": 140,
+      "warnings": [],
+      "scope": "after the original resident SIGTERM, through all finite test processes, before restored resident launch"
+    },
+    "original_resident_restored": true,
+    "restored_ui": {
+      "pixels": 614400,
+      "different_pixels": 0,
+      "exact": true,
+      "revision": 44,
+      "foreground_count": 0,
+      "modal_open": false,
+      "pointer": [
+        0,
+        0
+      ],
+      "note": "First restore snapshot differed only in Reset hover; move_pointer cleared it. Both snapshots retained."
+    },
+    "cleanup_final_files": 64,
+    "scope": "Current nx5-tde, 1024x600, 0 degrees. No new WBC, physical finger, dynamic scanout or rotated NX5 display validation. X9 was not operated."
   }
 }

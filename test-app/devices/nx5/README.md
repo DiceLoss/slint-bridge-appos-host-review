@@ -2,6 +2,10 @@
 
 本目录保存 [current-target.json](current-target.json)；路径相对于仓库根。观测时间随记录列出；PID、摘要和资源在操作前须重新核对。
 
+2026-10-15 已完成 [纹理 NEON 优化后的 NX5 实机回归](../../../docs/nx5-texture-neon.md)：同源应用优化前后纵向 27.48 → 27.45 FPS、CPU 79.35% → 79.42%；横向 25.88 → 25.77 FPS、CPU 86.11% → 86.26%。六项硬件、两项 ARM 纹理、八页交互、evdev 和背景 23 阶段物理双页通过。本轮未发现明显退化，未获得 X9 那样的加速。已恢复原 `background-holes`，观测 PID **26898**，原 ELF 和启动脚本未变；两区域初始状态、Change 44、前景计数 0、弹窗关闭，完整截图与测试前相同。日志 `live-after-neon-regression.log`，无时限或探针；诊断文件已归档清理。操作前仍须重新核对身份及实际所有者。
+
+以下为同日此前的背景演示部署记录：
+
 2026-10-15 已完成 [图片背景裁剪与多个透明区域验收](../../../docs/nx5-background-holes.md)。当前为独立 `background-holes` 演示，路径 `/tmp/slint-bridge-holes-20261015/background-holes`，观测 PID **412**；启动用 `sh /tmp/slint-bridge-holes-20261015/start.sh`。两区域已复位，前景按钮计数为 0、弹窗关闭，无退出定时器或探针。原 `2fddc04` showcase 作为恢复版本，`1225593` 已校验归档移除。23 阶段真实双页及原生交互通过；本轮未接入视频源。运行前仍需重新核对设备身份和显示所有者。
 
 以下为同日此前的兼容性回归与历史部署记录：

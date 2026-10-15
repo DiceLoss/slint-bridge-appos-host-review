@@ -24,6 +24,8 @@
     "/tmp/slint-bridge-rich-render-2fddc04/live-after-x9-regression.pid",
     "/tmp/slint-bridge-holes-20261015/start.sh",
     "/tmp/slint-bridge-holes-20261015/live.log",
-    "/tmp/slint-bridge-holes-20261015/live.pid"
+    "/tmp/slint-bridge-holes-20261015/live.pid",
+    "/tmp/slint-bridge-holes-20261015/live-after-neon-regression.log",
+    "/tmp/slint-bridge-holes-20261015/live-after-neon-regression.pid"
   ]
 }
