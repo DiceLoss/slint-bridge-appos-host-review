@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-14T11:53:31.721728+00:00",
+  "checked_at_utc": "2026-10-15T01:34:37.362821+00:00",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -141,7 +141,7 @@
   ],
   "running_ui": {
     "path": "/tmp/slint-bridge-rich-render-2fddc04/showcase",
-    "pid": 6607,
+    "pid": 22711,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -154,9 +154,9 @@
     "sha256": "e2a0f1245c3a471329091f215b68311f16362db954837901e63b4fcc53449f39",
     "frame_interval_us": 16667,
     "trace_enabled": false,
-    "last_observed_fps": 27.515195450139476,
-    "fps_evidence": "evidence/nx5-rich-render/2026-10-14/final/results.json",
-    "fps_note": "Same-boot 100-item rich-list native MCP comparison against 1225593; separate trace-off CPU/RSS and completed-PAN FPS. Intermediate diagnostic timings are separate.",
+    "last_observed_fps": 27.464295136005056,
+    "fps_evidence": "evidence/nx5-x9-regression/2026-10-15/performance-results.json",
+    "fps_note": "2026-10-15 freshly measured original 2fddc04 baseline; restored same ELF after testing current X9-related source. See baseline/current labels; separate trace-off resources and successful-PAN FPS.",
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
@@ -178,7 +178,7 @@
         "set_element_value"
       ],
       "screenshot_status": "Clean final NX5: both axes all 100 IDs, wide drags, full traversal, boundaries, stable-ID selection; six guarded native snapshots. Full physical pages captured at odd positions before same-device software references.",
-      "restored_properties": "evidence/nx5-rich-render/2026-10-14/final/resident-restore-ui.json",
+      "restored_properties": "evidence/nx5-x9-regression/2026-10-15/restored-ui.json",
       "latest_restore_verification": {
         "screenshots": [
           "evidence/nx5-rich-render/2026-10-14/final/device-vertical.png",
@@ -193,19 +193,19 @@
         "capture_phase": "finite final UI process; resident state verified separately"
       }
     },
-    "log": "/tmp/slint-bridge-rich-render-2fddc04/live.log",
+    "log": "/tmp/slint-bridge-rich-render-2fddc04/live-after-x9-regression.log",
     "source_commit": "2fddc04b8816d70ae6a00712ddc215c02c696b7e",
     "fault_injection_enabled": false,
     "source_state": "100 rich items with root clip; bounded weak-identity SVG raster cache; direct premultiplied uploads; full target opacity check with NEON; NEON alpha restoration; two full source slots and one compact slot. Generic runtime and DMA/page completion contract unchanged. Rich list vertical start, Controls 48; no timer/trace/recording/WBC.",
     "source_manifest": "evidence/nx5-rich-render/2026-10-14/final/manifest.json",
     "resources": {
-      "rss_kib": 18904,
-      "vm_hwm_kib": 18904,
-      "vm_peak_kib": 37436,
+      "rss_kib": 18444,
+      "vm_hwm_kib": 18444,
+      "vm_peak_kib": 37316,
       "threads": 3,
       "mmz_used_kib": 12760,
       "mmz_blocks": 6,
-      "mem_available_kib": 38692,
+      "mem_available_kib": 38796,
       "wbc_running": false
     },
     "runtime_source_sha256": "da7e30859b9dd07a76ade3a549bd35f028df85b0f1a9209d61b2ada8b3d0ab22",
@@ -1420,5 +1420,62 @@
     "throughput_target_fps": 28,
     "throughput_target_passed": false,
     "throughput_target_evidence": "evidence/nx5-rich-render/2026-10-14/final/fps-target-check.log"
+  },
+  "x9_compatibility_validation": {
+    "report": "docs/nx5-x9-regression.md",
+    "evidence": "evidence/nx5-x9-regression/2026-10-15",
+    "tested_library_source": "cacf98f2fedfc99a6d965468cd709adfd7c5466f",
+    "tested_slint_source": "fa6a6d0158c9730fed62ef1eb1c9730c80214e20",
+    "tested_binary_sha256": "37cde83b5e2241ac87d2c37bd920077e44ff1f4f00ec882edd9e8c7d0b7742b2",
+    "candidate_archived_and_removed": true,
+    "original_version_restored": true,
+    "hardware_tests": 6,
+    "physical_pixels": 1228800,
+    "baseline_pixel_differences": 0,
+    "software_max_channel_error": 1,
+    "physical_alpha": 128,
+    "evdev_contacts": 3,
+    "evdev_dropped": 0,
+    "evdev_unknown": 0,
+    "physical_finger_test": false,
+    "rotation_degrees": 0,
+    "performance": {
+      "baseline": {
+        "vertical": {
+          "cpu_percent": 78.83211678831822,
+          "rss_mib": 17.999235733695652,
+          "resource_seconds": 46.580000000001746,
+          "fps": 27.464295136005056,
+          "frames": 1500,
+          "fps_action_seconds": 61.369837357022334
+        },
+        "horizontal": {
+          "cpu_percent": 86.19077968981088,
+          "rss_mib": 18.26171875,
+          "resource_seconds": 47.070000000006985,
+          "fps": 26.025899249806212,
+          "frames": 1500,
+          "fps_action_seconds": 64.57047528200201
+        }
+      },
+      "current": {
+        "vertical": {
+          "cpu_percent": 78.9357474055941,
+          "rss_mib": 18.159712357954547,
+          "resource_seconds": 45.29000000000815,
+          "fps": 27.52403814171417,
+          "frames": 1500,
+          "fps_action_seconds": 60.807623942993814
+        },
+        "horizontal": {
+          "cpu_percent": 86.23814541620645,
+          "rss_mib": 18.42357336956522,
+          "resource_seconds": 47.45000000001164,
+          "fps": 25.840692926364888,
+          "frames": 1500,
+          "fps_action_seconds": 65.12273124197964
+        }
+      }
+    }
   }
 }

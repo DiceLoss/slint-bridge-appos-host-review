@@ -1,5 +1,9 @@
 # NX5 最近环境记录
 
+2026-10-15 X9 共用改动兼容性回归完成，已恢复原 NX5 `2fddc04` + Slint `9a1a3b1`，观测 PID **22711**，路径 `/tmp/slint-bridge-rich-render-2fddc04/showcase`，日志 `live-after-x9-regression.log`。无定时退出、trace 或探针；Controls 48%、富列表纵向起点。当前候选通过六项硬件、真实页及 evdev 验证，纵横完成 FPS 与旧版分别为 27.52/27.46、25.84/26.03；详细差异与测试边界见 [NX5 链路回归](nx5-x9-regression.md)。候选已归档移除，原当前/回退版本保留。常驻 RSS 18444 KiB、MMZ 12760 KiB / 6 块、可用内存 38796 KiB；设备启动 ID 未变，操作前仍须重新核对。
+
+## 2026-10-14 富列表脏区与绘制优化（历史）
+
 2026-10-14 富列表脏区与绘制优化收尾：当前 `2fddc04` + Slint `9a1a3b1`，路径 `/tmp/slint-bridge-rich-render-2fddc04/showcase`，观测 PID **6607**。保留 100 项及原有视觉内容；条目子树裁剪、SVG 栅格缓存及 TDE CPU 路径优化已部署。Rich list 纵向起点、Controls 48%，无退出定时器、trace 或临时探针。
 
 独立窗口纵向 **27.52 FPS / 78.66% CPU / 17.91 MiB 平均 RSS**，横向 **26.03 FPS / 85.99% CPU / 18.27 MiB 平均 RSS**。基线 17.52 / 15.51 FPS。主机 25 状态整帧像素一致，最终硬件与 100 帧双页、完整列表交互、两方向完整物理页比对通过；详见[脏区与绘制优化报告](nx5-rich-render.md)。

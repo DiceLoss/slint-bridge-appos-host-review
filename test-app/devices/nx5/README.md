@@ -1,6 +1,10 @@
 # NX5 测试目标
 
-本目录保存 [current-target.json](current-target.json)；路径相对于仓库根。以下 PID、摘要和资源为 2026-10-14 观测，操作前须重新核对。
+本目录保存 [current-target.json](current-target.json)；路径相对于仓库根。观测时间随记录列出；PID、摘要和资源在操作前须重新核对。
+
+2026-10-15 已完成 [X9 改动后的 NX5 链路回归](../../../docs/nx5-x9-regression.md)：六项实机硬件回归、实际页及 evdev 验证通过。当前源码与旧版的纵向 FPS 为 27.52 / 27.46，横向为 25.84 / 26.03；CPU 接近，本轮 RSS 约多 0.16 MiB。验证后恢复原 `2fddc04` + Slint `9a1a3b1`，观测 PID **22711**，日志 `live-after-x9-regression.log`，Rich list 纵向起点、Controls 48%。新候选已归档，回退仍为 `1225593`；操作前重新核对 PID 和所有者。
+
+以下为原版本 2026-10-14 的部署和性能记录：
 
 2026-10-14 富列表脏区与绘制优化收尾：当前 `2fddc04` + Slint `9a1a3b1`，路径 `/tmp/slint-bridge-rich-render-2fddc04/showcase`，观测 PID **6607**。保留 100 项及原有视觉内容；条目子树裁剪、SVG 栅格缓存及 TDE CPU 路径优化已部署。Rich list 纵向起点、Controls 48%，无退出定时器、trace 或临时探针。
 
