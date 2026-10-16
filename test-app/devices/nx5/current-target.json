@@ -160,7 +160,7 @@
     "font": "/run/slint-bridge-display/DejaVuSans.ttf",
     "trace_enabled": false,
     "fault_injection_enabled": false,
-    "source_state": "MMA validation build from c43ddc9 plus this task changes; ordinary and MMA modes compared using this same ELF.",
+    "source_state": "MMA validation implementation 8bd65c7; ordinary and MMA modes compared using this same ELF. Later changes only record metadata and recovery retention.",
     "slint_commit": "c49ec2918037c5dac3ec61302e7cfa618f32bd15",
     "resources": {
       "rss_kib": 12160,
@@ -176,7 +176,8 @@
       "verification": "evidence/nx5-mma-background/2026-10-16/resident-tree.json"
     },
     "page": "Overview",
-    "report": "docs/nx5-mma-background.md"
+    "report": "docs/nx5-mma-background.md",
+    "bridge_commit": "8bd65c7"
   },
   "status": "showcase_mma_background_validation_resident",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",

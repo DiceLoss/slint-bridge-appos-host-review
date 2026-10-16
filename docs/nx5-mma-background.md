@@ -69,7 +69,7 @@ ARM release 构建完成。六个实机专用 ignored 测试未在此轮重跑�
 ## 构建及交付记录
 
 Slint 基线 `c878901f`，外部像素补丁本地提交 `c49ec2918037c5dac3ec61302e7cfa618f32bd15`。
-桥接层在 `c43ddc9` 基础上加入本报告对应改动，其他依赖保持原 `Cargo.lock` 锁定版本。
+桥接层实现提交 `8bd65c7`（基线 `c43ddc9`），其他依赖保持原 `Cargo.lock` 锁定版本。
 最终 ELF SHA256：`cdab572094a846ab6d0a0a89cba6e7a2fd279c7f569e3d9ffbc27ff72431870f`。
 
 常驻程序为 `/tmp/slint-bridge-mma-v2-20261016/showcase`，由同目录 `start.sh` 启动，启用 MMA 背景，关闭 trace 与故障注入，不设置退出时限。
