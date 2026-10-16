@@ -1,6 +1,6 @@
 {
-  "observed_at_utc": "2026-10-16T09:27:58Z",
-  "scope": "Post-soak identity/process/UI observation; display and input fields describe the admitted X9 contract, not a new scanout or touch certification. Recheck identity, PID and ownership before operation.",
+  "observed_at_utc": "2026-10-16T10:30:47Z",
+  "scope": "Post-growth-attribution identity/process/UI observation; same original process, read-only allocator/MCP inspection and controlled queries. Display/input fields are the admitted contract, not a new scanout or touch certification. Recheck identity, PID and ownership before operation.",
   "adb_serial": "192.168.1.143:5555",
   "hostname": "virgo",
   "mac": "82:a1:cf:66:54:03",
@@ -70,10 +70,10 @@
     },
     "font_sha256": "ae7b7855e115a5966d8b1b3f80f254ccc117ec86f9965e202ee2940453837280",
     "log": "/tmp/slint-bridge-x9-card-cache-20261016/showcase.log",
-    "rss_kib": 25084,
+    "rss_kib": 25964,
     "peak_rss_kib": 26580,
     "threads": 3,
-    "page": "Controls, level 68%; image scaling set to 100% by the memory soak; no profile settings changed by this test.",
+    "page": "Controls, level 68% rechecked after growth attribution; image scaling remains at the prior 100% setting (page not visited in this round).",
     "starttime_ticks": 17121759,
     "console_observation": "Console mode was not re-queried during the memory soak; earlier ownership observation is historical."
   },
@@ -92,7 +92,7 @@
   },
   "evidence": "evidence/x9-card-cache/2026-10-16/verification.json (local ignored archive, acquired separately); earlier background-cache and renderer-cost records remain in evidence/x9-background-cache/2026-10-16 and evidence/x9-render-cost/2026-10-16.",
   "performance_report": "docs/x9-performance.md#x9-card-rotation-cache",
-  "application_source_note": "Runtime source matches library_source. Same verified card-rotation-cache ELF remains running, without injected allocation or flip probes. Current UI and memory observations are recorded in process and memory_soak.",
+  "application_source_note": "Runtime source matches library_source. Same verified card-rotation-cache ELF remains running without injected allocation/flip probes. Read-only ptrace snapshots were detached; current UI and memory observations are in process and memory_growth_attribution. No implementation fix applied.",
   "memory_maintenance": {
     "observed_at_utc": "2026-10-16T07:13:04Z",
     "scope": "ELF archive migration and memory measurements only; original UI observation above was not repeated.",
@@ -145,5 +145,32 @@
     "method": "Native Slint MCP drives the existing display process; external 1 Hz /proc sampler. No restart, screenshots, allocation probes, trim or manual cache clearing.",
     "report": "docs/x9-performance.md#x9-memory-soak",
     "evidence": "evidence/x9-memory-soak/2026-10-16/summary.json (local ignored archive, acquired separately)"
+  },
+  "memory_growth_attribution": {
+    "report": "docs/x9-performance.md#x9-growth-attribution",
+    "evidence": "evidence/x9-growth-attribution/2026-10-16/summary.json (local ignored archive, acquired separately)",
+    "implementation_changed": false,
+    "restarted": false,
+    "trim_called": false,
+    "method": "Read-only ARM glibc/TLS/VRc snapshots with all three threads briefly stopped; two independent mallinfo fixtures matched. Native Slint MCP controlled static-query and page-cycle groups; no screenshot/event recording.",
+    "original_controls_rss_kib": 25084,
+    "original_arena_free_bytes": 2977344,
+    "original_resident_whole_free_kib_lower_bound": 1456,
+    "original_mcp_handles": 4882,
+    "original_dead_allocations_exclusively_retained_by_mcp": 639,
+    "original_mcp_container_and_exclusive_dead_chunk_bytes": 1098168,
+    "minimal_40_arena_inuse_delta_bytes": -64,
+    "enumerated_40_arena_inuse_delta_bytes": 471168,
+    "enumerated_40_mcp_delta_bytes": 471208,
+    "minimal_repeat_40_arena_inuse_delta_bytes": -128,
+    "handle_cap_observed": 10000,
+    "additional_cycles_after_cap": 80,
+    "after_cap_80_arena_inuse_delta_bytes": 16,
+    "after_cap_80_rss_delta_kib": 0,
+    "final_controls_rss_kib": 25964,
+    "final_tracer_pid": 0,
+    "verdict": "Dynamic MCP element enumeration retains weak references to destroyed component allocations until handle eviction; minimal page cycles and static queries did not accumulate in these controlled groups. Allocator-free resident pages are a separate measured stock.",
+    "limitations": "No allocator/MCP snapshot before the original 30-minute soak, so current chunk-byte stocks cannot be treated as the historical 1124 KiB heap RSS delta. Fixed-workload plateau is not a universal byte cap or proof that all showcase workloads are leak-free.",
+    "cleanup": "65 diagnostic files plus manifest archived and SHA256 verified, then removed from device; no diagnostic processes remain. Original display, font, rollback and recovery hashes unchanged."
   }
 }
