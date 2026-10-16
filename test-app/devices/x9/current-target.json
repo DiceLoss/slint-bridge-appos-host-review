@@ -1,5 +1,5 @@
 {
-  "observed_at_utc": "2026-10-16T03:42:49Z",
+  "observed_at_utc": "2026-10-16T06:39:06Z",
   "scope": "Live identity/process/UI observation; display and input fields describe the admitted X9 contract. Recheck identity, PID and ownership before operation.",
   "adb_serial": "192.168.1.143:5555",
   "hostname": "virgo",
@@ -15,7 +15,7 @@
     "slint/mcp"
   ],
   "slint_commit": "c878901fb9793efc3d515aee37225cbad57de40d",
-  "library_source": "b651d020fcbca33c1d2af73c77a3b7dd3be0b053",
+  "library_source": "047167e74bec9790892a4cff34b810718548d3a5",
   "display": {
     "driver": "lombo-drm",
     "drm": "lombo 1.0.0",
@@ -55,10 +55,10 @@
     }
   },
   "process": {
-    "pid": 9401,
-    "executable": "/tmp/slint-bridge-x9-background-cache-20261016/showcase",
-    "sha256": "e689888b952bbafa33270c84197c56326ffbfc7c53888d6f4dd504b57bd4e8d2",
-    "bytes": 13737644,
+    "pid": 10852,
+    "executable": "/tmp/slint-bridge-x9-card-cache-20261016/showcase",
+    "sha256": "aae599bcedbc393987857f6e93452cf9de285abf9fd94ace1dafe45356ce9935",
+    "bytes": 13743136,
     "arguments": [
       "--framebuffer=/dev/fb0",
       "--touch=/dev/input/event1",
@@ -69,12 +69,12 @@
       "SLINT_DEFAULT_FONT": "/tmp/slint-bridge-x9-20261014/DejaVuSans.ttf"
     },
     "font_sha256": "ae7b7855e115a5966d8b1b3f80f254ccc117ec86f9965e202ee2940453837280",
-    "log": "/tmp/slint-bridge-x9-background-cache-20261016/showcase.log",
-    "rss_kib": 18712,
-    "peak_rss_kib": 26160,
+    "log": "/tmp/slint-bridge-x9-card-cache-20261016/showcase.log",
+    "rss_kib": 22860,
+    "peak_rss_kib": 26188,
     "threads": 3,
-    "page": "Overview animation; Controls 68%; no applied profile",
-    "starttime_ticks": 16130752,
+    "page": "Rich list, horizontal start, no selection; Controls 68%; no applied profile",
+    "starttime_ticks": 17121759,
     "console_observation": "Owns /dev/tty0; KD mode was not separately queried in this snapshot."
   },
   "mcp": {
@@ -82,13 +82,13 @@
     "device_port": 9315
   },
   "backup": {
-    "executable": "/tmp/slint-bridge-x9-20261014/showcase-08",
-    "sha256": "6893765bddc82ed36d097f46fd6c682620c0385818300a7580580d09c1e09d86",
-    "limitation": "Before opaque background caching; retains rotated texture tiles, opaque writes and sampled-texture NEON blending.",
+    "executable": "/tmp/slint-bridge-x9-background-cache-20261016/showcase",
+    "sha256": "e689888b952bbafa33270c84197c56326ffbfc7c53888d6f4dd504b57bd4e8d2",
+    "limitation": "Includes full-canvas opaque background caching; before repeated card-image rotation caching.",
     "initial_pixels": "/tmp/slint-bridge-x9-probe/before.fb",
     "recover_console": "/tmp/slint-bridge-x9-probe/recover-console"
   },
-  "evidence": "evidence/x9-background-cache/2026-10-16/verification.json (local ignored archive, acquired separately); previous admission and NEON records remain in evidence/x9-framebuffer/2026-10-14 and evidence/x9-neon/2026-10-15.",
-  "performance_report": "docs/x9-performance.md#x9-background-cache",
-  "application_source_note": "Runtime source matches library_source. Same ELF as the background-cache candidate; built before recording that local commit. No probe or trace environment. Overview restored, Controls configured to 68%."
+  "evidence": "evidence/x9-card-cache/2026-10-16/verification.json (local ignored archive, acquired separately); earlier background-cache and renderer-cost records remain in evidence/x9-background-cache/2026-10-16 and evidence/x9-render-cost/2026-10-16.",
+  "performance_report": "docs/x9-performance.md#x9-card-rotation-cache",
+  "application_source_note": "Runtime source matches library_source. Final rebuild is byte-identical to the measured card-rotation-cache candidate. No probe/trace environment; horizontal Rich list restored, no selection, Controls 68%."
 }
