@@ -72,7 +72,7 @@
       "width": 400,
       "height": 70,
       "label": "framebuffer.rs",
-      "sublabel": "保留画布 · 双页脏区 · 分段写页",
+      "sublabel": "保留画布 / 背景缓存 · 双页写入",
       "fill": "#f0fdfa",
       "stroke": "#5eead4",
       "flat": true

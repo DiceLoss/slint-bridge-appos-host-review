@@ -581,6 +581,8 @@ fn row_spans(rectangles: &[Rect], y: usize, spans: &mut Vec<(usize, usize)>) {
 }
 
 pub(crate) struct Framebuffer {
+    #[cfg(feature = "fbdev")]
+    background_cache: crate::software_background::BackgroundCache,
     #[cfg(not(feature = "nx5-tde"))]
     retained: Vec<PremultipliedRgbaColor>,
     #[cfg(feature = "nx5-tde")]
@@ -658,6 +660,8 @@ impl Framebuffer {
             retained
         };
         Ok(Self {
+            #[cfg(feature = "fbdev")]
+            background_cache: Default::default(),
             _file: file,
             mapping,
             layout,
@@ -679,8 +683,14 @@ impl Framebuffer {
             self.can_render(),
             "at most one rendered frame may wait for submission"
         );
-        #[cfg(not(feature = "nx5-tde"))]
+        #[cfg(all(not(feature = "nx5-tde"), not(feature = "fbdev")))]
         let damage = renderer.render(&mut self.retained, self.layout.size.width as usize);
+        #[cfg(feature = "fbdev")]
+        let damage = self.background_cache.render(
+            renderer,
+            &mut self.retained,
+            self.layout.size.width as usize,
+        );
         #[cfg(feature = "nx5-tde")]
         let damage = self.retained.render(renderer)?;
         let mut current = std::mem::take(&mut self.unsubmitted_damage);

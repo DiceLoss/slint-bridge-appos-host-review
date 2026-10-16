@@ -21,6 +21,8 @@ mod geometry;
 mod input;
 mod presentation;
 mod runtime;
+#[cfg(feature = "fbdev")]
+mod software_background;
 mod wake;
 
 pub use geometry::Rotation;

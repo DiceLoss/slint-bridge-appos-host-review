@@ -13,7 +13,7 @@ description = "Slint platform support for embedded Linux with explicit display a
 
 [features]
 default = []
-fbdev = []
+fbdev = ["dep:i-slint-renderer-software"]
 nx5 = ["dep:libloading"]
 nx5-tde = ["nx5", "dep:i-slint-renderer-software", "dep:cc"]
 
