@@ -1,6 +1,6 @@
 {
-  "current_binary": "/tmp/slint-bridge-music3-20261015/music-player",
-  "recovery_binary": "/tmp/slint-bridge-rich-render-2fddc04/showcase",
+  "current_binary": "/tmp/slint-bridge-mma-v2-20261016/showcase",
+  "recovery_binary": "/tmp/slint-bridge-music3-20261015/music-player",
   "keep": [
     "/tmp/slint-bridge-music3-20261015",
     "/tmp/slint-bridge-holes-20261015/background-holes",
@@ -30,6 +30,7 @@
     "/tmp/slint-bridge-holes-20261015/live-after-neon-regression.log",
     "/tmp/slint-bridge-holes-20261015/live-after-neon-regression.pid",
     "/tmp/slint-bridge-holes-20261015/live-after-pixel-batch.log",
-    "/tmp/slint-bridge-holes-20261015/live-after-pixel-batch.pid"
+    "/tmp/slint-bridge-holes-20261015/live-after-pixel-batch.pid",
+    "/tmp/slint-bridge-mma-v2-20261016"
   ]
 }

@@ -8,7 +8,6 @@ import { Scaling } from "showcase/scaling.slint";
 import { RichList } from "showcase/rich-list.slint";
 import { Lab } from "showcase/lab.slint";
 import { DeviceRow, EventRow } from "showcase/models.slint";
-import { ShowcaseAssets } from "showcase-assets.slint";
 export { DeviceRow, EventRow }
 
 export component Showcase inherits Window {
@@ -37,7 +36,7 @@ export component Showcase inherits Window {
     in-out property <bool> running: true;
     in-out property <float> speed: 1;
     in property <bool> expanded;
-    in property <image> wallpaper: ShowcaseAssets.wallpaper;
+    in property <image> wallpaper;
     in property <image> overlay;
     in-out property <float> alpha: 75;
     in property <bool> cutout;

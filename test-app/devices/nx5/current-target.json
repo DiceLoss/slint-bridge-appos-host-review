@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-16T13:09:26Z",
+  "checked_at_utc": "2026-10-16T14:37:35Z",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -46,7 +46,7 @@
     ],
     "pan": [
       0,
-      0
+      600
     ],
     "vo_device_enabled": true,
     "initialization_error_observed": "gui layer region(0,0,1024,600) cannot exceed frame region(0,0)",
@@ -140,30 +140,31 @@
     }
   ],
   "running_ui": {
-    "path": "/tmp/slint-bridge-music3-20261015/music-player",
-    "pid": 30334,
-    "starttime_ticks": 19459965,
+    "path": "/tmp/slint-bridge-mma-v2-20261016/showcase",
+    "pid": 6837,
+    "starttime_ticks": 20033954,
     "features": [
-      "nx5-tde",
+      "nx5-mma-background",
       "slint/mcp"
     ],
     "arguments": [
+      "--mma-background",
       "--framebuffer=/dev/fb0",
       "--touch=/dev/input/event0"
     ],
-    "sha256": "e5226b5fe053efd944f241f5342f3844e647ec0d430ca8f225b8e2b9e23d045c",
-    "log": "/tmp/slint-bridge-music3-20261015/restored-ledger-20261016.log",
-    "pid_file": "/tmp/slint-bridge-music3-20261015/restored-ledger-20261016.pid",
-    "startup_script": "/tmp/slint-bridge-music3-20261015/start.sh",
+    "sha256": "cdab572094a846ab6d0a0a89cba6e7a2fd279c7f569e3d9ffbc27ff72431870f",
+    "log": "/tmp/slint-bridge-mma-v2-20261016/live.log",
+    "pid_file": "/tmp/slint-bridge-mma-v2-20261016/live.pid",
+    "startup_script": "/tmp/slint-bridge-mma-v2-20261016/start.sh",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "font": "/run/slint-bridge-display/DejaVuSans.ttf",
     "trace_enabled": false,
     "fault_injection_enabled": false,
-    "source_state": "Same original music-player ELF/startup script restored after memory-ledger sampling. Native MCP restored saved track 7, 2:17 progress and 65% volume, then resumed simulated playback; decorative rotation phase restarted.",
-    "source_revision_note": "Music ELF identity verified; its bridge/Slint source commits were not independently established in this task. Temporary showcase build identity is recorded separately below.",
+    "source_state": "MMA validation build from c43ddc9 plus this task changes; ordinary and MMA modes compared using this same ELF.",
+    "slint_commit": "c49ec2918037c5dac3ec61302e7cfa618f32bd15",
     "resources": {
-      "rss_kib": 7860,
-      "vm_hwm_kib": 7992,
+      "rss_kib": 12160,
+      "vm_hwm_kib": 14808,
       "threads": 3,
       "tracer_pid": 0,
       "mmz_used_kib": 12760,
@@ -172,11 +173,12 @@
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
-      "verification": "evidence/nx5-memory-ledger/2026-10-16/music-restored-result.json"
+      "verification": "evidence/nx5-mma-background/2026-10-16/resident-tree.json"
     },
-    "restoration_evidence": "evidence/nx5-memory-ledger/2026-10-16/summary.json"
+    "page": "Overview",
+    "report": "docs/nx5-mma-background.md"
   },
-  "status": "music_player_restored_after_showcase_memory_ledger",
+  "status": "showcase_mma_background_validation_resident",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -214,7 +216,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "2026-10-16 NX5 memory ledger: same-source offscreen allocation replay, then 120-second original showcase run with read-only allocator/smaps/ELF-pagemap capture. Music restored; historical physical display/input fields below not revalidated.",
+  "observation_scope": "2026-10-16 MMA background validation: same-ELF ordinary/MMA/retired-failure software modes, Controls/Rich-list physical front-page comparisons, short Motion runs, normal resource release. Resident MMA showcase left running. No new WBC, physical touch, rotated output or dynamic scanout validation.",
   "hardware_regression": {
     "report": "docs/nx5-validation.md#nx5-hardware",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -347,12 +349,13 @@
     }
   },
   "recovery_ui": {
-    "path": "/tmp/slint-bridge-rich-render-2fddc04/showcase",
-    "source_commit": "2fddc04b8816d70ae6a00712ddc215c02c696b7e",
-    "slint_commit": "9a1a3b14c454a751f9a804a5309a4eaae0faeded",
-    "sha256": "e2a0f1245c3a471329091f215b68311f16362db954837901e63b4fcc53449f39",
-    "startup_script": "/tmp/slint-bridge-rich-render-2fddc04/start.sh",
-    "procedure": "docs/nx5-validation.md#nx5-background-holes"
+    "path": "/tmp/slint-bridge-music3-20261015/music-player",
+    "sha256": "e5226b5fe053efd944f241f5342f3844e647ec0d430ca8f225b8e2b9e23d045c",
+    "startup_script": "/tmp/slint-bridge-music3-20261015/start.sh",
+    "library_path": "/tmp/slint-bridge-c03c3bb/lib",
+    "font": "/run/slint-bridge-display/DejaVuSans.ttf",
+    "source_revision_note": "Music ELF identity verified; its bridge/Slint source commits were not independently established in this task. Temporary showcase build identity is recorded separately below.",
+    "procedure": "Stop the current display only after rechecking ownership; run sh /tmp/slint-bridge-music3-20261015/start.sh. No automatic state replay."
   },
   "alpha_validation": {
     "report": "docs/nx5-display.md#nx5-alpha",
@@ -1274,6 +1277,14 @@
       "procedure": "docs/nx5-performance.md#nx5-rich-render",
       "device_availability": "Binary archived and SHA256-verified on host, then removed from device; redeploy before recovery",
       "host_archive": "evidence/background-holes/2026-10-15/cleanup-final/files/tmp/slint-bridge-rich-cache-1225593/showcase"
+    },
+    {
+      "path": "/tmp/slint-bridge-rich-render-2fddc04/showcase",
+      "source_commit": "2fddc04b8816d70ae6a00712ddc215c02c696b7e",
+      "slint_commit": "9a1a3b14c454a751f9a804a5309a4eaae0faeded",
+      "sha256": "e2a0f1245c3a471329091f215b68311f16362db954837901e63b4fcc53449f39",
+      "startup_script": "/tmp/slint-bridge-rich-render-2fddc04/start.sh",
+      "procedure": "docs/nx5-validation.md#nx5-background-holes"
     }
   ],
   "rich_render_validation": {
@@ -1848,5 +1859,24 @@
     "archived_and_removed_files": 63,
     "music_restored": true,
     "limits": "RSS, allocator chunk bytes and offscreen object requests are separate accounts; do not add nested values. Offscreen heap canvas excluded from production object subtotal. No new physical framebuffer/scanout/touch test."
+  },
+  "mma_background_validation": {
+    "report": "docs/nx5-mma-background.md",
+    "evidence": "evidence/nx5-mma-background/2026-10-16/summary.json (local ignored archive, acquired separately)",
+    "baseline_rss_kib": 18272,
+    "shared_rss_kib": 16240,
+    "rss_reduction_kib": 2032,
+    "anonymous_reduction_kib": 2404,
+    "mmz_used_kib": 12760,
+    "mmz_allocations_added": 0,
+    "physical_pixels": 2457600,
+    "controls_exact_across_three_modes": true,
+    "rich_max_channel_error": 1,
+    "normal_exits": 3,
+    "after_exit_mmz_kib": 4900,
+    "retired_failure_injection": true,
+    "unknown_dma_hardware_injected": false,
+    "first_iteration_memory_reduction": false,
+    "initial_music_sigterm_required": true
   }
 }

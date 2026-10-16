@@ -51,10 +51,19 @@ fn vo_enabled(state: &str) -> Result<bool, Error> {
     }))
 }
 
-struct Session {
+pub(super) struct Session {
     disable: unsafe extern "C" fn() -> libc::c_int,
     library: libloading::Library,
     _lock: File,
+}
+
+#[cfg(feature = "nx5-mma-background")]
+thread_local! {
+    static CURRENT_SESSION: std::cell::RefCell<std::sync::Weak<Session>> = const { std::cell::RefCell::new(std::sync::Weak::new()) };
+}
+#[cfg(all(feature = "nx5-mma-background", target_arch = "arm"))]
+fn current_session() -> Option<std::sync::Arc<Session>> {
+    CURRENT_SESSION.with(|session| session.borrow().upgrade())
 }
 
 impl Session {
@@ -136,6 +145,12 @@ pub(crate) fn open() -> Result<PresentationContract, Error> {
     let session = Session::load(lock, OsStr::new(LIBRARY), || {
         fs::read_to_string("/proc/umap/vo")
     })?;
+    #[cfg(feature = "nx5-mma-background")]
+    let session = {
+        let session = std::sync::Arc::new(session);
+        CURRENT_SESSION.with(|current| *current.borrow_mut() = std::sync::Arc::downgrade(&session));
+        session
+    };
     let trace = std::env::var_os("SLINT_BRIDGE_TRACE").is_some();
     let mut count = 0u64;
     let mut batch = Instant::now();

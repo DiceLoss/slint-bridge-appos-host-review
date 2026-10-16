@@ -1,5 +1,7 @@
 # NX5 测试目标
 
+显式启用的 [MMA 背景验证版](mma-background/README.md) 具有独立的同源 Slint 补丁和构建入口；下列常规命令保持原有依赖。
+
 本文件维护构建、部署和运行前提。设备观测保存在带时间戳的 [current-target.json](current-target.json)，恢复文件保护策略见 [deploy-retain.json](deploy-retain.json)；操作前重新核对身份、PID、显示所有者及依赖，不能把快照当作实时状态。
 
 现有验证目标为 USB1 root、ADB `192.168.1.151:5555`、Linux #233。当前接口与约束见 [平台说明](../../../docs/software-platform.md)，显示完成/合成依据见 [显示调查](../../../docs/nx5-display.md)，阶段结果分别见 [性能记录](../../../docs/nx5-performance.md)、[功能验证](../../../docs/nx5-validation.md) 和 [Slint 两设备对照](../../../docs/slint-optimization.md)。

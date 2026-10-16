@@ -6,6 +6,8 @@
 
 ## 统一 API
 
+显式验证 feature `nx5-mma-background` 包含 `nx5-tde`，须使用[同源 Slint 外部像素补丁及构建入口](../test-app/devices/nx5/mma-background/README.md)。它提供 `nx5_mma_background(&SharedPixelBuffer<Rgba8Pixel>)`：在 `init` 后、首次绘制前，将一张不透明且与画布同尺寸的图片复制到已有 0 号源槽，返回持有该存储的 Slint 图像。每个会话只可设置一次，失败返回 `InvalidConfig`；普通构建与默认模式不启用此路径。图像克隆共同保留 TDE 分配和 SDK 会话，软件采样使用同一只读映射；其他纹理只使用剩余源槽。双页及未知 DMA 处理不变，实测范围见 [验证记录](nx5-mma-background.md)。
+
 入口为 `slint_bridge::init(Config)`，在 UI 线程创建 Slint 组件前调用。公开类型由 [src/lib.rs](../src/lib.rs) 导出：`Config`、`Error`、`Backend`、`Rotation`、`InputDevice`、`KeyBinding`；`selected_backend()` 返回编译期选择，不代表已经通过设备准入。
 
 | `Config` 字段 | 默认值 | 当前约束 |

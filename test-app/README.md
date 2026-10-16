@@ -154,7 +154,7 @@ python3 test-app/tools/check-showcase.py --binary target/debug/showcase \
 
 NX5 的私有 `Pixel` 包装另由库内 `sampled_pixel_blending_matches_scalar_with_guards` 检查批量委托、采样顺序和切片保护区；实现及验证范围见 [NX5 Pixel 批量纹理混合](../docs/slint-optimization.md#nx5-pixel-batch)。
 
-界面固定使用 Fluent 标准控件，图标以 SVG 数据嵌入二进制；测试工程启用同源 `i-slint-core` 的图像/SVG 解码能力，不引入桌面或 GPU 后端。图片背景使用编译时嵌入的 [coastal-background.png](ui/assets/coastal-background.png)，保留的源图为 1638×960 PNG；构建脚本在主机将它转换为 1024×600 RGBA PNG 后嵌入，默认面板不再反复缩放背景，且满足 TDE 复制的尺寸/格式条件。独立 Image scaling 页另用两份未经构建期变换的 256×160 原始 PNG/SVG，运行时加载后由同一尺寸滑块缩放；它与背景优化分开。其他窗口尺寸仍按 `cover` 适配；生成来源与提示词见 [素材说明](ui/assets/README.md)。动画区复用同一图片，卡片与列表行采用半透明底色，保证动画/滚动时图片实际参与绘制。径向 alpha 叠加图仍由 Rust 生成；Layers 透明开口会隐藏背景图片。无需另行部署素材文件，字体仍按设备说明提供。
+界面固定使用 Fluent 标准控件，图标以 SVG 数据嵌入二进制；测试工程启用同源 `i-slint-core` 的图像/SVG 解码能力，不引入桌面或 GPU 后端。背景由 `showcase::configure` 在应用未指定 `wallpaper` 时加载；`.slint` 属性不提前解码图片，因此应用可以在配置前选择背景存储。图片背景使用编译时嵌入的 [coastal-background.png](ui/assets/coastal-background.png)，保留的源图为 1638×960 PNG；构建脚本在主机将它转换为 1024×600 RGBA PNG 后嵌入，默认面板不再反复缩放背景，且满足 TDE 复制的尺寸/格式条件。独立 Image scaling 页另用两份未经构建期变换的 256×160 原始 PNG/SVG，运行时加载后由同一尺寸滑块缩放；它与背景优化分开。其他窗口尺寸仍按 `cover` 适配；生成来源与提示词见 [素材说明](ui/assets/README.md)。动画区复用同一图片，卡片与列表行采用半透明底色，保证动画/滚动时图片实际参与绘制。径向 alpha 叠加图仍由 Rust 生成；Layers 透明开口会隐藏背景图片。无需另行部署素材文件，字体仍按设备说明提供。
 
 ## 专用诊断说明
 
@@ -171,6 +171,8 @@ WBC 按无版本库名 `libobserver.so` 通过系统搜索路径加载，部署�
 `init-retry OUTPUT_DIRECTORY [--framebuffer=PATH] [--touch=PATH]` 需要已有的输出目录并独占设备。它连续执行两次 framebuffer 路径错误和两次输入路径错误，然后成功启动并结束一个 UI 线程；在进程仍存活时断言 VO 已关闭、无 TDE MMZ 分配，核对重复失败及 UI 退出后的设备描述符缓存不增长，并保存 `.vo`、`.mmz`、`.fds` 快照。按设备说明构建时将 `--bin display` 换为 `--bin init-retry`；正常应返回 0，不能与显示进程同时运行。
 
 应用要透出下层视频时，可将 `.slint` 根窗口设为 `background: transparent;`，在其上绘制局部 UI；`basic` / `display` 保持原有背景，`showcase` 的 Layers 页可以打开透明区域。透明和半透明像素的输出、无 alpha 格式限制及尚未接入的视频层边界见 [Framebuffer 软件路径](../docs/software-platform.md#framebuffer-软件路径)。库内透明窗口回归使用内存双页验证移动和消失后的 alpha、颜色及行尾 padding。`alpha-regression` 另用于设备上的实际页和 WBC 检查，构建、前提及输出见 [设备工具](tools/nx5/README.md#硬件诊断与证据重放)；它使用现有黑色 VO 底色，不代表视频解码和业务视频接入已经验证。
+
+验证版 `showcase --mma-background` 复用已有 NX5 全尺寸 MMA 源槽；需要 `nx5-mma-background` 与同源 Slint 补丁。构建、同 ELF 对照及已知完成状态的软件回退注入见 [验证版说明](devices/nx5/mma-background/README.md)。普通启动不传该参数，仍使用普通堆背景。
 
 ### 图片背景中的多个透明区域
 

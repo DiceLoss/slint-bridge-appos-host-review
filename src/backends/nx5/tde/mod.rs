@@ -154,6 +154,10 @@ enum Outcome {
     Unsupported,
 }
 trait Accelerator {
+    fn background_source(&self) -> Option<*const u8> {
+        None
+    }
+
     fn fill(
         &mut self,
         _pixels: &mut [PremultipliedRgbaColor],
@@ -457,13 +461,20 @@ impl Buffer {
         // Prepared source pixels include opacity; changing it must upload again.
         let key = args.source_cache_key().map(|key| (key, args.alpha));
         let phase = ((args.dst_x & 1) as u8, (args.dst_y & 1) as u8);
-        let cached = key.as_ref().and_then(|key| {
-            self.keys.iter().position(|entry| {
-                entry.as_ref().is_some_and(|entry| {
-                    entry.key == *key && entry.phase.is_none_or(|value| value == phase)
+        let background_source = self.engine.as_ref().unwrap().background_source();
+        let background_reserved = background_source.is_some();
+        let cached = if background_source == Some(source.data.as_ptr()) {
+            Some(0)
+        } else {
+            key.as_ref().and_then(|key| {
+                self.keys.iter().enumerate().position(|(slot, entry)| {
+                    !(background_reserved && slot == 0)
+                        && entry.as_ref().is_some_and(|entry| {
+                            entry.key == *key && entry.phase.is_none_or(|value| value == phase)
+                        })
                 })
             })
-        });
+        };
         let canvas_pixels = u64::from(self.width) * u64::from(self.height);
         let padded_pixels = (u64::from(self.width) + 4) * (u64::from(self.height) + 2);
         let compact_pixels = canvas_pixels / 4 + padded_pixels - canvas_pixels;
@@ -474,7 +485,10 @@ impl Buffer {
             self.keys
                 .iter()
                 .enumerate()
-                .filter(|(slot, _)| *slot < 2 || source_pixels <= compact_pixels)
+                .filter(|(slot, _)| {
+                    !(background_reserved && *slot == 0)
+                        && (*slot < 2 || source_pixels <= compact_pixels)
+                })
                 .min_by_key(|(_, entry)| {
                     entry.as_ref().map(|entry| (entry.last_frame, entry.pixels))
                 })
@@ -603,10 +617,18 @@ impl TargetPixelBuffer for Buffer {
 #[cfg(target_arch = "arm")]
 mod native {
     use super::*;
-    use std::{ffi::c_void, ptr::NonNull, rc::Rc};
+    use std::{ffi::c_void, ptr::NonNull, rc::Rc, sync::Arc};
     unsafe extern "C" {
         fn bridge_tde_create(width: u32, height: u32, error: *mut i32) -> *mut c_void;
         fn bridge_tde_destroy(context: *mut c_void);
+        fn bridge_tde_background_source(context: *mut c_void) -> *const u8;
+        #[cfg(feature = "nx5-mma-background")]
+        fn bridge_tde_background(
+            context: *mut c_void,
+            data: *const u8,
+            width: u32,
+            height: u32,
+        ) -> *mut u8;
         fn bridge_tde_pixels(context: *mut c_void) -> *mut u8;
         fn bridge_tde_fill(
             context: *mut c_void,
@@ -630,8 +652,18 @@ mod native {
             error: *mut i32,
         ) -> i32;
     }
-    struct Context {
+    struct EngineOwner {
         raw: NonNull<c_void>,
+        #[cfg(feature = "nx5-mma-background")]
+        _session: Option<Arc<super::super::Session>>,
+    }
+    // SAFETY: only the main-thread Rc<Context> submits SDK work. External image
+    // owners retain immutable source bytes and can only release this final lease.
+    // Destruction cannot overlap an SDK call because each call retains Context.
+    unsafe impl Send for EngineOwner {}
+    unsafe impl Sync for EngineOwner {}
+    struct Context {
+        owner: Arc<EngineOwner>,
         pixels: NonNull<PremultipliedRgbaColor>,
         count: usize,
     }
@@ -664,11 +696,30 @@ mod native {
             // SAFETY: a successfully created engine owns a non-null, initialized
             // MMZ mapping. C never relocates it, including after drawing errors.
             let pixels = unsafe { NonNull::new_unchecked(bridge_tde_pixels(raw.as_ptr()).cast()) };
-            let context = Rc::new(Context { raw, pixels, count });
+            let owner = Arc::new(EngineOwner {
+                raw,
+                #[cfg(feature = "nx5-mma-background")]
+                _session: super::super::current_session(),
+            });
+            let context = Rc::new(Context {
+                owner,
+                pixels,
+                count,
+            });
+            #[cfg(feature = "nx5-mma-background")]
+            CURRENT_CONTEXT.with(|current| *current.borrow_mut() = Rc::downgrade(&context));
             Ok((Self(context.clone()), Canvas(context)))
         }
     }
     impl Accelerator for Native {
+        fn background_source(&self) -> Option<*const u8> {
+            // SAFETY: the context owns the engine for this read on its main thread.
+            NonNull::new(
+                unsafe { bridge_tde_background_source(self.0.owner.raw.as_ptr()) }.cast_mut(),
+            )
+            .map(|pointer| pointer.as_ptr().cast_const())
+        }
+
         fn fill(
             &mut self,
             _pixels: &mut [PremultipliedRgbaColor],
@@ -682,7 +733,7 @@ mod native {
             // after DMA retirement and cache synchronization.
             let result = unsafe {
                 bridge_tde_fill(
-                    self.0.raw.as_ptr(),
+                    self.0.owner.raw.as_ptr(),
                     packed,
                     rects.as_ptr(),
                     rects.len() as u32,
@@ -704,13 +755,23 @@ mod native {
             _pixels: &mut [PremultipliedRgbaColor],
             t: &Texture<'_>,
         ) -> Result<Outcome, Failure> {
+            #[cfg(feature = "nx5-mma-background")]
+            if self.background_source() == Some(t.data.as_ptr())
+                && std::env::var("SLINT_BRIDGE_MMA_FORCE_FALLBACK").as_deref() == Ok("1")
+            {
+                eprintln!("slint-bridge: validation injects retired failure before background DMA");
+                return Err(Failure {
+                    code: -10001,
+                    unknown: false,
+                });
+            }
             let mut code = 0;
             // SAFETY: CPU buffers and rects are valid for this synchronous call.
             // Rust validated source length; C rechecks all geometry. There is no
             // Rust slice aliasing the destination during this in-place DMA job.
             let result = unsafe {
                 bridge_tde_draw(
-                    self.0.raw.as_ptr(),
+                    self.0.owner.raw.as_ptr(),
                     t.data.as_ptr(),
                     t.width,
                     t.height,
@@ -735,7 +796,58 @@ mod native {
             }
         }
     }
-    impl Drop for Context {
+    #[cfg(feature = "nx5-mma-background")]
+    thread_local! {
+        static CURRENT_CONTEXT: std::cell::RefCell<std::rc::Weak<Context>> = const { std::cell::RefCell::new(std::rc::Weak::new()) };
+    }
+
+    #[cfg(feature = "nx5-mma-background")]
+    pub(crate) fn background(
+        pixels: &slint::SharedPixelBuffer<slint::Rgba8Pixel>,
+    ) -> Result<slint::Image, Error> {
+        let context = CURRENT_CONTEXT
+            .with(|current| current.borrow().upgrade())
+            .ok_or(Error::InvalidConfig(
+                "MMA background requires an active NX5 TDE canvas",
+            ))?;
+        if context.owner._session.is_none() {
+            return Err(Error::InvalidConfig(
+                "MMA background requires an owned NX5 SDK session",
+            ));
+        }
+        // SAFETY: the source slice contains exactly width*height RGBA pixels.
+        // C verifies dimensions and opacity, copies once, and seals the source slot.
+        let pointer = unsafe {
+            bridge_tde_background(
+                context.owner.raw.as_ptr(),
+                pixels.as_bytes().as_ptr(),
+                pixels.width(),
+                pixels.height(),
+            )
+        };
+        if pointer.is_null() {
+            return Err(Error::InvalidConfig(
+                "MMA background requires one opaque canvas-sized image, once per session",
+            ));
+        }
+        // SAFETY: the sealed slot is never written again, including during DMA.
+        // The owner retains the engine allocation and SDK session across all image
+        // clones. Unknown DMA quarantines the allocation rather than freeing it.
+        let shared = unsafe {
+            slint::SharedPixelBuffer::from_external(
+                pointer.cast(),
+                pixels.width(),
+                pixels.height(),
+                context.owner.clone(),
+            )
+        };
+        eprintln!(
+            "slint-bridge: background in existing MMA source slot 0 ({} bytes)",
+            pixels.as_bytes().len()
+        );
+        Ok(slint::Image::from_rgba8_premultiplied(shared))
+    }
+    impl Drop for EngineOwner {
         fn drop(&mut self) {
             // SAFETY: owns the context; C deliberately retains uncertain jobs.
             unsafe {
@@ -747,3 +859,18 @@ mod native {
 
 #[cfg(test)]
 pub(crate) mod tests;
+
+#[cfg(feature = "nx5-mma-background")]
+pub(crate) fn background(
+    pixels: &slint::SharedPixelBuffer<slint::Rgba8Pixel>,
+) -> Result<slint::Image, Error> {
+    #[cfg(target_arch = "arm")]
+    {
+        native::background(pixels)
+    }
+    #[cfg(not(target_arch = "arm"))]
+    {
+        let _ = pixels;
+        Err(Error::InvalidConfig("MMA background requires ARM NX5"))
+    }
+}

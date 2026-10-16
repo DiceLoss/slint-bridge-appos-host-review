@@ -159,12 +159,52 @@ static void test_sdk_loading(void) {
     assert(!dlopen("libVideoDec.so", RTLD_NOW | RTLD_NOLOAD));
     puts("PASS SDK search path, unversioned alias, dynamic dimensions, NOLOAD and reference cleanup");
 }
+
+static void test_reserved_background(void) {
+    fault=operation=cancels=ends=frees=closes=flushes=0;
+    Engine *e=calloc(1,sizeof(*e)); current=e;
+    e->width=4; e->height=4; e->bytes=64; e->opened=1;
+    e->target.ptr=calloc(1,64);
+    for (unsigned i=0;i<3;++i) e->source[i].ptr=calloc(1,source_capacity(e,i));
+    e->api.FY_MPI_SYS_MmzFlushCache=flush; e->api.FY_MPI_SYS_MmzFree=free_mmz;
+    e->api.FY_TDE2_Close=close_tde; e->api.FY_TDE2_BeginJob=begin;
+    e->api.FY_TDE2_EndJob=end_job; e->api.FY_TDE2_CancelJob=cancel;
+    e->api.FY_TDE2_QuickCopy=copy;
+    uint8_t source[64]; memset(source,255,sizeof source);
+    assert(!bridge_tde_background_source(e));
+    assert(!bridge_tde_background(e,source,8,4));
+    source[3]=128;
+    assert(!bridge_tde_background(e,source,4,4));
+    source[3]=255;
+    uint8_t *sealed=bridge_tde_background(e,source,4,4);
+    assert(sealed==e->source[0].ptr && bridge_tde_background_source(e)==sealed);
+    assert(flushes==1 && !memcmp(sealed,source,64));
+    assert(!bridge_tde_background(e,source,4,4));
+    BridgeRect rect={0,0,0,0,4,4}; int error;
+    /* Direct draws override upload requests and never touch source storage. */
+    assert(bridge_tde_draw(e,sealed,4,4,16,1,255,1,1,&rect,1,&error)==0);
+    assert(!memcmp(sealed,source,64));
+    assert(flushes==3); /* One source flush at publication, two target flushes. */
+    assert(bridge_tde_draw(e,sealed,4,4,16,1,128,1,1,&rect,1,&error)==2);
+    assert(bridge_tde_draw(e,source,4,4,16,1,255,0,1,&rect,1,&error)==2);
+    assert(bridge_tde_draw(e,source,4,4,16,1,255,1,1,&rect,1,&error)==0);
+    assert(!memcmp(sealed,source,64));
+    fault=4;
+    assert(bridge_tde_draw(e,sealed,4,4,16,1,255,0,0,&rect,1,&error)==-2);
+    bridge_tde_destroy(e); assert(!frees && !closes);
+    assert(!memcmp(sealed,source,64));
+    /* The stub has no outstanding DMA, so test cleanup can remove quarantine. */
+    e->quarantined=0; bridge_tde_destroy(e); assert(frees==4 && closes==1);
+    fault=0;
+    puts("PASS reserved background: no allocation, immutable slot, direct copy, fallback rejection, quarantine and release");
+}
 int main(int argc, char **argv) {
     if (argc == 2 && !strcmp(argv[1], "--sdk-loading")) {
         test_sdk_loading();
         return 0;
     }
     printf("CPU backend NEON=%d\n", bridge_neon_available());
+    test_reserved_background();
     test_alpha_spans();
     test_span_blending();
     test_odd_blend();

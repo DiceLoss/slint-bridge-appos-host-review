@@ -171,3 +171,15 @@ pub fn init(config: Config) -> Result<(), Error> {
 
 #[cfg(test)]
 mod tests;
+
+/// Copies one opaque canvas-sized RGBA image into an existing NX5 MMA source slot.
+///
+/// Validation-only API: call after `init`, before rendering. The returned image
+/// retains immutable CPU-readable storage for Slint software fallback. No extra
+/// MMA allocation is made. Requires the matching external-pixel Slint patch.
+#[cfg(feature = "nx5-mma-background")]
+pub fn nx5_mma_background(
+    pixels: &slint::SharedPixelBuffer<slint::Rgba8Pixel>,
+) -> Result<slint::Image, Error> {
+    backends::nx5::tde::background(pixels)
+}

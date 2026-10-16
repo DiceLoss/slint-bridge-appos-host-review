@@ -160,6 +160,18 @@ fn configure_rich_list(app: &Showcase) {
 }
 
 pub fn configure(app: &Showcase) -> slint::Timer {
+    // The application supplies the background before rendering. A .slint image
+    // default decodes eagerly and leaves a second image in the resource cache
+    // when the validation build replaces it with an MMA-owned image.
+    if app.get_wallpaper().size().width == 0 {
+        app.set_wallpaper(
+            slint::Image::load_from_data(
+                include_bytes!(concat!(env!("OUT_DIR"), "/coastal-background.png")),
+                Some("png"),
+            )
+            .expect("decode showcase background"),
+        );
+    }
     let session = Rc::new(RefCell::new(Session {
         events: Rc::new(VecModel::default()),
         sequence: 0,

@@ -210,7 +210,7 @@ typedef struct {
     void *library;
     Buffer target, source[3];
     uint32_t width, height, bytes;
-    int opened, quarantined;
+    int opened, quarantined, background_reserved;
 } Engine;
 static int in_use;
 
@@ -276,6 +276,23 @@ fail:
 
 /* Borrowed CPU mapping. The Engine owns it; no access while DMA is unknown. */
 void *bridge_tde_pixels(Engine *e) { return e->target.ptr; }
+
+/* Slot zero becomes immutable until engine destruction; no additional MMZ. */
+void *bridge_tde_background(Engine *e, const uint8_t *data, uint32_t width, uint32_t height) {
+    if (e->quarantined || e->background_reserved || width != e->width || height != e->height) return NULL;
+    for (uint32_t i = 0; i < width * height; ++i) if (data[i * 4 + 3] != 255) return NULL;
+    Buffer *src = &e->source[0];
+    memcpy(src->ptr, data, e->bytes);
+    if (e->api.FY_MPI_SYS_MmzFlushCache(src->phy, src->ptr, e->bytes)) return NULL;
+    src->width = src->pitch = width;
+    src->height = src->rows = height;
+    src->pad_x = src->pad_y = 0;
+    src->opaque = 1;
+    e->background_reserved = 1;
+    return src->ptr;
+}
+
+void *bridge_tde_background_source(Engine *e) { return e->background_reserved ? e->source[0].ptr : NULL; }
 
 static TDE2_SURFACE_S surface(uint32_t phy, uint32_t width, uint32_t height) {
     TDE2_SURFACE_S s = {0};
@@ -392,6 +409,14 @@ int bridge_tde_draw(Engine *e, const uint8_t *data,
     if (!width || !height || width > e->width || height > e->height || (width & 3u) ||
         (height & 1u) || stride < width * 4 || slot > 2 || !count || count > 16) return 2;
     if (((uint64_t)width + 4) * ((uint64_t)height + 2) * 4 > source_capacity(e, slot)) return 2;
+    if (e->background_reserved) {
+        uintptr_t start = (uintptr_t)e->source[0].ptr, at = (uintptr_t)data;
+        if (at >= start && at - start < e->bytes) {
+            if (at != start || width != e->width || height != e->height || stride != width * 4 || alpha != 255) return 2;
+            slot = 0;
+            upload = 0;
+        } else if (slot == 0) return 2;
+    }
     Buffer *src = &e->source[slot];
     const uint8_t *pixels = e->target.ptr;
     for (unsigned i = 0; i < count; ++i) {

@@ -4,6 +4,10 @@ use slint_bridge_test_app::{Showcase, config_from_args, showcase::configure};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The explicit host preview uses Slint's own headless backend, never a
     // substitute completion contract for the bridge's physical framebuffer.
+    #[cfg(not(feature = "nx5-mma-background"))]
+    if std::env::args().any(|arg| arg == "--mma-background") {
+        return Err("--mma-background requires the nx5-mma-background validation build".into());
+    }
     let preview = std::env::args().any(|arg| arg == "--preview");
     if preview {
         #[cfg(not(feature = "showcase-preview"))]
@@ -20,6 +24,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         slint_bridge::init(config_from_args())?;
     }
     let app = Showcase::new()?;
+    #[cfg(feature = "nx5-mma-background")]
+    if std::env::args().any(|arg| arg == "--mma-background") {
+        let source = slint::Image::load_from_data(
+            include_bytes!(concat!(env!("OUT_DIR"), "/coastal-background.png")),
+            Some("png"),
+        )?;
+        let pixels = source
+            .to_rgba8_premultiplied()
+            .ok_or("background pixels unavailable")?;
+        app.set_wallpaper(slint_bridge::nx5_mma_background(&pixels)?);
+    }
     let _session = configure(&app);
     let exit_timer = slint::Timer::default();
     if let Some(seconds) =

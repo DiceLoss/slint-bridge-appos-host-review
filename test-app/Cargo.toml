@@ -11,6 +11,7 @@ description = "Standalone usage examples and device validation for slint-bridge"
 default = []
 fbdev = ["slint-bridge/fbdev"]
 nx5 = ["slint-bridge/nx5", "dep:libloading", "dep:libc"]
+nx5-mma-background = ["nx5-tde", "slint-bridge/nx5-mma-background"]
 nx5-tde = ["nx5", "slint-bridge/nx5-tde"]
 showcase-preview = ["slint/mcp", "dep:i-slint-backend-testing"]
 
