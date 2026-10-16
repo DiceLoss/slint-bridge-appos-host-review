@@ -90,6 +90,6 @@ SLINT_DEFAULT_FONT=RUN_DIR/DejaVuSans.ttf RUN_DIR/x9-render-bench \
   90 vertical 60 RUN_DIR/vertical-90.rgba > RUN_DIR/vertical-90.csv
 ```
 
-该 example 直接调用 Slint renderer，不经过适配层的背景缓存。分析缓存后的正式路径时，需要在隔离探针中接入相同缓存；本轮方法及边界见 [renderer 耗时分解](../../../docs/x9-performance.md#x9-render-cost)。
+该 example 直接调用 Slint renderer，不经过适配层的全屏背景或卡片旋转缓存。分析缓存后的正式路径时，需要在隔离探针中接入相同缓存；本轮方法及边界见 [renderer 耗时分解](../../../docs/x9-performance.md#x9-render-cost)。
 
 同轴 90° 与 0° 的 render 差用于估计旋转增加的 CPU 成本；软件 renderer 将旋转融合在采样过程中，该差值不是一次独立全屏旋转复制的耗时。它不包含实际写页、提交和 MCP 手势，不能换算为正式应用 FPS。对照必须保持 ELF 构建配置、字体、帧数和动作一致；正式 FPS/CPU/RSS 仍使用上一节的方法。

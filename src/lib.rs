@@ -23,6 +23,8 @@ mod presentation;
 mod runtime;
 #[cfg(feature = "fbdev")]
 mod software_background;
+#[cfg(feature = "fbdev")]
+mod software_texture;
 mod wake;
 
 pub use geometry::Rotation;

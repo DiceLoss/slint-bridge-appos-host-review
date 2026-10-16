@@ -1,4 +1,4 @@
-//! One bounded, opaque background cache in physical canvas coordinates.
+//! Full-canvas and repeated image background caches in physical coordinates.
 use i_slint_renderer_software::{
     DrawTextureArgs, PhysicalRegion, PremultipliedRgbaColor, RenderingRotation, SoftwareRenderer,
     TargetPixelBuffer, TextureCacheKey, TexturePixelFormat,
@@ -17,6 +17,7 @@ struct Key {
 
 #[derive(Default)]
 pub(crate) struct BackgroundCache {
+    rotated: crate::software_texture::RotatedCache,
     key: Option<Key>,
     // An empty vector with a key also remembers a rejected (non-opaque) source.
     pixels: Vec<PremultipliedRgbaColor>,
@@ -59,6 +60,9 @@ impl TargetPixelBuffer for Buffer<'_> {
     }
 
     fn draw_texture(&mut self, args: &DrawTextureArgs, clip: &PhysicalRegion) -> bool {
+        if self.cache.rotated.draw(args, clip, self.pixels, self.width) {
+            return true;
+        }
         let height = self.num_lines();
         if self.considered
             || self.pixels.len() > MAX_PIXELS
