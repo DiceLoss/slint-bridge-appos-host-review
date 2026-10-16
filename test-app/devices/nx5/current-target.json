@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-16T12:24:14Z",
+  "checked_at_utc": "2026-10-16T13:09:26Z",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -141,8 +141,8 @@
   ],
   "running_ui": {
     "path": "/tmp/slint-bridge-music3-20261015/music-player",
-    "pid": 18695,
-    "starttime_ticks": 19232001,
+    "pid": 30334,
+    "starttime_ticks": 19459965,
     "features": [
       "nx5-tde",
       "slint/mcp"
@@ -152,18 +152,18 @@
       "--touch=/dev/input/event0"
     ],
     "sha256": "e5226b5fe053efd944f241f5342f3844e647ec0d430ca8f225b8e2b9e23d045c",
-    "log": "/tmp/slint-bridge-music3-20261015/restored-growth-20261016.log",
-    "pid_file": "/tmp/slint-bridge-music3-20261015/restored-growth-20261016.pid",
+    "log": "/tmp/slint-bridge-music3-20261015/restored-ledger-20261016.log",
+    "pid_file": "/tmp/slint-bridge-music3-20261015/restored-ledger-20261016.pid",
     "startup_script": "/tmp/slint-bridge-music3-20261015/start.sh",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "font": "/run/slint-bridge-display/DejaVuSans.ttf",
     "trace_enabled": false,
     "fault_injection_enabled": false,
-    "source_state": "Original music-player ELF and startup script unchanged. Native MCP restored saved track 6 (Signal Bloom), 2:05 progress and 65% volume, then resumed simulated playback. Decorative disc rotation phase restarted.",
+    "source_state": "Same original music-player ELF/startup script restored after memory-ledger sampling. Native MCP restored saved track 7, 2:17 progress and 65% volume, then resumed simulated playback; decorative rotation phase restarted.",
     "source_revision_note": "Music ELF identity verified; its bridge/Slint source commits were not independently established in this task. Temporary showcase build identity is recorded separately below.",
     "resources": {
-      "rss_kib": 7960,
-      "vm_hwm_kib": 8088,
+      "rss_kib": 7860,
+      "vm_hwm_kib": 7992,
       "threads": 3,
       "tracer_pid": 0,
       "mmz_used_kib": 12760,
@@ -172,11 +172,11 @@
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
-      "verification": "evidence/nx5-growth-comparison/2026-10-16/music-restored-result.json"
+      "verification": "evidence/nx5-memory-ledger/2026-10-16/music-restored-result.json"
     },
-    "restoration_evidence": "evidence/nx5-growth-comparison/2026-10-16/summary.json"
+    "restoration_evidence": "evidence/nx5-memory-ledger/2026-10-16/summary.json"
   },
-  "status": "music_player_restored_after_showcase_memory_comparison",
+  "status": "music_player_restored_after_showcase_memory_ledger",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -214,7 +214,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "2026-10-16 native MCP/allocator comparison used a temporary existing showcase; original music-player ELF is now restored. Identity, display ownership, resources and logical music state checked; historical physical display/input fields below were not revalidated.",
+  "observation_scope": "2026-10-16 NX5 memory ledger: same-source offscreen allocation replay, then 120-second original showcase run with read-only allocator/smaps/ELF-pagemap capture. Music restored; historical physical display/input fields below not revalidated.",
   "hardware_regression": {
     "report": "docs/nx5-validation.md#nx5-hardware",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -1814,5 +1814,39 @@
     "diagnostic_files_archived_and_removed": 54,
     "verdict": "Same fixed-workload MCP weak-retention mechanism as X9; static queries and warmed page cycles did not accumulate materially, dynamic enumeration did, and growth stopped after enumeration stopped or the handle cap was reached.",
     "limits": "Different viewport, backend, process history and container capacities explain differing byte/RSS changes. 10000 bounds handle count, not universal retained bytes. The original music process required SIGTERM with kernel MMZ reclamation; the temporary showcase exited normally. Music was restored, not subjected to this showcase workload."
+  },
+  "memory_ledger": {
+    "report": "docs/nx5-performance.md#nx5-memory-ledger",
+    "evidence": "evidence/nx5-memory-ledger/2026-10-16/summary.json (local ignored archive, acquired separately)",
+    "showcase_pid": 30298,
+    "showcase_seconds": 120,
+    "implementation_changed": false,
+    "rss_kib": 17848,
+    "pss_kib": 16942,
+    "elf_instruction_rss_kib": 7248,
+    "elf_rodata_rss_kib": 1572,
+    "elf_other_rss_kib": 356,
+    "heap_and_anonymous_rss_kib": 6864,
+    "stack_rss_kib": 80,
+    "libraries_rss_kib": 1728,
+    "elf_file_overlap_with_tmpfs_kib": 8992,
+    "live_allocator_inuse_plus_mmap_bytes": 5416080,
+    "live_allocator_free_bytes": 1829744,
+    "live_mcp_owned_and_dead_chunk_bytes": 23208,
+    "mmz_kib": {
+      "shared_canvas": 2400,
+      "tde_sources": 5460,
+      "framebuffer": 4800,
+      "vppu": 100,
+      "total": 12760
+    },
+    "offscreen_matching_controls_requested_excluding_canvas_bytes": 5236430,
+    "pixel_digests_matched": 5,
+    "compared_pixels": 3072000,
+    "showcase_exit_code": 0,
+    "after_showcase_exit_mmz_kib": 4900,
+    "archived_and_removed_files": 63,
+    "music_restored": true,
+    "limits": "RSS, allocator chunk bytes and offscreen object requests are separate accounts; do not add nested values. Offscreen heap canvas excluded from production object subtotal. No new physical framebuffer/scanout/touch test."
   }
 }
