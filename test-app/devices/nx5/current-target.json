@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-15T07:08:02.524513+00:00",
+  "checked_at_utc": "2026-10-16T12:24:14Z",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
     "profile_id": "serial:port-devttyUSB1",
-    "observed_session_id": "6ed5d2e3-f5f5-4b62-8407-235109b59b09",
+    "observed_session_id": "61d882a8-fb3a-4871-92bd-d229e224bdac",
     "user": "root",
     "provider": "DPower Terminal MCP"
   },
@@ -78,7 +78,7 @@
     },
     "pan_note": "Instantaneous read while the UI is running, not a scanout retirement proof.",
     "blocking_flip_measurement_scope": "Remeasured on 2026-10-12: 128 flips, 120 after warmup, mean 34479.450 us; see docs/nx5-validation.md#nx5-hardware.",
-    "configured_path": "/tmp/slint-bridge-c03c3bb/dev/panel",
+    "configured_path": "/dev/fb0",
     "scanout_alpha": {
       "range": [
         0,
@@ -96,7 +96,7 @@
   "input": {
     "device": "/dev/input/event0",
     "name": "gsl1686",
-    "configured_path": "/tmp/slint-bridge-c03c3bb/dev/touch",
+    "configured_path": "/dev/input/event0",
     "axis_x": [
       0,
       1024
@@ -140,56 +140,43 @@
     }
   ],
   "running_ui": {
-    "path": "/tmp/slint-bridge-holes-20261015/background-holes",
-    "pid": 18345,
+    "path": "/tmp/slint-bridge-music3-20261015/music-player",
+    "pid": 18695,
+    "starttime_ticks": 19232001,
     "features": [
       "nx5-tde",
       "slint/mcp"
     ],
-    "build_preset": ".cargo/nx5.toml",
     "arguments": [
-      "--framebuffer=/tmp/slint-bridge-c03c3bb/dev/panel",
-      "--touch=/tmp/slint-bridge-c03c3bb/dev/touch"
+      "--framebuffer=/dev/fb0",
+      "--touch=/dev/input/event0"
     ],
-    "sha256": "e9630815aab2023601d57ce54390bdb04fd9a439a09a6a703a064fb3ad536d22",
-    "frame_interval_us": 16667,
+    "sha256": "e5226b5fe053efd944f241f5342f3844e647ec0d430ca8f225b8e2b9e23d045c",
+    "log": "/tmp/slint-bridge-music3-20261015/restored-growth-20261016.log",
+    "pid_file": "/tmp/slint-bridge-music3-20261015/restored-growth-20261016.pid",
+    "startup_script": "/tmp/slint-bridge-music3-20261015/start.sh",
+    "library_path": "/tmp/slint-bridge-c03c3bb/lib",
+    "font": "/run/slint-bridge-display/DejaVuSans.ttf",
     "trace_enabled": false,
     "fault_injection_enabled": false,
-    "log": "/tmp/slint-bridge-holes-20261015/live-after-pixel-batch.log",
-    "startup_script": "/tmp/slint-bridge-holes-20261015/start.sh",
-    "source_base_commit": "095eca772ba3dcc23cd354debf969b69f216a032",
-    "slint_source_commit": "fa6a6d0158c9730fed62ef1eb1c9730c80214e20",
-    "source_manifest": "evidence/background-holes/2026-10-15/manifest.json",
-    "source_state": "Original BackgroundWithHoles resident restored after NX5 Pixel batch regression; original ELF and startup script unchanged. Initial regions, Change 44, foreground count 0, dialog closed; all 614400 screenshot pixels match the pre-test state. No timer, trace, recording, WBC or checker loaded.",
-    "library_path": "/tmp/slint-bridge-c03c3bb/lib",
+    "source_state": "Original music-player ELF and startup script unchanged. Native MCP restored saved track 6 (Signal Bloom), 2:05 progress and 65% volume, then resumed simulated playback. Decorative disc rotation phase restarted.",
+    "source_revision_note": "Music ELF identity verified; its bridge/Slint source commits were not independently established in this task. Temporary showcase build identity is recorded separately below.",
     "resources": {
-      "rss_kib": 11496,
-      "vm_hwm_kib": 16300,
-      "vm_peak_kib": 35808,
+      "rss_kib": 7960,
+      "vm_hwm_kib": 8088,
       "threads": 3,
+      "tracer_pid": 0,
       "mmz_used_kib": 12760,
-      "mmz_blocks": 6,
-      "mem_available_kib": 45092,
-      "wbc_running": false
+      "mmz_blocks": 6
     },
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
-      "tools_available": 18,
-      "verification": "evidence/background-holes/2026-10-15/mcp-result.json",
-      "exercised_tools": [
-        "list_windows",
-        "get_window_properties",
-        "get_element_tree",
-        "find_elements_by_id",
-        "click_element",
-        "take_screenshot",
-        "start_event_recording",
-        "stop_event_recording"
-      ]
-    }
+      "verification": "evidence/nx5-growth-comparison/2026-10-16/music-restored-result.json"
+    },
+    "restoration_evidence": "evidence/nx5-growth-comparison/2026-10-16/summary.json"
   },
-  "status": "background_holes_validated_resident",
+  "status": "music_player_restored_after_showcase_memory_comparison",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -227,7 +214,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "Application-side image background clipping: host retained-buffer pixels, 23 drained physical double-page stages and continuous native MCP interaction. No video decoding, nonblack underlay, WBC, LCD scanout, evdev or physical finger validation in this task.",
+  "observation_scope": "2026-10-16 native MCP/allocator comparison used a temporary existing showcase; original music-player ELF is now restored. Identity, display ownership, resources and logical music state checked; historical physical display/input fields below were not revalidated.",
   "hardware_regression": {
     "report": "docs/nx5-validation.md#nx5-hardware",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -1796,5 +1783,36 @@
     "original_resident_restored": true,
     "final_cleanup_files": 69,
     "scope": "NX5 nx5-tde 1024x600 0 degrees. No new WBC, physical finger, real video layer, dynamic scanout or rotated NX5 display validation."
+  },
+  "memory_growth_comparison": {
+    "report": "docs/nx5-performance.md#nx5-growth-comparison",
+    "evidence": "evidence/nx5-growth-comparison/2026-10-16/summary.json (local ignored archive, acquired separately)",
+    "date": "2026-10-16",
+    "temporary_showcase_pid": 15369,
+    "temporary_showcase_seconds": 600,
+    "showcase_sha256": "e2a0f1245c3a471329091f215b68311f16362db954837901e63b4fcc53449f39",
+    "bridge_commit": "2fddc04b8816d70ae6a00712ddc215c02c696b7e",
+    "slint_commit": "9a1a3b14c454a751f9a804a5309a4eaae0faeded",
+    "mcp_and_vrc_sources_identical_to_x9": true,
+    "implementation_changed": false,
+    "static_queries_inuse_delta_bytes": 0,
+    "minimal_40_inuse_delta_bytes": 808,
+    "enumerated_40_inuse_delta_bytes": 423840,
+    "enumerated_40_mcp_delta_bytes": 413816,
+    "enumerated_40_unclassified_delta_bytes": 10024,
+    "minimal_repeat_40_inuse_delta_bytes": -160,
+    "handle_cap_observed": 10000,
+    "after_cap_80_inuse_delta_bytes": -264,
+    "after_cap_80_rss_delta_kib": 0,
+    "cap_mcp_bytes": 1938544,
+    "cap_controls_rss_kib": 20560,
+    "running_samples": 543,
+    "running_mmz_used_kib": 12760,
+    "normal_exit_code": 0,
+    "after_exit_mmz_kib": 4900,
+    "music_restored": true,
+    "diagnostic_files_archived_and_removed": 54,
+    "verdict": "Same fixed-workload MCP weak-retention mechanism as X9; static queries and warmed page cycles did not accumulate materially, dynamic enumeration did, and growth stopped after enumeration stopped or the handle cap was reached.",
+    "limits": "Different viewport, backend, process history and container capacities explain differing byte/RSS changes. 10000 bounds handle count, not universal retained bytes. The original music process required SIGTERM with kernel MMZ reclamation; the temporary showcase exited normally. Music was restored, not subjected to this showcase workload."
   }
 }

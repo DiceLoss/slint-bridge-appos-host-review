@@ -1,7 +1,9 @@
 {
-  "current_binary": "/tmp/slint-bridge-holes-20261015/background-holes",
+  "current_binary": "/tmp/slint-bridge-music3-20261015/music-player",
   "recovery_binary": "/tmp/slint-bridge-rich-render-2fddc04/showcase",
   "keep": [
+    "/tmp/slint-bridge-music3-20261015",
+    "/tmp/slint-bridge-holes-20261015/background-holes",
     "/tmp/slint-bridge-c03c3bb/lib",
     "/tmp/slint-bridge-c03c3bb/dev",
     "/run/slint-bridge-display/DejaVuSans.ttf",
