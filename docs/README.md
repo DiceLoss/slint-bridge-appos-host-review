@@ -24,7 +24,7 @@
 | [NX5 性能记录](nx5-performance.md) | TDE、写页、输入分段、图片/缩放和富列表各阶段的独立对照 |
 | [NX5 验证记录](nx5-validation.md) | 启动/退出失败与修复、真实输入、界面、物理双页及资源清理 |
 | [X9 接入调查](x9-framebuffer.md) | DRM 完成契约、控制台、Type-A 输入、旋转及实际页验证 |
-| [X9 性能与流水线](x9-performance.md) | 初始基线、旋转/写页、全屏与卡片缓存、渲染热点及线程边界 |
+| [X9 性能与流水线](x9-performance.md) | 初始基线、旋转/写页、全屏与卡片缓存、渲染热点、线程边界及内存分解 |
 | [Slint 纹理优化对照](slint-optimization.md) | X9 批量混合、NX5 兼容性及 Pixel 接入三轮结果 |
 
 ## 独立专题
