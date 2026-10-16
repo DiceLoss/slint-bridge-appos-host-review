@@ -82,13 +82,47 @@
     "device_port": 9315
   },
   "backup": {
-    "executable": "/tmp/slint-bridge-x9-background-cache-20261016/showcase",
+    "executable": "/data/slint-bridge-archives/20261016-elf-migration/tmp/slint-bridge-x9-background-cache-20261016/showcase",
     "sha256": "e689888b952bbafa33270c84197c56326ffbfc7c53888d6f4dd504b57bd4e8d2",
     "limitation": "Includes full-canvas opaque background caching; before repeated card-image rotation caching.",
     "initial_pixels": "/tmp/slint-bridge-x9-probe/before.fb",
-    "recover_console": "/tmp/slint-bridge-x9-probe/recover-console"
+    "recover_console": "/tmp/slint-bridge-x9-probe/recover-console",
+    "legacy_executable_symlink": "/tmp/slint-bridge-x9-background-cache-20261016/showcase",
+    "archive_manifest": "/data/slint-bridge-archives/20261016-elf-migration/SHA256SUMS"
   },
   "evidence": "evidence/x9-card-cache/2026-10-16/verification.json (local ignored archive, acquired separately); earlier background-cache and renderer-cost records remain in evidence/x9-background-cache/2026-10-16 and evidence/x9-render-cost/2026-10-16.",
   "performance_report": "docs/x9-performance.md#x9-card-rotation-cache",
-  "application_source_note": "Runtime source matches library_source. Final rebuild is byte-identical to the measured card-rotation-cache candidate. No probe/trace environment; horizontal Rich list restored, no selection, Controls 68%."
+  "application_source_note": "Runtime source matches library_source. Final rebuild is byte-identical to the measured card-rotation-cache candidate. No probe/trace environment; horizontal Rich list restored, no selection, Controls 68%.",
+  "memory_maintenance": {
+    "observed_at_utc": "2026-10-16T07:13:04Z",
+    "scope": "ELF archive migration and memory measurements only; original UI observation above was not repeated.",
+    "device_archive": "/data/slint-bridge-archives/20261016-elf-migration",
+    "host_archive": "evidence/x9-elf-archive/2026-10-16/device-archive (local ignored archive, acquired separately)",
+    "migrated_elf_sources": [
+      "/tmp/slint-bridge-x9-20261014/showcase-07",
+      "/tmp/slint-bridge-x9-20261014/showcase-08",
+      "/tmp/slint-bridge-x9-background-cache-20261016/showcase"
+    ],
+    "verified_sha256_device_and_host": true,
+    "tmpfs_released_kib": 40208,
+    "shmem_before_after_kib": [
+      64284,
+      24076
+    ],
+    "memfree_median_before_after_kib": [
+      72032,
+      112248
+    ],
+    "application_rss_before_after_kib": [
+      23668,
+      23668
+    ],
+    "pid": 10852,
+    "starttime_ticks": 17121759,
+    "method": "Ten 1 Hz samples per phase; discard first, median of nine. Sync and POSIX_FADV_DONTNEED on the three archive ELFs only; no global drop_caches.",
+    "preserved": "Current executable, font, logs, lock, initial pixels/pan and recovery tool remain at original paths; rollback ELF is persistent with the original path retained as a symlink.",
+    "verification_limit": "No application restart, rollback launch, UI screenshot or display regression in this maintenance; font and recovery materials still reside in tmpfs.",
+    "report": "docs/x9-performance.md#x9-elf-archive",
+    "evidence": "evidence/x9-elf-archive/2026-10-16/summary.json (local ignored archive, acquired separately)"
+  }
 }
