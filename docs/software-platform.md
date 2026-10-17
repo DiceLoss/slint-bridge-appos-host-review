@@ -27,6 +27,8 @@ flowchart LR
 
 `nx5-mma-background` 自动包含 `nx5-tde` 并启用同源 Slint 的 `external-pixel-buffer`。所有 Slint 包使用锁文件中的同一 Git 提交，正式构建不需要验证补丁脚本。外部像素 feature 仅支持 Rust/std，明确与 FFI 互斥；未启用时保持普通像素布局。故障注入只在单独的 `nx5-test-hooks` 测试构建中存在。完整用法见 [MMA 背景](../test-app/devices/nx5/mma-background/README.md)，历史实测见 [记录](nx5-mma-background.md)。
 
+外部像素图像的相等性同时比较像素格式、地址和宽高。同地址但尺寸不同的图像仍会更新组件属性；[公共接口回归](../test-app/tests/external_background.rs) 覆盖 RGB、RGBA 与预乘 RGBA，以及仅宽度或高度变化的情形。
+
 入口为 `slint_bridge::init(Config)`，在 UI 线程创建 Slint 组件前调用。公开类型由 [src/lib.rs](../src/lib.rs) 导出：`Config`、`BackgroundStorage`、`Error`、`Backend`、`Rotation`、`InputDevice`、`KeyBinding`；`selected_backend()` 返回编译期选择，不代表已经通过设备准入。
 
 | `Config` 字段 | 默认值 | 当前约束 |

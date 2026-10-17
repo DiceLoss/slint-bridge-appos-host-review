@@ -4,6 +4,61 @@ use slint::{ComponentHandle, Image, Rgba8Pixel, SharedPixelBuffer};
 use std::sync::Arc;
 
 #[test]
+fn same_address_different_dimensions_update_image_properties() {
+    use slint::platform::{
+        Platform, WindowAdapter,
+        software_renderer::{MinimalSoftwareWindow, RepaintBufferType},
+    };
+    use slint_bridge_test_app::Showcase;
+    use std::rc::Rc;
+    struct RenderPlatform(Rc<MinimalSoftwareWindow>);
+    impl Platform for RenderPlatform {
+        fn create_window_adapter(&self) -> Result<Rc<dyn WindowAdapter>, slint::PlatformError> {
+            Ok(self.0.clone())
+        }
+    }
+    slint::platform::set_platform(Box::new(RenderPlatform(MinimalSoftwareWindow::new(
+        RepaintBufferType::NewBuffer,
+    ))))
+    .unwrap();
+    let app = Showcase::new().unwrap();
+
+    fn check<Pixel: Clone + Send + Sync + 'static>(
+        app: &Showcase,
+        owner: Arc<Vec<Pixel>>,
+        from_buffer: fn(SharedPixelBuffer<Pixel>) -> Image,
+    ) {
+        let image = |width, height| {
+            // SAFETY: the owner retains eight immutable initialized pixels;
+            // every tested view uses at most eight pixels at the same address.
+            from_buffer(unsafe {
+                SharedPixelBuffer::from_external(owner.as_ptr(), width, height, owner.clone())
+            })
+        };
+        let original = image(4, 2);
+        assert_eq!(original, original.clone());
+        assert_eq!(original, image(4, 2));
+        for (width, height) in [(2, 4), (2, 2), (4, 1)] {
+            let changed = image(width, height);
+            app.set_wallpaper(original.clone());
+            app.set_wallpaper(changed.clone());
+            let actual = app.get_wallpaper().size();
+            assert_eq!((actual.width, actual.height), (width, height));
+            assert_ne!(original, changed);
+        }
+    }
+
+    check(
+        &app,
+        Arc::new(vec![slint::Rgb8Pixel::new(3, 5, 7); 8]),
+        Image::from_rgb8,
+    );
+    let rgba = Arc::new(vec![Rgba8Pixel::new(3, 5, 7, 255); 8]);
+    check(&app, rgba.clone(), Image::from_rgba8);
+    check(&app, rgba, Image::from_rgba8_premultiplied);
+}
+
+#[test]
 fn external_pixels_retain_owner_and_copy_before_mutation() {
     let owner = Arc::new(vec![Rgba8Pixel::new(7, 11, 17, 255); 8]);
     let weak = Arc::downgrade(&owner);
