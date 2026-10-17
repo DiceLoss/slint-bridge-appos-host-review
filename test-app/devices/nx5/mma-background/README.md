@@ -1,50 +1,65 @@
-# MMA 背景验证版
+# MMA 背景
 
-此验证版复用现有 **0 号全尺寸源槽**，不新增 MMA 分配。
-背景必须与画布同尺寸、RGBA 且完全不透明；每个会话只设置一次。
-普通图片改用另一块全尺寸槽和紧凑槽；背景缩放、裁剪或透明度不符合直接复制条件时，Slint 从同一 CPU 映射软件采样。
+通过统一的 `Config.background_storage` 选择背景存储，默认 `BackgroundStorage::Heap` 保留普通 Slint 图像。
+`BackgroundStorage::Mma` 仅支持启用 `nx5-mma-background` 的 ARM32 NX5；初始化必须成功取得 TDE 画布，否则报错，不静默改用普通背景。
+X9/其他构建选择普通模式时行为不变；显式选择不支持的 MMA 模式会在设备初始化前被拒绝。
 
-Slint 上游接口不能保留外部像素所有者，本目录保存相对于 `c878901` 的 [验证补丁](slint-external-pixels.patch)。
-补丁使 `SharedPixelBuffer` 保留只读外部存储的所有者，克隆不复制像素，修改时才复制到普通堆。
-外部存储只在显式启用 Slint 的 `unstable-external-pixel-buffer` feature 时存在；未启用时保留原像素缓冲布局，不要求 `Arc`。
-该 feature 是 Rust/std 验证能力，与 `ffi` 同时启用会明确拒绝编译，避免未支持的外部像素进入 C++ 布局或截图导出；其他 renderer 尚未验证。
+MMA 复用现有 **0 号全尺寸源槽**，不新增分配。
+源图片必须不透明且与物理画布同尺寸，每个会话只能准备一张，并须在首次绘制之前准备。
+普通图片继续使用另一全尺寸槽及紧凑槽；背景缩放、裁剪或透明度不满足硬件复制条件时，Slint 从同一 CPU 映射软件采样。
+所有图像引用释放后才能释放其 MMA 所有者；未知 DMA 保持原有资源隔离，不走软件回退。
 
-在同源 Slint 检出目录应用补丁，再从本仓库根执行：
+## 构建
+
+所有 Slint 包由 `Cargo.lock` 锁定到同一 Git 来源。
+`nx5-mma-background` 自动启用配套 Slint 的 `external-pixel-buffer`，不需要手工补丁、路径替换或临时修改锁文件。
+Slint 外部像素 feature 为显式 Rust/std 能力，与 FFI 互斥；普通构建不启用它，保持原像素布局。
 
 ```sh
-# 在 Slint 源码目录执行，补丁路径指向本仓库。
-git apply /absolute/path/slint_bridge/test-app/devices/nx5/mma-background/slint-external-pixels.patch
-
-# 从 slint_bridge 根执行。指定已应用补丁的 Slint 源码目录。
-SLINT_EMIT_DEBUG_INFO=1 python3 test-app/tools/nx5/tde/with-mma-slint.py \
-  --slint-root /absolute/path/slint-source -- build --config .cargo/nx5.toml \
-  --locked --offline --release -p slint-bridge-test-app \
-  --features nx5-mma-background,slint/unstable-external-pixel-buffer,slint/mcp --target arm-unknown-linux-gnueabi --bin showcase
+SLINT_EMIT_DEBUG_INFO=1 cargo --config .cargo/nx5.toml build --locked --offline --release \
+  -p slint-bridge-test-app --features nx5-mma-background,slint/mcp \
+  --target arm-unknown-linux-gnueabi --bin showcase
 ```
 
-包装脚本检查补丁已应用，把所有 Slint 包一起切换到该源码，保留其他依赖的锁定版本，命令结束时恢复原 `Cargo.lock`。
-不要同时在同一工作目录运行其他 Cargo 命令。
-普通构建仍使用原 Git 依赖，不需要该补丁；`nx5-mma-background` 必须通过此入口构建。
-Slint 实验 feature 在验证命令中显式启用，避免根清单向尚不包含该 feature 的普通 Git 依赖转发它而导致解析失败。
+普通 NX5 TDE 可继续只启用 `nx5-tde`；X9 继续启用 `fbdev`。
+新机器需要先 `cargo fetch --locked`。Slint 提交尚未发布到配套远端时，新机器不能取得该锁定提交；本地提交不等同于依赖已发布。
+原验证函数 `nx5_mma_background(&pixels)` 已由 `config.prepare_background(image)` 替代；应用直接传 Slint Image，不再手工提取像素或另开后端入口。旧命令中的 `slint/unstable-external-pixel-buffer` 不再使用。
+旧验证补丁与包装脚本保留在 `4ff149e` 及更早的 Git 历史中，历史实测不改写为当前版本结果。
 
-完成 [设备部署和独占检查](../README.md) 后，用同一 ELF 进行对照：
+## 应用接入
 
-- 普通背景：`showcase --seconds=100`
-- MMA 背景：`showcase --mma-background --seconds=100`
-- 已知完成状态的软件回退：`SLINT_BRIDGE_MMA_FORCE_FALLBACK=1 showcase --mma-background --seconds=100`
+```rust,no_run
+use slint_bridge::{BackgroundStorage, Config};
 
-第三种模式在第一次背景 DMA 提交前注入一次失败，走现有禁用 TDE、整帧重绘路径；它不是未知 DMA 完成测试。
-未知 DMA 的保留资源行为由原生故障注入覆盖，不能通过软件回退绕过。
-背景图像的所有者同时保留 TDE 分配和 SDK 会话，避免窗口销毁后残留的图像引用访问已释放映射。
+let config = Config {
+    background_storage: BackgroundStorage::Mma,
+    ..Config::default()
+};
+slint_bridge::init(config.clone())?;
+// background_png: &[u8]，由应用提供的 PNG 数据。
+let source = slint::Image::load_from_data(background_png, Some("png"))?;
+let background = config.prepare_background(source)?;
+// 在首次 show/run 前：app.set_wallpaper(background);
+```
 
-主机检查：
+`prepare_background` 消费图像句柄：普通模式原样返回，MMA 模式复制一次到已有源槽并返回共享所有者的图像。
+配置不会自动替换应用中的任意 `Image`，应用应把返回值赋给自己的背景属性。
+为避免普通堆副本继续驻留，不要同时保存原图克隆或先通过 `.slint` 默认资源加载相同背景；showcase 已在 Rust 初始化阶段选择存储。
+
+showcase 参数：`--background=heap`（默认）、`--background=mma`；兼容旧 `--mma-background` 别名，均映射到同一个 Config 字段。
+主机 `--preview` 仅支持普通模式。
+设备运行与恢复按 [NX5 说明](../README.md)，此处不绕过独占和双页准入。
+
+## 回归与诊断
 
 ```sh
-python3 test-app/tools/nx5/tde/with-mma-slint.py \
-  --slint-root /absolute/path/slint-source -- test --locked --offline \
-  -p slint-bridge-test-app --features nx5-mma-background,slint/unstable-external-pixel-buffer --test external_background
+cargo test --locked --offline --workspace --features nx5-mma-background
 sh test-app/tools/nx5/tde/check-native.sh
 ```
 
-普通 feature 矩阵、格式、clippy 和文档检查仍按仓库说明执行。
-实测结果与验证边界见 [MMA 背景记录](../../../../docs/nx5-mma-background.md)。
+正式 `nx5-mma-background` 不包含环境变量故障注入。
+需要复测已知完成状态的软件回退时，单独用 `--features nx5-test-hooks,slint/mcp` 构建测试程序，再设置 `SLINT_BRIDGE_MMA_FORCE_FALLBACK=1` 并以 `--background=mma` 运行。
+该测试开关在首次背景 DMA 提交前注入一次错误，走禁用 TDE、整帧重绘路径；不能替代未知 DMA 完成验证。
+常驻部署使用不含 `nx5-test-hooks` 的正式构建。
+
+已有实测及适用版本见 [MMA 背景记录](../../../../docs/nx5-mma-background.md)。

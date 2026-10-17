@@ -68,6 +68,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | 通用 framebuffer 软件组合 | `--features fbdev` |
 | NX5 软件渲染 | `--features nx5` |
 | NX5 TDE 和软件回退 | `--features nx5-tde` |
+| NX5 MMA 背景能力 | `--features nx5-mma-background`，运行时 `--background=mma` |
+| 背景存储 | `--background=heap`（默认）或 `--background=mma`，映射 `Config.background_storage` |
 | framebuffer 路径 | `--framebuffer=/dev/fb0`，默认 `/dev/fb0`，可替换为目标设备路径或设备链接 |
 | 触摸设备 | `--touch=/dev/input/event0`，默认不开启输入设备 |
 | Slint MCP | 构建加 `slint/mcp`，并按 [MCP 指南](../docs/slint-mcp.md) 设置环境变量 |
@@ -172,7 +174,7 @@ WBC 按无版本库名 `libobserver.so` 通过系统搜索路径加载，部署�
 
 应用要透出下层视频时，可将 `.slint` 根窗口设为 `background: transparent;`，在其上绘制局部 UI；`basic` / `display` 保持原有背景，`showcase` 的 Layers 页可以打开透明区域。透明和半透明像素的输出、无 alpha 格式限制及尚未接入的视频层边界见 [Framebuffer 软件路径](../docs/software-platform.md#framebuffer-软件路径)。库内透明窗口回归使用内存双页验证移动和消失后的 alpha、颜色及行尾 padding。`alpha-regression` 另用于设备上的实际页和 WBC 检查，构建、前提及输出见 [设备工具](tools/nx5/README.md#硬件诊断与证据重放)；它使用现有黑色 VO 底色，不代表视频解码和业务视频接入已经验证。
 
-验证版 `showcase --mma-background` 复用已有 NX5 全尺寸 MMA 源槽；需要 `nx5-mma-background`、同源 Slint 补丁及其显式外部像素 feature。构建、同 ELF 对照及已知完成状态的软件回退注入见 [验证版说明](devices/nx5/mma-background/README.md)。普通启动不传该参数，仍使用普通堆背景。
+showcase 通过 `Config.background_storage` 和 `config.prepare_background(image)` 统一准备背景。默认 `--background=heap` 保持普通图像；NX5 启用 `nx5-mma-background` 后可选 `--background=mma`。旧 `--mma-background` 是同一配置的兼容别名；主机预览只支持普通模式。正式构建与专用故障注入构建分开，见 [MMA 背景说明](devices/nx5/mma-background/README.md)。
 
 ### 图片背景中的多个透明区域
 

@@ -1,4 +1,4 @@
-use slint_bridge::{Config, InputDevice, Rotation};
+use slint_bridge::{BackgroundStorage, Config, InputDevice, Rotation};
 
 slint::include_modules!();
 
@@ -18,7 +18,15 @@ pub fn config_from_args() -> Config {
 fn config_from_arguments(arguments: impl IntoIterator<Item = String>) -> Config {
     let mut config = Config::default();
     for argument in arguments {
-        if let Some(path) = argument.strip_prefix("--framebuffer=") {
+        if argument == "--mma-background" {
+            config.background_storage = BackgroundStorage::Mma;
+        } else if let Some(value) = argument.strip_prefix("--background=") {
+            config.background_storage = match value {
+                "heap" => BackgroundStorage::Heap,
+                "mma" => BackgroundStorage::Mma,
+                _ => panic!("--background must be heap or mma"),
+            };
+        } else if let Some(path) = argument.strip_prefix("--framebuffer=") {
             config.framebuffer = path.into();
         } else if let Some(path) = argument.strip_prefix("--touch=") {
             config.inputs.push(InputDevice::touchscreen(path));
@@ -49,4 +57,26 @@ fn rotation_argument_selects_panel_mapping() {
             expected
         );
     }
+}
+
+#[cfg(test)]
+#[test]
+fn background_argument_selects_config_storage() {
+    assert_eq!(
+        config_from_arguments([]).background_storage,
+        BackgroundStorage::Heap
+    );
+    for (argument, expected) in [
+        ("--background=heap", BackgroundStorage::Heap),
+        ("--background=mma", BackgroundStorage::Mma),
+        ("--mma-background", BackgroundStorage::Mma),
+    ] {
+        assert_eq!(
+            config_from_arguments([argument.into()]).background_storage,
+            expected
+        );
+    }
+    assert!(
+        std::panic::catch_unwind(|| config_from_arguments(["--background=auto".into()])).is_err()
+    );
 }

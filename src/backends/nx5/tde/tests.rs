@@ -1628,3 +1628,15 @@ fn external_background_survives_retired_and_unknown_job_failures() {
         .unwrap();
     }
 }
+
+#[cfg(feature = "nx5-mma-background")]
+#[test]
+fn requested_mma_storage_does_not_accept_a_software_canvas() {
+    let buffer = Buffer::software(512, 384).unwrap();
+    assert!(matches!(
+        buffer.enable_mma_background(),
+        Err(Error::UnsupportedFramebuffer(_))
+    ));
+    assert!(buffer.engine.is_none());
+    assert!(buffer.pixels().iter().all(|p| p.alpha == 0));
+}

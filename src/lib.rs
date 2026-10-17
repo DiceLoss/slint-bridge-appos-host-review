@@ -48,6 +48,17 @@ pub const fn selected_backend() -> Backend {
     }
 }
 
+/// Storage used by [`Config::prepare_background`].
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum BackgroundStorage {
+    /// Keep the supplied Slint image unchanged. Supported on every backend.
+    #[default]
+    Heap,
+    /// Use one existing NX5 MMA source slot for an opaque canvas-sized image.
+    /// Requires ARM32 and the `nx5-mma-background` feature.
+    Mma,
+}
+
 /// Configuration shared by all board implementations.
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -57,6 +68,10 @@ pub struct Config {
     pub inputs: Vec<InputDevice>,
     /// Clockwise output rotation, fixed for the lifetime of this platform.
     pub rotation: Rotation,
+    /// Background storage selection. Defaults to [`BackgroundStorage::Heap`].
+    /// Selecting MMA requires an initialized hardware TDE canvas; it never
+    /// silently substitutes heap storage if initialization cannot provide it.
+    pub background_storage: BackgroundStorage,
     /// Minimum time between frame starts; idle windows do not render periodically.
     /// One retained frame may render ahead of display completion.
     /// Defaults to 16_667 microseconds; must be nonzero and fit the monotonic clock.
@@ -69,7 +84,53 @@ impl Default for Config {
             framebuffer: "/dev/fb0".into(),
             inputs: Vec::new(),
             rotation: Rotation::None,
+            background_storage: BackgroundStorage::Heap,
             frame_interval: Duration::from_micros(16_667),
+        }
+    }
+}
+
+impl Config {
+    fn validate_background_storage(&self) -> Result<(), Error> {
+        if self.background_storage == BackgroundStorage::Mma
+            && !cfg!(all(
+                feature = "nx5-mma-background",
+                target_arch = "arm",
+                target_pointer_width = "32"
+            ))
+        {
+            return Err(Error::InvalidConfig(
+                "MMA background requires nx5-mma-background on ARM32",
+            ));
+        }
+        Ok(())
+    }
+
+    /// Prepare an application background according to `background_storage`.
+    ///
+    /// Heap mode returns the supplied image unchanged, without copying pixels.
+    /// MMA mode requires successful [`init`] with the same storage selection,
+    /// on this UI thread, and must be called once before the first frame.
+    /// It accepts an opaque image matching the physical canvas dimensions.
+    /// The result retains its MMA allocation and SDK session for software sampling.
+    ///
+    /// This consumes the source handle. Other clones or Slint's resource cache
+    /// can still retain the original heap pixels; use an uncached decoded image
+    /// when eliminating that copy is required.
+    pub fn prepare_background(&self, image: slint::Image) -> Result<slint::Image, Error> {
+        match self.background_storage {
+            BackgroundStorage::Heap => Ok(image),
+            BackgroundStorage::Mma => {
+                self.validate_background_storage()?;
+                #[cfg(feature = "nx5-mma-background")]
+                {
+                    backends::nx5::tde::background(image)
+                }
+                #[cfg(not(feature = "nx5-mma-background"))]
+                {
+                    unreachable!("MMA support was validated above")
+                }
+            }
         }
     }
 }
@@ -141,6 +202,7 @@ impl std::error::Error for Error {
 /// counts are validated before board initialization. Errors during the later
 /// component event loop are returned through Slint's `PlatformError`.
 pub fn init(config: Config) -> Result<(), Error> {
+    config.validate_background_storage()?;
     if config.frame_interval.is_zero() {
         return Err(Error::InvalidConfig("frame_interval must be nonzero"));
     }
@@ -165,22 +227,13 @@ pub fn init(config: Config) -> Result<(), Error> {
     }
     let admitted = backends::require(selected_backend())?;
     let framebuffer = framebuffer::Framebuffer::open(&config.framebuffer, admitted.presentation)?;
+    #[cfg(feature = "nx5-mma-background")]
+    if config.background_storage == BackgroundStorage::Mma {
+        framebuffer.enable_mma_background()?;
+    }
     let platform = runtime::BridgePlatform::new(config, framebuffer, admitted.timer_quantum)?;
     slint::platform::set_platform(Box::new(platform)).map_err(Error::Platform)
 }
 
 #[cfg(test)]
 mod tests;
-
-/// Copies one opaque canvas-sized RGBA image into an existing NX5 MMA source slot.
-///
-/// Validation-only API: call after `init`, before rendering. The returned image
-/// retains immutable CPU-readable storage for Slint software fallback. No extra
-/// MMA allocation is made. Requires the matching Slint patch and its
-/// `unstable-external-pixel-buffer` feature (Rust/std only, incompatible with FFI).
-#[cfg(feature = "nx5-mma-background")]
-pub fn nx5_mma_background(
-    pixels: &slint::SharedPixelBuffer<slint::Rgba8Pixel>,
-) -> Result<slint::Image, Error> {
-    backends::nx5::tde::background(pixels)
-}

@@ -1,2 +1,0 @@
-# Unified patches contain a space on otherwise empty context lines.
-test-app/devices/nx5/mma-background/slint-external-pixels.patch -whitespace

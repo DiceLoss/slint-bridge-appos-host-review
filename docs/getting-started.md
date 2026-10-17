@@ -11,6 +11,8 @@
 | 适配层 | [slint_bridge](http://192.168.253.238/wshl/slint_bridge.git) | Rust 适配库、测试应用、设备工具、NX5 SDK 资源和字体 |
 | Slint | [slint-last](http://192.168.253.238/wshl/slint-last.git) | 与适配层配套的 Slint 运行库、软件 renderer 和构建工具 |
 
+配套 Slint 更新须先发布，再发布引用它的桥接层及锁文件；仅有本地 Slint 提交不能供新机器 `cargo fetch --locked` 获取。
+
 两个地址都需要开发机能访问 `192.168.253.238`。如服务器要求认证，先配置 Git 的账户凭据；不要把密码或令牌写入 Cargo 清单或仓库 URL。可用下面的只读命令检查访问权限：
 
 ```sh

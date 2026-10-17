@@ -1,6 +1,6 @@
 # NX5 测试目标
 
-显式启用的 [MMA 背景验证版](mma-background/README.md) 具有独立的同源 Slint 补丁和构建入口；下列常规命令保持原有依赖。
+[MMA 背景](mma-background/README.md) 使用统一 Config 和普通 Cargo 构建入口；按需启用 `nx5-mma-background`，默认仍保留普通背景。
 
 本文件维护构建、部署和运行前提。设备观测保存在带时间戳的 [current-target.json](current-target.json)，恢复文件保护策略见 [deploy-retain.json](deploy-retain.json)；操作前重新核对身份、PID、显示所有者及依赖，不能把快照当作实时状态。
 

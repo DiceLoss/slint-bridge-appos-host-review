@@ -53,3 +53,36 @@ fn ordinary_pixel_buffer_keeps_original_layout() {
         std::mem::align_of::<OriginalPixelBuffer>()
     );
 }
+
+#[test]
+fn ordinary_background_preserves_image_storage_and_alpha() {
+    use slint::{Image, Rgba8Pixel, SharedPixelBuffer};
+    use slint_bridge::BackgroundStorage;
+    let config = Config::default();
+    assert_eq!(config.background_storage, BackgroundStorage::Heap);
+    let pixels = SharedPixelBuffer::clone_from_slice(&[30u8, 40, 50, 0, 80, 90, 100, 128], 2, 1);
+    let pointer = pixels.as_slice().as_ptr();
+    let prepared = config
+        .prepare_background(Image::from_rgba8(pixels))
+        .unwrap();
+    let output = prepared.to_rgba8().unwrap();
+    assert_eq!(output.as_slice().as_ptr(), pointer);
+    assert_eq!(output.as_slice()[1], Rgba8Pixel::new(80, 90, 100, 128));
+}
+
+#[test]
+fn mma_background_requires_supported_initialization() {
+    use slint_bridge::BackgroundStorage;
+    let config = Config {
+        background_storage: BackgroundStorage::Mma,
+        framebuffer: "/does/not/exist".into(),
+        ..Config::default()
+    };
+    assert!(config.prepare_background(slint::Image::default()).is_err());
+    #[cfg(not(all(
+        feature = "nx5-mma-background",
+        target_arch = "arm",
+        target_pointer_width = "32"
+    )))]
+    assert!(matches!(init(config), Err(Error::InvalidConfig(reason)) if reason.contains("MMA")));
+}

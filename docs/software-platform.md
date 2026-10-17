@@ -6,15 +6,35 @@
 
 ## 统一 API
 
-显式验证 feature `nx5-mma-background` 包含 `nx5-tde`，同时需要 Slint 的 `unstable-external-pixel-buffer` feature（仅 Rust/std，不可与 `ffi` 混用），须使用[同源 Slint 外部像素补丁及构建入口](../test-app/devices/nx5/mma-background/README.md)。它提供 `nx5_mma_background(&SharedPixelBuffer<Rgba8Pixel>)`：在 `init` 后、首次绘制前，将一张不透明且与画布同尺寸的图片复制到已有 0 号源槽，返回持有该存储的 Slint 图像。每个会话只可设置一次，失败返回 `InvalidConfig`；普通构建与默认模式不启用此路径。图像克隆共同保留 TDE 分配和 SDK 会话，软件采样使用同一只读映射；其他纹理只使用剩余源槽。双页及未知 DMA 处理不变，实测范围见 [验证记录](nx5-mma-background.md)。
+`Config.background_storage` 统一选择背景存储，默认 `BackgroundStorage::Heap`，由 `config.prepare_background(image)` 原样返回普通 Slint 图像，不复制像素或改变透明度。`BackgroundStorage::Mma` 仅支持启用 `nx5-mma-background` 的 ARM32 NX5：在设备初始化前核验构建支持，初始化后还必须有真实 TDE 画布；不满足则报错，不静默改成普通背景。
 
-入口为 `slint_bridge::init(Config)`，在 UI 线程创建 Slint 组件前调用。公开类型由 [src/lib.rs](../src/lib.rs) 导出：`Config`、`Error`、`Backend`、`Rotation`、`InputDevice`、`KeyBinding`；`selected_backend()` 返回编译期选择，不代表已经通过设备准入。
+应用保存一份 Config，调用 `init(config.clone())`，然后在首次 show/run 前调用 `config.prepare_background(image)` 并把结果赋给自己的背景属性。配置不会自动替换其他 Slint Image。MMA 模式每个会话只接受一张与物理画布同尺寸的不透明图像；未按 MMA 模式初始化、重复准备、首次绘制后再准备、不可读像素或不满足尺寸/透明度要求都会返回错误。它消耗传入句柄，但其他克隆或 Slint 资源缓存仍可能保留原堆像素，因此应用应使用未被资源缓存持有的解码图像。
+
+MMA 图像复用已有 0 号全尺寸源槽，克隆共同保留 TDE 分配和 SDK 会话；剩余图片使用另两槽。软件采样读取同一只读映射，已知完成失败继续整帧回退；未知 DMA 的资源隔离与双页完成契约不变。
+
+```mermaid
+flowchart LR
+    C[Config.background_storage] --> V{init 核验}
+    V -- Heap --> H[普通平台初始化]
+    V -- Mma 且 NX5/TDE 可用 --> M[允许准备 MMA 背景]
+    V -- 构建或资源不支持 --> E[返回错误]
+    C --> P[config.prepare_background image]
+    P -- Heap --> H2[原样返回]
+    P -- Mma --> M2[首帧前复制一次并固定已有源槽]
+    M --> M2
+    M2 --> I[Slint Image 共享所有者]
+```
+
+`nx5-mma-background` 自动包含 `nx5-tde` 并启用同源 Slint 的 `external-pixel-buffer`。所有 Slint 包使用锁文件中的同一 Git 提交，正式构建不需要验证补丁脚本。外部像素 feature 仅支持 Rust/std，明确与 FFI 互斥；未启用时保持普通像素布局。故障注入只在单独的 `nx5-test-hooks` 测试构建中存在。完整用法见 [MMA 背景](../test-app/devices/nx5/mma-background/README.md)，历史实测见 [记录](nx5-mma-background.md)。
+
+入口为 `slint_bridge::init(Config)`，在 UI 线程创建 Slint 组件前调用。公开类型由 [src/lib.rs](../src/lib.rs) 导出：`Config`、`BackgroundStorage`、`Error`、`Backend`、`Rotation`、`InputDevice`、`KeyBinding`；`selected_backend()` 返回编译期选择，不代表已经通过设备准入。
 
 | `Config` 字段 | 默认值 | 当前约束 |
 | --- | --- | --- |
 | `framebuffer` | `/dev/fb0` | 可配置任意 framebuffer 设备路径或设备链接 |
 | `inputs` | 空列表 | 至多一个 `Touchscreen` 和一个 `Keys` |
 | `rotation` | `Rotation::None` | 固定为不旋转或顺时针 90、180、270 度；90/270 度交换逻辑宽高 |
+| `background_storage` | `BackgroundStorage::Heap` | 普通模式保留原图像；MMA 仅限已启用能力且资源可用的 ARM32 NX5 |
 | `frame_interval` | 16667 微秒 | 非零且可加到单调时钟；约束两次渲染启动的最小间隔 |
 
 帧间隔不是 60 FPS 性能承诺。NX5 原样使用该配置，没有专用 33334 微秒钳制；显示页仍只在提交成功完成后复用。`init()` 在设备初始化前检查帧间隔和输入数量，随后执行板级准入、打开 framebuffer 与输入，最后安装 Slint 平台。
@@ -132,7 +152,7 @@ sequenceDiagram
 
 NX5 打开 `Config::framebuffer` 指定的设备，通过 `FBIOGET_FSCREENINFO` / `FBIOGET_VSCREENINFO` 获取实际分辨率、stride、像素位域、虚拟尺寸和显存容量，使用前述通用布局校验，不限定 1024×600 或固定 stride。尺寸由设备当前模式决定，要求至少两页完整容量；两页偏移为 `0` 与实际 `yres`。初始化布局传给提交线程；每次 PAN 前核对尺寸、stride 和像素格式，读回后再次核对尺寸/格式与目标页，布局变化或无效偏移会终止提交。提交线程调用阻塞 `FBIOPAN_DISPLAY`，成功并读回目标页后才复用旧页；不提供单缓冲或忽略错误的回退。页号读回用于错误检测，不作为硬件退休证明。其他设备仍须提供与驱动匹配的实现和验证。TDE 不再以 1024×600 限制画布大小，仍检查尺寸溢出、SDK 对齐及作业完成状态；SDK 不支持或无法分配时使用既有软件回退。TDE 绘制范围由 [tde/mod.rs](../src/backends/nx5/tde/mod.rs) 与 [native.c](../src/backends/nx5/tde/native.c) 实现，说明及历史像素比较见 [TDE 报告](nx5-performance.md#nx5-tde)。使用 `nx5-tde` 构建时，板级像素类型保持 Slint 预乘 RGBA 语义，对圆角矩形等操作内部的连续同色混合使用 CPU 批量路径；Cortex-A7/NEON 预设启用 8 像素向量混合，尾部及无 NEON 构建使用同一精确整数算法，不改变 RGB 的 `/255` 向下取整或 alpha 的原有舍入。不透明填充保留 Slint 的批量填充。此 CPU 路径不提交 DMA，不依赖 TDE 作业成功；图片 TDE 复制/混合及未知 DMA 隔离仍按原有契约执行。
 
-`nx5-tde` 的等尺寸 RGBA 纹理支持整体透明度。上传时按 Slint 顺序计算：straight RGBA 先合并逐像素/整体 alpha，再预乘 RGB；预乘 RGBA 直接缩放四个通道；整体透明度为 255 时只复制已有预乘字节。Cortex-A7 预设使用 NEON；其余构建使用相同整数规则。准备后的缓存键包含透明度；混合图像还区分平移的 X/Y 奇偶位置，不透明复制可跨奇偶位置复用。源槽的替换先使用空槽，再按最后使用的绘制帧淘汰；同帧使用的纹理优先保留像素量较大的源，避免小前景反复挤掉全屏背景。离开活跃集合的大图可在后续帧被淘汰。保留两个完整源槽，并增加一个小槽，容量为画布 RGBA 字节数的四分之一加完整槽的 padding 余量；Rust 和 C 均按最坏对齐尺寸检查准入，大图仍只能使用两个完整槽。SDK 的全局 alpha 开关不符合该预乘语义，因此不使用。对于奇数位置或裁剪，源缓冲增加 0/1 像素偏移，使 TDE 处理范围内的偶数对齐主体；提交成功并完成缓存同步后，由 CPU 精确处理最多一像素的边缘条带。不移动 UI，也不扩大裁剪或写入邻接像素。混合仍限定不透明目标；Cortex-A7 通过 NEON 批量检查 alpha，尾部及其他目标使用同一标量规则。SDK 可能把不透明输出 alpha 舍入为 254，因此作业成功并完成缓存同步后仍须精确恢复到 255，避免写页反预乘放大 RGB 误差；该回写使用 NEON 批量路径，标量尾部保留相同语义。单次 RGB 容差仍为 1/255。两个完整源 MMZ 各预留 `(画布宽 + 4) × (画布高 + 2) × 4` 字节以覆盖对齐，1024×600 上比原分配合计增加 40 KiB（按页分配）；另一个小源槽按同样的对齐余量分配，1024×600 上额外使用 620 KiB，总运行 MMZ 为 12760 KiB / 6 块。画布和物理双页大小不变。未知 DMA 完成时仍禁止 CPU 处理边缘。
+`nx5-tde` 的等尺寸 RGBA 纹理支持整体透明度。上传时按 Slint 顺序计算：straight RGBA 先合并逐像素/整体 alpha，再预乘 RGB；预乘 RGBA 直接缩放四个通道；整体透明度为 255 时只复制已有预乘字节。Cortex-A7 预设使用 NEON；其余构建使用相同整数规则。准备后的缓存键包含透明度；混合图像还区分平移的 X/Y 奇偶位置，不透明复制可跨奇偶位置复用。源槽的替换先使用空槽，再按最后使用的绘制帧淘汰；同帧使用的纹理优先保留像素量较大的源，避免小前景反复挤掉全屏背景。离开活跃集合的大图可在后续帧被淘汰。保留两个完整源槽，并增加一个小槽，容量为画布 RGBA 字节数的四分之一加完整槽的 padding 余量；Rust 和 C 均按最坏对齐尺寸检查准入，大图仍只能使用两个完整槽。SDK 的全局 alpha 开关不符合该预乘语义，因此不使用。对于奇数位置或裁剪，源缓冲增加 0/1 像素偏移，使 TDE 处理范围内的偶数对齐主体；提交成功并完成缓存同步后，由 CPU 精确处理最多一像素的边缘条带。不移动 UI，也不扩大裁剪或写入邻接像素。混合仍限定不透明目标；Cortex-A7 通过 NEON 批量检查 alpha，尾部及其他目标使用同一标量规则。SDK 可能把不透明输出 alpha 舍入为 254，因此作业成功并完成缓存同步后仍须精确恢复到 255，避免写页反预乘放大 RGB 误差；该回写使用 NEON 批量路径，标量尾部保留相同语义。单次 RGB 容差仍为 1/255。MMA 背景被显式准备后，0 号槽固定为只读且退出普通淘汰集合；其他图片只用 1 号全尺寸槽与紧凑槽。两个完整源 MMZ 各预留 `(画布宽 + 4) × (画布高 + 2) × 4` 字节以覆盖对齐，1024×600 上比原分配合计增加 40 KiB（按页分配）；另一个小源槽按同样的对齐余量分配，1024×600 上额外使用 620 KiB，总运行 MMZ 为 12760 KiB / 6 块。画布和物理双页大小不变。未知 DMA 完成时仍禁止 CPU 处理边缘。
 
 奇数坐标透明纹理的内部顺序如下；只有完成确认成功后才允许 CPU 处理边缘：
 
@@ -153,14 +173,14 @@ flowchart LR
 
 ## 构建依赖
 
-两个 package 均要求 Linux、Rust 1.92 或更新版本，默认 features 为空，必须显式选择 `fbdev` 或 `nx5`；`nx5-tde` 包含 `nx5`。`fbdev,nx5` 和 `fbdev,nx5-tde` 组合编译失败。根 workspace 的默认成员只有库；检查测试工程使用 `-p slint-bridge-test-app`，检查两者使用 `--workspace`。
+两个 package 均要求 Linux、Rust 1.92 或更新版本，默认 features 为空，必须显式选择 `fbdev` 或 `nx5`；`nx5-tde` 包含 `nx5`，`nx5-mma-background` 包含 `nx5-tde` 并自动启用 Slint 外部像素 feature。`fbdev` 与上述任一 NX5 feature 组合均编译失败。`nx5-test-hooks` 只用于诊断，不用于正式常驻构建。根 workspace 的默认成员只有库；检查测试工程使用 `-p slint-bridge-test-app`，检查两者使用 `--workspace`。
 
 设备选择由消费应用负责，按以下范围解释默认值：
 
 | 范围 | 默认 feature | 选择方式 |
 | --- | --- | --- |
 | `slint-bridge` 库 | `[]` | 消费应用在依赖的 `features` 中选择板级功能 |
-| 本仓库 `test-app` | `[]` | 仓库命令显式传 `--features fbdev`、`nx5` 或 `nx5-tde` |
+| 本仓库 `test-app` | `[]` | 仓库命令显式选择设备/能力 feature，如 `fbdev`、`nx5`、`nx5-tde` 或 `nx5-mma-background` |
 | 使用指南中的业务模板 | `["nx5-tde"]` | 应用默认 NX5 TDE；切换 X9 使用 `--no-default-features --features fbdev` |
 
 业务默认设备属于业务工程，不改变适配库或测试工程的默认值。`slint-bridge/nx5` 是 Cargo 的依赖 feature 转发语法，不是文件路径；只定义转发项不会启用它，必须通过应用 `default` 或 `--features` 选择。没有选板时的编译错误表示 feature 未启用，不表示 Git 源码未下载。ARM target 选择工具链和 ABI，不替代板级 feature；设备路径和旋转属于运行时 `Config`。
@@ -222,7 +242,7 @@ flowchart LR
 
 原生 [check-native.sh](../test-app/tools/nx5/tde/check-native.sh) 用主机替身 SDK 验证无版本库名在不同目录下的搜索、`RTLD_NOLOAD` 会话复用及引用释放，同时检查 TDE 故障处理与像素转换边界；不代表新源码已部署或通过实机验证。
 
-[test-app/tools/check-feature-matrix.py](../test-app/tools/check-feature-matrix.py) 对三个 feature 分别执行 workspace 测试，确认未选板级、冲突组合编译失败，并检查库的 `fbdev` 普通依赖树没有桌面或 GPU 后端。脚本将结果输出到标准输出，不自动写入 `evidence/`。
+[test-app/tools/check-feature-matrix.py](../test-app/tools/check-feature-matrix.py) 对 `fbdev`、`nx5`、`nx5-tde`、`nx5-mma-background`、`nx5-test-hooks` 五种组合分别执行 workspace 测试，确认未选板级、冲突组合编译失败，并检查库的 `fbdev` 普通依赖树没有桌面或 GPU 后端。脚本将结果输出到标准输出，不自动写入 `evidence/`。
 
 2026-10-12，`bccf6b9` 阶段记录的测试分布如下。此后的队列延迟修复为各板级 feature 新增 3 项库内主机回归；当前计数以执行结果为准：
 

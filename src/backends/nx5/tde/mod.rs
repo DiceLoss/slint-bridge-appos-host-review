@@ -240,6 +240,17 @@ pub(crate) struct Buffer {
 }
 
 impl Buffer {
+    #[cfg(feature = "nx5-mma-background")]
+    pub(crate) fn enable_mma_background(&self) -> Result<(), Error> {
+        #[cfg(target_arch = "arm")]
+        if let Pixels::Mmz(canvas) = &self.pixels {
+            return canvas.enable_background();
+        }
+        Err(Error::UnsupportedFramebuffer(
+            "MMA background requires an initialized NX5 TDE canvas",
+        ))
+    }
+
     pub fn new(width: u32, height: u32) -> Result<Self, Error> {
         #[cfg(target_arch = "arm")]
         let result = match native::Native::new(width, height) {
@@ -312,6 +323,10 @@ impl Buffer {
         self.fatal.is_some()
     }
     pub fn render(&mut self, renderer: &SoftwareRenderer) -> Result<PhysicalRegion, Error> {
+        #[cfg(all(feature = "nx5-mma-background", target_arch = "arm"))]
+        if let Pixels::Mmz(canvas) = &self.pixels {
+            canvas.begin_render();
+        }
         if let Some(error) = self.fatal {
             return Err(Error::AccelerationFailed(format!(
                 "SDK code {}",
@@ -664,11 +679,30 @@ mod native {
     unsafe impl Sync for EngineOwner {}
     struct Context {
         owner: Arc<EngineOwner>,
+        #[cfg(feature = "nx5-mma-background")]
+        background_enabled: std::cell::Cell<bool>,
+        #[cfg(feature = "nx5-mma-background")]
+        rendering_started: std::cell::Cell<bool>,
         pixels: NonNull<PremultipliedRgbaColor>,
         count: usize,
     }
     pub(super) struct Canvas(Rc<Context>);
     impl Canvas {
+        #[cfg(feature = "nx5-mma-background")]
+        pub fn enable_background(&self) -> Result<(), Error> {
+            if self.0.owner._session.is_none() {
+                return Err(Error::InvalidConfig(
+                    "MMA background requires an owned NX5 SDK session",
+                ));
+            }
+            self.0.background_enabled.set(true);
+            Ok(())
+        }
+        #[cfg(feature = "nx5-mma-background")]
+        pub fn begin_render(&self) {
+            self.0.rendering_started.set(true);
+        }
+
         pub fn pixels(&self) -> &[PremultipliedRgbaColor] {
             // SAFETY: creation zero-initializes count pixels. Buffer only lends
             // CPU slices outside synchronous DMA and after successful retirement.
@@ -703,6 +737,10 @@ mod native {
             });
             let context = Rc::new(Context {
                 owner,
+                #[cfg(feature = "nx5-mma-background")]
+                background_enabled: std::cell::Cell::new(false),
+                #[cfg(feature = "nx5-mma-background")]
+                rendering_started: std::cell::Cell::new(false),
                 pixels,
                 count,
             });
@@ -755,7 +793,7 @@ mod native {
             _pixels: &mut [PremultipliedRgbaColor],
             t: &Texture<'_>,
         ) -> Result<Outcome, Failure> {
-            #[cfg(feature = "nx5-mma-background")]
+            #[cfg(feature = "nx5-test-hooks")]
             if self.background_source() == Some(t.data.as_ptr())
                 && std::env::var("SLINT_BRIDGE_MMA_FORCE_FALLBACK").as_deref() == Ok("1")
             {
@@ -802,19 +840,25 @@ mod native {
     }
 
     #[cfg(feature = "nx5-mma-background")]
-    pub(crate) fn background(
-        pixels: &slint::SharedPixelBuffer<slint::Rgba8Pixel>,
-    ) -> Result<slint::Image, Error> {
+    pub(crate) fn background(image: slint::Image) -> Result<slint::Image, Error> {
         let context = CURRENT_CONTEXT
             .with(|current| current.borrow().upgrade())
             .ok_or(Error::InvalidConfig(
                 "MMA background requires an active NX5 TDE canvas",
             ))?;
-        if context.owner._session.is_none() {
+        if !context.background_enabled.get() {
             return Err(Error::InvalidConfig(
-                "MMA background requires an owned NX5 SDK session",
+                "initialize with background_storage=Mma before preparing an MMA background",
             ));
         }
+        if context.rendering_started.get() {
+            return Err(Error::InvalidConfig(
+                "prepare MMA background before the first frame",
+            ));
+        }
+        let pixels = image
+            .to_rgba8_premultiplied()
+            .ok_or(Error::InvalidConfig("MMA background pixels cannot be read"))?;
         // SAFETY: the source slice contains exactly width*height RGBA pixels.
         // C verifies dimensions and opacity, copies once, and seals the source slot.
         let pointer = unsafe {
@@ -861,16 +905,14 @@ mod native {
 pub(crate) mod tests;
 
 #[cfg(feature = "nx5-mma-background")]
-pub(crate) fn background(
-    pixels: &slint::SharedPixelBuffer<slint::Rgba8Pixel>,
-) -> Result<slint::Image, Error> {
+pub(crate) fn background(image: slint::Image) -> Result<slint::Image, Error> {
     #[cfg(target_arch = "arm")]
     {
-        native::background(pixels)
+        native::background(image)
     }
     #[cfg(not(target_arch = "arm"))]
     {
-        let _ = pixels;
+        let _ = image;
         Err(Error::InvalidConfig("MMA background requires ARM NX5"))
     }
 }

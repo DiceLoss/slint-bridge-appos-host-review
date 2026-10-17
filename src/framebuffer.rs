@@ -610,6 +610,11 @@ struct Writeback {
 }
 
 impl Framebuffer {
+    #[cfg(feature = "nx5-mma-background")]
+    pub(crate) fn enable_mma_background(&self) -> Result<(), Error> {
+        self.retained.enable_mma_background()
+    }
+
     pub(crate) fn open(path: &Path, contract: PresentationContract) -> Result<Self, Error> {
         let file = OpenOptions::new()
             .read(true)

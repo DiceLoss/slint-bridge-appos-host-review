@@ -140,3 +140,21 @@ Motion 稳态提交批次约 29 FPS；跨静态阶段的第一个批次不作为
 
 新证据位于本地忽略目录 `evidence/nx5-mma-fixed/2026-10-17/`，需要另行取得：`manifest.json`、`summary.json`、`device/`、`analyze.py`、物理帧与软件参考、部署归档及常驻身份记录。
 分析脚本可重放本轮历史数据，不查询当前设备状态。本文较早的测量和 PID 保持原版本含义。
+
+## 2026-10-17 Config 功能化
+
+背景存储已接入统一 `Config.background_storage`，默认 Heap 保留普通图像；Mma 是显式选择。
+应用在 `init(config.clone())` 后调用 `config.prepare_background(image)`，不再调用验证专用的 `nx5_mma_background`。
+MMA 的实际 TDE 资源在初始化阶段核验，未按该模式初始化或开始绘制后再准备背景会被拒绝。
+正式 `nx5-mma-background` 自动启用配套 Slint 的 `external-pixel-buffer`；手工补丁、临时锁文件包装脚本已移除，故障注入单独归入 `nx5-test-hooks`。
+当前使用方式见 [MMA 背景说明](../test-app/devices/nx5/mma-background/README.md)，历史验证版的构建方式须在对应 Git 版本中复现。
+
+本轮五种 feature 组合的 workspace 回归及非法设备组合检查通过，新增普通图像不复制/透明度保持、默认值、CLI 映射、不支持的 MMA 配置和软件画布拒绝回归。
+普通与 MMA clippy、API 文档、原生故障注入检查通过；完整主机 showcase MCP 检查覆盖八页、19 张截图。
+NX5 正式/诊断 ARM 构建与 X9 ARM 构建通过，并核对故障注入环境变量仅存在于诊断二进制。
+配套 Slint 的普通 thumbv6m、外部像素 feature 和核心 C++ 图像布局检查通过。
+这些是主机、构建和既有故障替身验证；本轮未操作设备，未把上文旧二进制的实测归给 Config 版本。
+
+锁文件只把所有 Slint 包统一更新到本地提交 `cc8b86f65b1dbc49d94fa9b42593c792d2f36466`，其他依赖版本与解析保持原状。
+配套远端仍需先发布此提交，新机器才能获取锁定依赖；本地构建验证不代表已发布。
+原始日志与主机截图位于本地忽略目录 `evidence/nx5-config-background/2026-10-17/`，需要另行取得。
