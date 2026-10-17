@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-16T14:37:35Z",
+  "checked_at_utc": "2026-10-17T06:26:14Z",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -140,11 +140,12 @@
     }
   ],
   "running_ui": {
-    "path": "/tmp/slint-bridge-mma-v2-20261016/showcase",
-    "pid": 6837,
-    "starttime_ticks": 20033954,
+    "path": "/tmp/slint-bridge-mma-fixed-20261017/showcase",
+    "pid": 16705,
+    "starttime_ticks": 25734031,
     "features": [
       "nx5-mma-background",
+      "slint/unstable-external-pixel-buffer",
       "slint/mcp"
     ],
     "arguments": [
@@ -152,34 +153,35 @@
       "--framebuffer=/dev/fb0",
       "--touch=/dev/input/event0"
     ],
-    "sha256": "cdab572094a846ab6d0a0a89cba6e7a2fd279c7f569e3d9ffbc27ff72431870f",
-    "log": "/tmp/slint-bridge-mma-v2-20261016/live.log",
-    "pid_file": "/tmp/slint-bridge-mma-v2-20261016/live.pid",
-    "startup_script": "/tmp/slint-bridge-mma-v2-20261016/start.sh",
+    "sha256": "733277125fd47762a27145f0807313f4573f85a354ebc83606695e4ae59eb2d6",
+    "log": "/tmp/slint-bridge-mma-fixed-20261017/live.log",
+    "pid_file": "/tmp/slint-bridge-mma-fixed-20261017/live.pid",
+    "startup_script": "/tmp/slint-bridge-mma-fixed-20261017/start.sh",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "font": "/run/slint-bridge-display/DejaVuSans.ttf",
     "trace_enabled": false,
     "fault_injection_enabled": false,
-    "source_state": "MMA validation implementation 8bd65c7; ordinary and MMA modes compared using this same ELF. Later changes only record metadata and recovery retention.",
-    "slint_commit": "c49ec2918037c5dac3ec61302e7cfa618f32bd15",
+    "bridge_commit": "cae1f6c9c04d45f50eac401215d43a1cefa152c4",
+    "slint_commit": "93b2ee03af1e53300f4cb09e8138559973f728f9",
+    "source_state": "Reviewed external-pixel isolation fix, rebuilt and revalidated on NX5; this resident uses the same ELF as all three finite modes.",
     "resources": {
-      "rss_kib": 12160,
-      "vm_hwm_kib": 14808,
+      "rss_kib": 12268,
+      "vm_hwm_kib": 15024,
       "threads": 3,
       "tracer_pid": 0,
       "mmz_used_kib": 12760,
-      "mmz_blocks": 6
+      "mmz_blocks": 6,
+      "sample_scope": "Fresh Overview resident, not the warmed Controls memory comparison"
     },
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
-      "verification": "evidence/nx5-mma-background/2026-10-16/resident-tree.json"
+      "verification": "evidence/nx5-mma-fixed/2026-10-17/resident-tree.json"
     },
     "page": "Overview",
-    "report": "docs/nx5-mma-background.md",
-    "bridge_commit": "8bd65c7"
+    "report": "docs/nx5-mma-background.md"
   },
-  "status": "showcase_mma_background_validation_resident",
+  "status": "reviewed_mma_background_showcase_resident",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -217,7 +219,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "2026-10-16 MMA background validation: same-ELF ordinary/MMA/retired-failure software modes, Controls/Rich-list physical front-page comparisons, short Motion runs, normal resource release. Resident MMA showcase left running. No new WBC, physical touch, rotated output or dynamic scanout validation.",
+  "observation_scope": "2026-10-17 reviewed MMA build: three same-ELF 100-second runs; three pre-screenshot Controls memory samples per mode; physical Controls/Rich-list comparisons; retired-failure software replay; short Motion observation and normal release. Resident left running. No new WBC, physical touch or rotated scanout test.",
   "hardware_regression": {
     "report": "docs/nx5-validation.md#nx5-hardware",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -350,13 +352,14 @@
     }
   },
   "recovery_ui": {
-    "path": "/tmp/slint-bridge-music3-20261015/music-player",
-    "sha256": "e5226b5fe053efd944f241f5342f3844e647ec0d430ca8f225b8e2b9e23d045c",
-    "startup_script": "/tmp/slint-bridge-music3-20261015/start.sh",
+    "path": "/tmp/slint-bridge-mma-v2-20261016/showcase",
+    "sha256": "cdab572094a846ab6d0a0a89cba6e7a2fd279c7f569e3d9ffbc27ff72431870f",
+    "startup_script": "/tmp/slint-bridge-mma-v2-20261016/start.sh",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "font": "/run/slint-bridge-display/DejaVuSans.ttf",
-    "source_revision_note": "Music ELF identity verified; its bridge/Slint source commits were not independently established in this task. Temporary showcase build identity is recorded separately below.",
-    "procedure": "Stop the current display only after rechecking ownership; run sh /tmp/slint-bridge-music3-20261015/start.sh. No automatic state replay."
+    "bridge_commit": "8bd65c7",
+    "slint_commit": "c49ec2918037c5dac3ec61302e7cfa618f32bd15",
+    "procedure": "Recheck display ownership, stop the current UI, then run sh /tmp/slint-bridge-mma-v2-20261016/start.sh."
   },
   "alpha_validation": {
     "report": "docs/nx5-display.md#nx5-alpha",
@@ -1286,6 +1289,15 @@
       "sha256": "e2a0f1245c3a471329091f215b68311f16362db954837901e63b4fcc53449f39",
       "startup_script": "/tmp/slint-bridge-rich-render-2fddc04/start.sh",
       "procedure": "docs/nx5-validation.md#nx5-background-holes"
+    },
+    {
+      "path": "/tmp/slint-bridge-music3-20261015/music-player",
+      "sha256": "e5226b5fe053efd944f241f5342f3844e647ec0d430ca8f225b8e2b9e23d045c",
+      "startup_script": "/tmp/slint-bridge-music3-20261015/start.sh",
+      "library_path": "/tmp/slint-bridge-c03c3bb/lib",
+      "font": "/run/slint-bridge-display/DejaVuSans.ttf",
+      "source_revision_note": "Music ELF identity verified; its bridge/Slint source commits were not independently established in this task. Temporary showcase build identity is recorded separately below.",
+      "procedure": "Stop the current display only after rechecking ownership; run sh /tmp/slint-bridge-music3-20261015/start.sh. No automatic state replay."
     }
   ],
   "rich_render_validation": {
@@ -1879,5 +1891,87 @@
     "unknown_dma_hardware_injected": false,
     "first_iteration_memory_reduction": false,
     "initial_music_sigterm_required": true
+  },
+  "mma_fixed_validation": {
+    "report": "docs/nx5-mma-background.md",
+    "evidence": "evidence/nx5-mma-fixed/2026-10-17/summary.json (local ignored archive, acquired separately)",
+    "source": {
+      "bridge_commit": "cae1f6c9c04d45f50eac401215d43a1cefa152c4",
+      "slint_commit": "93b2ee03af1e53300f4cb09e8138559973f728f9",
+      "features": [
+        "nx5-mma-background",
+        "slint/unstable-external-pixel-buffer",
+        "slint/mcp"
+      ],
+      "target": "arm-unknown-linux-gnueabi",
+      "elf_sha256": "733277125fd47762a27145f0807313f4573f85a354ebc83606695e4ae59eb2d6",
+      "elf_bytes": 11760000,
+      "cargo_lock_sha256": "4d5fcdce067d3f2aea8f389670465914cee2b4b0c4580ee68377174ddbd6f911",
+      "slint_patch_sha256": "8a65c1a9cd568c9fbb8d77561a25b20f20fa69e045c3489364183eac60bd620c",
+      "device": "/tmp/slint-bridge-mma-fixed-20261017/showcase",
+      "old_resident": "/tmp/slint-bridge-mma-v2-20261016/showcase",
+      "boot_id": "4aa4f5d2-8de2-42cb-9c2b-44c3e74d6e2b",
+      "duration_seconds": 100,
+      "modes": [
+        "baseline",
+        "shared",
+        "fallback"
+      ]
+    },
+    "modes": {
+      "baseline": {
+        "VmRSS": 18556,
+        "RssAnon": 7760,
+        "rss_samples_kib": [
+          18556,
+          18556,
+          18556
+        ],
+        "mmz_kib": 12760,
+        "mmz_blocks": 6,
+        "exit_code": 0,
+        "after_exit_mmz_kib": 4900,
+        "kernel_release_warnings": 0
+      },
+      "shared": {
+        "VmRSS": 16012,
+        "RssAnon": 5356,
+        "rss_samples_kib": [
+          16012,
+          16012,
+          16012
+        ],
+        "mmz_kib": 12760,
+        "mmz_blocks": 6,
+        "exit_code": 0,
+        "after_exit_mmz_kib": 4900,
+        "kernel_release_warnings": 0
+      },
+      "fallback": {
+        "VmRSS": 16012,
+        "RssAnon": 5356,
+        "rss_samples_kib": [
+          16012,
+          16012,
+          16012
+        ],
+        "mmz_kib": 12760,
+        "mmz_blocks": 6,
+        "exit_code": 0,
+        "after_exit_mmz_kib": 4900,
+        "kernel_release_warnings": 0
+      }
+    },
+    "rss_reduction_kib": 2544,
+    "anonymous_reduction_kib": 2404,
+    "physical_pixels": 2457600,
+    "controls_exact_across_three_modes": true,
+    "rich_max_channel_error": 1,
+    "old_resident_stop": "SIGTERM after static page and idle presentation worker; expected kernel MMZ reclamation recorded separately",
+    "archived_reference_binary": {
+      "path": "/tmp/slint-bridge-rich-render-2fddc04/showcase",
+      "sha256": "e2a0f1245c3a471329091f215b68311f16362db954837901e63b4fcc53449f39",
+      "archive": "evidence/nx5-mma-fixed/2026-10-17/deploy/files/tmp/slint-bridge-rich-render-2fddc04/showcase"
+    }
   }
 }
