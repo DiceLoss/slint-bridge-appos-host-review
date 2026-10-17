@@ -176,7 +176,8 @@ mod tests;
 ///
 /// Validation-only API: call after `init`, before rendering. The returned image
 /// retains immutable CPU-readable storage for Slint software fallback. No extra
-/// MMA allocation is made. Requires the matching external-pixel Slint patch.
+/// MMA allocation is made. Requires the matching Slint patch and its
+/// `unstable-external-pixel-buffer` feature (Rust/std only, incompatible with FFI).
 #[cfg(feature = "nx5-mma-background")]
 pub fn nx5_mma_background(
     pixels: &slint::SharedPixelBuffer<slint::Rgba8Pixel>,

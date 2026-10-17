@@ -34,3 +34,22 @@ fn invalid_frame_timing_is_reported_without_opening_devices() {
         Err(Error::InvalidConfig(_))
     ));
 }
+
+#[test]
+#[cfg(not(feature = "nx5-mma-background"))]
+fn ordinary_pixel_buffer_keeps_original_layout() {
+    #[repr(C)]
+    struct OriginalPixelBuffer {
+        width: u32,
+        height: u32,
+        data: i_slint_core::SharedVector<slint::Rgba8Pixel>,
+    }
+    assert_eq!(
+        std::mem::size_of::<slint::SharedPixelBuffer<slint::Rgba8Pixel>>(),
+        std::mem::size_of::<OriginalPixelBuffer>()
+    );
+    assert_eq!(
+        std::mem::align_of::<slint::SharedPixelBuffer<slint::Rgba8Pixel>>(),
+        std::mem::align_of::<OriginalPixelBuffer>()
+    );
+}

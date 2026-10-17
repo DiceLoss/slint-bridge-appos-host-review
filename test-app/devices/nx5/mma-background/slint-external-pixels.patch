@@ -1,20 +1,79 @@
+diff --git a/api/cpp/cbindgen.rs b/api/cpp/cbindgen.rs
+index 6204331..3e52e53 100644
+--- a/api/cpp/cbindgen.rs
++++ b/api/cpp/cbindgen.rs
+@@ -373,6 +373,7 @@ fn default_config() -> cbindgen::Config {
+         ..Default::default()
+     };
+     config.defines = [
++        ("feature = unstable-external-pixel-buffer".into(), "SLINT_DISABLED_CODE".into()),
+         ("target_pointer_width = 64".into(), "SLINT_TARGET_64".into()),
+         ("target_pointer_width = 32".into(), "SLINT_TARGET_32".into()),
+         // Disable any wasm guarded code in C++, too - so that there are no gaps in enums.
+diff --git a/api/rs/slint/Cargo.toml b/api/rs/slint/Cargo.toml
+index 6cc1bea..6a2ca75 100644
+--- a/api/rs/slint/Cargo.toml
++++ b/api/rs/slint/Cargo.toml
+@@ -19,6 +19,8 @@ categories = ["gui", "rendering::engine", "no-std"]
+ path = "lib.rs"
+ 
+ [features]
++## Rust-only immutable external pixel storage for NX5 validation.
++unstable-external-pixel-buffer = ["std", "i-slint-core/unstable-external-pixel-buffer"]
+ 
+ default = [
+   "std",
+diff --git a/internal/core/Cargo.toml b/internal/core/Cargo.toml
+index 7cfd6fe..732360b 100644
+--- a/internal/core/Cargo.toml
++++ b/internal/core/Cargo.toml
+@@ -20,6 +20,8 @@ categories = ["gui", "development-tools", "no-std"]
+ path = "lib.rs"
+ 
+ [features]
++# Rust-only NX5 validation; excluded from ordinary pixel storage and C bindings.
++unstable-external-pixel-buffer = ["std"]
+ ffi = ["dep:static_assertions", "i-slint-core-macros/ffi"] # Expose C ABI
+ libm = ["num-traits/libm", "euclid/libm"]
+ # Allow the viewer to query at runtime information about item types
 diff --git a/internal/core/graphics/image.rs b/internal/core/graphics/image.rs
-index 8e86c2e..ed980cd 100644
+index 8e86c2e..d857a7b 100644
 --- a/internal/core/graphics/image.rs
 +++ b/internal/core/graphics/image.rs
-@@ -66,9 +66,58 @@ pub struct SharedPixelBuffer<Pixel> {
-     width: u32,
-     height: u32,
+@@ -60,6 +60,7 @@ pub struct OpaqueImageVTable {
+ ///
+ /// See the documentation for [`Image`] for examples how to use this type to integrate
+ /// Slint with external rendering functions.
++#[cfg(not(feature = "unstable-external-pixel-buffer"))]
+ #[derive(Debug, Clone)]
+ #[repr(C)]
+ pub struct SharedPixelBuffer<Pixel> {
+@@ -68,7 +69,74 @@ pub struct SharedPixelBuffer<Pixel> {
      pub(crate) data: SharedVector<Pixel>,
-+    external: Option<alloc::sync::Arc<ExternalPixels<Pixel>>>,
  }
  
++/// Reference-counted CPU pixels with optional immutable external storage.
++/// Cloning retains the storage; mutable access first makes an owned copy.
++///
++/// cbindgen:ignore
++#[cfg(feature = "unstable-external-pixel-buffer")]
++#[derive(Debug, Clone)]
++#[repr(C)]
++pub struct SharedPixelBuffer<Pixel> {
++    width: u32,
++    height: u32,
++    pub(crate) data: SharedVector<Pixel>,
++    external: Option<alloc::sync::Arc<ExternalPixels<Pixel>>>,
++}
++
++#[cfg(feature = "unstable-external-pixel-buffer")]
 +struct ExternalPixels<Pixel> {
 +    pointer: *const Pixel,
 +    length: usize,
 +    _owner: alloc::sync::Arc<dyn Send + Sync>,
 +}
 +
++#[cfg(feature = "unstable-external-pixel-buffer")]
 +impl<Pixel> core::fmt::Debug for ExternalPixels<Pixel> {
 +    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 +        f.debug_struct("ExternalPixels").field("length", &self.length).finish_non_exhaustive()
@@ -22,7 +81,9 @@ index 8e86c2e..ed980cd 100644
 +}
 +
 +// SAFETY: from_external() requires immutable storage valid until the owner drops.
++#[cfg(feature = "unstable-external-pixel-buffer")]
 +unsafe impl<Pixel: Send + Sync> Send for ExternalPixels<Pixel> {}
++#[cfg(feature = "unstable-external-pixel-buffer")]
 +unsafe impl<Pixel: Send + Sync> Sync for ExternalPixels<Pixel> {}
 +
  impl<Pixel> SharedPixelBuffer<Pixel> {
@@ -33,6 +94,7 @@ index 8e86c2e..ed980cd 100644
 +    /// `pointer` must be aligned, non-null, and valid for `width * height` initialized pixels.
 +    /// The pixels must remain immutable and readable on every thread until `owner` is dropped.
 +    /// Their total byte length must not exceed `isize::MAX`.
++    #[cfg(feature = "unstable-external-pixel-buffer")]
 +    pub unsafe fn from_external(
 +        pointer: *const Pixel,
 +        width: u32,
@@ -61,10 +123,11 @@ index 8e86c2e..ed980cd 100644
      /// Returns the width of the image in pixels.
      pub fn width(&self) -> u32 {
          self.width
-@@ -88,6 +137,12 @@ pub fn size(&self) -> IntSize {
+@@ -88,6 +156,13 @@ pub fn size(&self) -> IntSize {
  impl<Pixel: Clone> SharedPixelBuffer<Pixel> {
      /// Return a mutable slice to the pixel data. If the SharedPixelBuffer was shared, this will make a copy of the buffer.
      pub fn make_mut_slice(&mut self) -> &mut [Pixel] {
++        #[cfg(feature = "unstable-external-pixel-buffer")]
 +        if let Some(external) = self.external.as_ref() {
 +            // SAFETY: from_external() establishes the storage lifetime and length.
 +            self.data =
@@ -74,7 +137,7 @@ index 8e86c2e..ed980cd 100644
          self.data.make_mut_slice()
      }
  }
-@@ -99,20 +154,26 @@ impl<Pixel: Clone + rgb::Pod> SharedPixelBuffer<Pixel>
+@@ -99,19 +174,24 @@ impl<Pixel: Clone + rgb::Pod> SharedPixelBuffer<Pixel>
      /// Returns the pixels interpreted as raw bytes.
      pub fn as_bytes(&self) -> &[u8] {
          use rgb::ComponentBytes;
@@ -93,35 +156,39 @@ index 8e86c2e..ed980cd 100644
  impl<Pixel> SharedPixelBuffer<Pixel> {
      /// Return a slice to the pixel data.
      pub fn as_slice(&self) -> &[Pixel] {
--        self.data.as_slice()
-+        match &self.external {
++        #[cfg(feature = "unstable-external-pixel-buffer")]
++        if let Some(external) = &self.external {
 +            // SAFETY: from_external() establishes the storage lifetime and length.
-+            Some(external) => unsafe {
-+                core::slice::from_raw_parts(external.pointer, external.length)
-+            },
-+            None => self.data.as_slice(),
++            return unsafe { core::slice::from_raw_parts(external.pointer, external.length) };
 +        }
+         self.data.as_slice()
      }
  }
- 
-@@ -123,6 +184,7 @@ pub fn new(width: u32, height: u32) -> Self {
+@@ -123,6 +203,8 @@ pub fn new(width: u32, height: u32) -> Self {
          Self {
              width,
              height,
++            #[cfg(feature = "unstable-external-pixel-buffer")]
 +            external: None,
              data: core::iter::repeat_n(Pixel::default(), width as usize * height as usize)
                  .collect(),
          }
-@@ -153,7 +215,7 @@ pub fn clone_from_slice<SourcePixelType>(
+@@ -153,7 +235,13 @@ pub fn clone_from_slice<SourcePixelType>(
              width as u64 * height as u64,
              "SharedPixelBuffer::clone_from_slice: the slice does not cover the requested {width}x{height} pixels",
          );
 -        Self { width, height, data }
-+        Self { width, height, data, external: None }
++        Self {
++            width,
++            height,
++            data,
++            #[cfg(feature = "unstable-external-pixel-buffer")]
++            external: None,
++        }
      }
  }
  
-@@ -223,13 +285,13 @@ impl PartialEq for SharedImageBuffer {
+@@ -223,13 +311,13 @@ impl PartialEq for SharedImageBuffer {
      fn eq(&self, other: &Self) -> bool {
          match self {
              Self::RGB8(lhs_buffer) => {
@@ -138,19 +205,21 @@ index 8e86c2e..ed980cd 100644
              }
          }
      }
-@@ -656,6 +718,7 @@ fn dynamic_image_to_shared_image_buffer(dynamic_image: image::DynamicImage) -> S
+@@ -656,6 +744,8 @@ fn dynamic_image_to_shared_image_buffer(dynamic_image: image::DynamicImage) -> S
          SharedImageBuffer::RGBA8Premultiplied(SharedPixelBuffer {
              width: rgba8image.width(),
              height: rgba8image.height(),
++            #[cfg(feature = "unstable-external-pixel-buffer")]
 +            external: None,
              data: rgba8image
                  .as_pixels()
                  .iter()
-@@ -882,13 +945,20 @@ fn render_to_rgba8(
+@@ -882,13 +972,22 @@ fn render_to_rgba8(
              SharedImageBuffer::RGB8(buffer) => SharedPixelBuffer::<Rgba8Pixel> {
                  width: buffer.width,
                  height: buffer.height,
 -                data: buffer.data.into_iter().map(Into::into).collect(),
++                #[cfg(feature = "unstable-external-pixel-buffer")]
 +                external: None,
 +                data: buffer.as_slice().iter().copied().map(Into::into).collect(),
              },
@@ -159,6 +228,7 @@ index 8e86c2e..ed980cd 100644
                  width: buffer.width,
                  height: buffer.height,
 -                data: buffer.data.into_iter().map(Image::premultiplied_rgba_to_rgba).collect(),
++                #[cfg(feature = "unstable-external-pixel-buffer")]
 +                external: None,
 +                data: buffer
 +                    .as_slice()
@@ -169,11 +239,12 @@ index 8e86c2e..ed980cd 100644
              },
          })
      }
-@@ -901,12 +971,19 @@ pub fn to_rgba8_premultiplied(&self) -> Option<SharedPixelBuffer<Rgba8Pixel>> {
+@@ -901,12 +1000,21 @@ pub fn to_rgba8_premultiplied(&self) -> Option<SharedPixelBuffer<Rgba8Pixel>> {
              SharedImageBuffer::RGB8(buffer) => SharedPixelBuffer::<Rgba8Pixel> {
                  width: buffer.width,
                  height: buffer.height,
 -                data: buffer.data.into_iter().map(Into::into).collect(),
++                #[cfg(feature = "unstable-external-pixel-buffer")]
 +                external: None,
 +                data: buffer.as_slice().iter().copied().map(Into::into).collect(),
              },
@@ -181,6 +252,7 @@ index 8e86c2e..ed980cd 100644
                  width: buffer.width,
                  height: buffer.height,
 -                data: buffer.data.into_iter().map(Image::rgba_to_premultiplied_rgba).collect(),
++                #[cfg(feature = "unstable-external-pixel-buffer")]
 +                external: None,
 +                data: buffer
 +                    .as_slice()
@@ -191,42 +263,17 @@ index 8e86c2e..ed980cd 100644
              },
              SharedImageBuffer::RGBA8Premultiplied(buffer) => buffer,
          })
-@@ -1747,7 +1824,11 @@ pub extern "C" fn slint_image_to_rgb8(
-         height: &mut u32,
-     ) -> bool {
-         image.to_rgb8().is_some_and(|pixel_buffer| {
--            *data = pixel_buffer.data.clone();
-+            *data = if pixel_buffer.external.is_some() {
-+                pixel_buffer.as_slice().into()
-+            } else {
-+                pixel_buffer.data.clone()
-+            };
-             *width = pixel_buffer.width();
-             *height = pixel_buffer.height();
-             true
-@@ -1762,7 +1843,11 @@ pub extern "C" fn slint_image_to_rgba8(
-         height: &mut u32,
-     ) -> bool {
-         image.to_rgba8().is_some_and(|pixel_buffer| {
--            *data = pixel_buffer.data.clone();
-+            *data = if pixel_buffer.external.is_some() {
-+                pixel_buffer.as_slice().into()
-+            } else {
-+                pixel_buffer.data.clone()
-+            };
-             *width = pixel_buffer.width();
-             *height = pixel_buffer.height();
-             true
-@@ -1777,7 +1862,11 @@ pub extern "C" fn slint_image_to_rgba8_premultiplied(
-         height: &mut u32,
-     ) -> bool {
-         image.to_rgba8_premultiplied().is_some_and(|pixel_buffer| {
--            *data = pixel_buffer.data.clone();
-+            *data = if pixel_buffer.external.is_some() {
-+                pixel_buffer.as_slice().into()
-+            } else {
-+                pixel_buffer.data.clone()
-+            };
-             *width = pixel_buffer.width();
-             *height = pixel_buffer.height();
-             true
+diff --git a/internal/core/lib.rs b/internal/core/lib.rs
+index fc4197c..830dc50 100644
+--- a/internal/core/lib.rs
++++ b/internal/core/lib.rs
+@@ -13,6 +13,9 @@
+ #![no_std]
+ #![debugger_visualizer(gdb_script_file = "gdb_pretty_printers.py")]
+ 
++#[cfg(all(feature = "unstable-external-pixel-buffer", feature = "ffi"))]
++compile_error!("unstable-external-pixel-buffer is Rust-only and cannot be combined with ffi");
++
+ extern crate alloc;
+ #[cfg(feature = "std")]
+ extern crate std;

@@ -1573,3 +1573,58 @@ fn neon_writeback_boundaries() {
         "NEON output: all channel/alpha pairs, alpha_max=128/255, zero/opaque/mixed blocks, lengths=0..65, alignment=0..3 and guards exact"
     );
 }
+
+#[cfg(feature = "nx5-mma-background")]
+#[test]
+fn external_background_survives_retired_and_unknown_job_failures() {
+    for unknown in [false, true] {
+        std::thread::spawn(move || {
+            let (window, scene) = setup();
+            let pixels = image(512, 384, false, true)
+                .to_rgba8_premultiplied()
+                .unwrap();
+            let owner = std::sync::Arc::new(pixels.as_slice().to_vec());
+            let weak = std::sync::Arc::downgrade(&owner);
+            // SAFETY: the Arc owns immutable initialized pixels throughout rendering.
+            let external =
+                unsafe { SharedPixelBuffer::from_external(owner.as_ptr(), 512, 384, owner) };
+            let pointer = external.as_slice().as_ptr();
+            scene.set_picture(slint::Image::from_rgba8_premultiplied(external));
+            let mut reference = Buffer::software(512, 384).unwrap();
+            draw(&window, &mut reference).unwrap();
+            let mut buffer = Buffer::software(512, 384).unwrap();
+            buffer.engine = Some(Box::new(PartialWriteFailure(unknown)));
+            let result = draw(&window, &mut buffer);
+            if unknown {
+                assert!(matches!(result, Err(Error::AccelerationFailed(_))));
+                assert!(
+                    buffer
+                        .pixels
+                        .cpu()
+                        .iter()
+                        .all(|p| p.red == 165 && p.green == 165 && p.blue == 165)
+                );
+                assert!(matches!(
+                    draw(&window, &mut buffer),
+                    Err(Error::AccelerationFailed(_))
+                ));
+            } else {
+                result.unwrap();
+                assert_eq!(difference(buffer.pixels(), reference.pixels()), (0, 0));
+                assert!(buffer.engine.is_none());
+                assert_eq!(buffer.stats.errors, 1);
+                scene.set_image_opacity(0.5);
+                draw(&window, &mut buffer).unwrap();
+                draw(&window, &mut reference).unwrap();
+                assert_eq!(difference(buffer.pixels(), reference.pixels()), (0, 0));
+            }
+            let retained = scene.get_picture().to_rgba8_premultiplied().unwrap();
+            assert_eq!(retained.as_slice().as_ptr(), pointer);
+            assert_eq!(retained.as_slice(), pixels.as_slice());
+            drop(buffer);
+            assert!(weak.upgrade().is_some());
+        })
+        .join()
+        .unwrap();
+    }
+}

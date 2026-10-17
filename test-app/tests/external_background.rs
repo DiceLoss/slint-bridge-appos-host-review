@@ -71,3 +71,25 @@ fn showcase_external_background_matches_owned_software_pixels() {
         );
     }
 }
+
+#[test]
+fn external_pixels_keep_their_owner_across_threads() {
+    let owner = Arc::new(vec![Rgba8Pixel::new(3, 5, 7, 255); 8]);
+    let weak = Arc::downgrade(&owner);
+    // SAFETY: the Arc retains immutable initialized pixels on either thread.
+    let pixels = unsafe { SharedPixelBuffer::from_external(owner.as_ptr(), 4, 2, owner) };
+    let image = Image::from_rgba8_premultiplied(pixels.clone());
+    let (release, wait) = std::sync::mpsc::channel();
+    let worker = std::thread::spawn(move || {
+        wait.recv().unwrap();
+        assert_eq!(pixels.as_slice()[7], Rgba8Pixel::new(3, 5, 7, 255));
+        pixels
+    });
+    drop(image);
+    assert!(weak.upgrade().is_some());
+    release.send(()).unwrap();
+    let mut pixels = worker.join().unwrap();
+    pixels.make_mut_bytes()[0] = 9;
+    assert!(weak.upgrade().is_none());
+    assert_eq!(pixels.as_slice()[0], Rgba8Pixel::new(9, 5, 7, 255));
+}

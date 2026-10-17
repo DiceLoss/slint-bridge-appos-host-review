@@ -172,7 +172,7 @@ WBC 按无版本库名 `libobserver.so` 通过系统搜索路径加载，部署�
 
 应用要透出下层视频时，可将 `.slint` 根窗口设为 `background: transparent;`，在其上绘制局部 UI；`basic` / `display` 保持原有背景，`showcase` 的 Layers 页可以打开透明区域。透明和半透明像素的输出、无 alpha 格式限制及尚未接入的视频层边界见 [Framebuffer 软件路径](../docs/software-platform.md#framebuffer-软件路径)。库内透明窗口回归使用内存双页验证移动和消失后的 alpha、颜色及行尾 padding。`alpha-regression` 另用于设备上的实际页和 WBC 检查，构建、前提及输出见 [设备工具](tools/nx5/README.md#硬件诊断与证据重放)；它使用现有黑色 VO 底色，不代表视频解码和业务视频接入已经验证。
 
-验证版 `showcase --mma-background` 复用已有 NX5 全尺寸 MMA 源槽；需要 `nx5-mma-background` 与同源 Slint 补丁。构建、同 ELF 对照及已知完成状态的软件回退注入见 [验证版说明](devices/nx5/mma-background/README.md)。普通启动不传该参数，仍使用普通堆背景。
+验证版 `showcase --mma-background` 复用已有 NX5 全尺寸 MMA 源槽；需要 `nx5-mma-background`、同源 Slint 补丁及其显式外部像素 feature。构建、同 ELF 对照及已知完成状态的软件回退注入见 [验证版说明](devices/nx5/mma-background/README.md)。普通启动不传该参数，仍使用普通堆背景。
 
 ### 图片背景中的多个透明区域
 

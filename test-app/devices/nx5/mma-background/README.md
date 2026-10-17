@@ -6,7 +6,8 @@
 
 Slint 上游接口不能保留外部像素所有者，本目录保存相对于 `c878901` 的 [验证补丁](slint-external-pixels.patch)。
 补丁使 `SharedPixelBuffer` 保留只读外部存储的所有者，克隆不复制像素，修改时才复制到普通堆。
-这是 Rust 验证补丁；没有验证其他语言 ABI 或其他 renderer，不作为通用 Slint API 发布。
+外部存储只在显式启用 Slint 的 `unstable-external-pixel-buffer` feature 时存在；未启用时保留原像素缓冲布局，不要求 `Arc`。
+该 feature 是 Rust/std 验证能力，与 `ffi` 同时启用会明确拒绝编译，避免未支持的外部像素进入 C++ 布局或截图导出；其他 renderer 尚未验证。
 
 在同源 Slint 检出目录应用补丁，再从本仓库根执行：
 
@@ -18,12 +19,13 @@ git apply /absolute/path/slint_bridge/test-app/devices/nx5/mma-background/slint-
 SLINT_EMIT_DEBUG_INFO=1 python3 test-app/tools/nx5/tde/with-mma-slint.py \
   --slint-root /absolute/path/slint-source -- build --config .cargo/nx5.toml \
   --locked --offline --release -p slint-bridge-test-app \
-  --features nx5-mma-background,slint/mcp --target arm-unknown-linux-gnueabi --bin showcase
+  --features nx5-mma-background,slint/unstable-external-pixel-buffer,slint/mcp --target arm-unknown-linux-gnueabi --bin showcase
 ```
 
 包装脚本检查补丁已应用，把所有 Slint 包一起切换到该源码，保留其他依赖的锁定版本，命令结束时恢复原 `Cargo.lock`。
 不要同时在同一工作目录运行其他 Cargo 命令。
 普通构建仍使用原 Git 依赖，不需要该补丁；`nx5-mma-background` 必须通过此入口构建。
+Slint 实验 feature 在验证命令中显式启用，避免根清单向尚不包含该 feature 的普通 Git 依赖转发它而导致解析失败。
 
 完成 [设备部署和独占检查](../README.md) 后，用同一 ELF 进行对照：
 
@@ -40,7 +42,7 @@ SLINT_EMIT_DEBUG_INFO=1 python3 test-app/tools/nx5/tde/with-mma-slint.py \
 ```sh
 python3 test-app/tools/nx5/tde/with-mma-slint.py \
   --slint-root /absolute/path/slint-source -- test --locked --offline \
-  -p slint-bridge-test-app --features nx5-mma-background --test external_background
+  -p slint-bridge-test-app --features nx5-mma-background,slint/unstable-external-pixel-buffer --test external_background
 sh test-app/tools/nx5/tde/check-native.sh
 ```
 
