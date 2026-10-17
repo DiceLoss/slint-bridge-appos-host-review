@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-17T06:26:14Z",
+  "checked_at_utc": "2026-10-17T08:47:47Z",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -46,7 +46,7 @@
     ],
     "pan": [
       0,
-      600
+      0
     ],
     "vo_device_enabled": true,
     "initialization_error_observed": "gui layer region(0,0,1024,600) cannot exceed frame region(0,0)",
@@ -140,48 +140,47 @@
     }
   ],
   "running_ui": {
-    "path": "/tmp/slint-bridge-mma-fixed-20261017/showcase",
-    "pid": 16705,
-    "starttime_ticks": 25734031,
+    "path": "/tmp/slint-bridge-config-20261017/showcase",
+    "pid": 30636,
+    "starttime_ticks": 26572096,
     "features": [
       "nx5-mma-background",
-      "slint/unstable-external-pixel-buffer",
       "slint/mcp"
     ],
     "arguments": [
-      "--mma-background",
+      "--background=mma",
       "--framebuffer=/dev/fb0",
       "--touch=/dev/input/event0"
     ],
-    "sha256": "733277125fd47762a27145f0807313f4573f85a354ebc83606695e4ae59eb2d6",
-    "log": "/tmp/slint-bridge-mma-fixed-20261017/live.log",
-    "pid_file": "/tmp/slint-bridge-mma-fixed-20261017/live.pid",
-    "startup_script": "/tmp/slint-bridge-mma-fixed-20261017/start.sh",
+    "sha256": "8f04381977918714330f10d5fdf66227e06c315c091fa53b43639e65d870c6ce",
+    "log": "/tmp/slint-bridge-config-20261017/live.log",
+    "pid_file": "/tmp/slint-bridge-config-20261017/live.pid",
+    "startup_script": "/tmp/slint-bridge-config-20261017/start.sh",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "font": "/run/slint-bridge-display/DejaVuSans.ttf",
     "trace_enabled": false,
     "fault_injection_enabled": false,
-    "bridge_commit": "cae1f6c9c04d45f50eac401215d43a1cefa152c4",
-    "slint_commit": "93b2ee03af1e53300f4cb09e8138559973f728f9",
-    "source_state": "Reviewed external-pixel isolation fix, rebuilt and revalidated on NX5; this resident uses the same ELF as all three finite modes.",
+    "bridge_commit": "edcf2f0bf93251601a6452a7d5c8a9a985a229f5",
+    "slint_commit": "a2cc406ff9e523f729d0ca1adfcc96062136f0d7",
+    "source_state": "Config background storage with external-image dimension update fix; production ELF excludes nx5-test-hooks and passed a separate 150-second hardware run.",
     "resources": {
-      "rss_kib": 12268,
-      "vm_hwm_kib": 15024,
+      "rss_kib": 12644,
+      "vm_hwm_kib": 17452,
       "threads": 3,
       "tracer_pid": 0,
       "mmz_used_kib": 12760,
       "mmz_blocks": 6,
-      "sample_scope": "Fresh Overview resident, not the warmed Controls memory comparison"
+      "sample_scope": "Overview resident after native MCP query and screenshot; not the warmed Controls memory comparison"
     },
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
-      "verification": "evidence/nx5-mma-fixed/2026-10-17/resident-tree.json"
+      "verification": "evidence/nx5-config-deploy/2026-10-17/resident-tree.json"
     },
     "page": "Overview",
     "report": "docs/nx5-mma-background.md"
   },
-  "status": "reviewed_mma_background_showcase_resident",
+  "status": "config_mma_background_showcase_resident",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -203,7 +202,8 @@
     "2026-10-13 cleanup deployment: c087071 resident PID 12364; previous 4a2eda2 kept for rollback. Stripped binaries have identical SHA256. Finite PID 12253 exited normally; old PID 6818 SIGTERM and kernel reclaim recorded separately. 8 physical contacts matched; user confirmed display/touch. Seventeen finished diagnostic/older-recovery files archived and removed; no firmware/SDK/driver/network/boot-service changes.",
     "2026-10-14 input-latency deployment: a0e880c resident PID 7241, c087071 kept for rollback. Full-alpha automatic input P95 16.88 -> 0.86 ms (1 ms MCP quantization); final showcase list 900 completed presentations at 29 FPS. Ordinary scene render/layout stalls remain. Initial slow replay and rejected initial-axis sample retained separately. Runtime instrumentation/prototype removed, 24 device artifacts archived/cleaned. No firmware, SDK, driver, Slint or boot-service change.",
     "2026-10-14 rich render: 2fddc04 + Slint 9a1a3b1 validated and resident. One 1225593 recovery binary retained; older 8d6bd47, abb2e33 and b1164e4 binaries archived to host with SHA256 before removal. Prior signal-exit reclaims remain separate from the final clean validation window.",
-    "2026-10-15 BackgroundWithHoles uses public Slint APIs without Slint changes; 23 physical-page stages and 7 MCP states pass. Old resident PID 22711 stopped with SIGTERM after worker idle; its forced MMZ reclaim is separate from the new clean verification exit. Demo PID 412 left running; 2fddc04 kept for rollback, 1225593 and diagnostic files archived and removed."
+    "2026-10-15 BackgroundWithHoles uses public Slint APIs without Slint changes; 23 physical-page stages and 7 MCP states pass. Old resident PID 22711 stopped with SIGTERM after worker idle; its forced MMZ reclaim is separate from the new clean verification exit. Demo PID 412 left running; 2fddc04 kept for rollback, 1225593 and diagnostic files archived and removed.",
+    "2026-10-17 Config deployment: edcf2f0 / Slint a2cc406, diagnostic three-mode and separate production 150-second runs passed physical pixels and normal resource release. Production PID 30636 runs MMA without trace, fault injection or timer. Previous fixed MMA is recovery; older v2 and historical background-holes ELF were SHA256-archived to the host and removed, with all diagnostic files. Music, SDK and font retained."
   ],
   "previous_serial_device": "/dev/ttyUSB2",
   "serial_recheck_evidence": "evidence/nx5-rich-list/2026-10-14/reboot-restore.json",
@@ -219,7 +219,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "2026-10-17 reviewed MMA build: three same-ELF 100-second runs; three pre-screenshot Controls memory samples per mode; physical Controls/Rich-list comparisons; retired-failure software replay; short Motion observation and normal release. Resident left running. No new WBC, physical touch or rotated scanout test.",
+  "observation_scope": "Config edition deployed and tested on NX5: diagnostic heap/MMA/known-retired software fallback plus separate production MMA, each 150 seconds; resident identity rechecked after archival cleanup. No new WBC, physical touch, rotation, LCD tear-free certification or unknown-DMA injection.",
   "hardware_regression": {
     "report": "docs/nx5-validation.md#nx5-hardware",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -352,14 +352,14 @@
     }
   },
   "recovery_ui": {
-    "path": "/tmp/slint-bridge-mma-v2-20261016/showcase",
-    "sha256": "cdab572094a846ab6d0a0a89cba6e7a2fd279c7f569e3d9ffbc27ff72431870f",
-    "startup_script": "/tmp/slint-bridge-mma-v2-20261016/start.sh",
+    "path": "/tmp/slint-bridge-mma-fixed-20261017/showcase",
+    "sha256": "733277125fd47762a27145f0807313f4573f85a354ebc83606695e4ae59eb2d6",
+    "startup_script": "/tmp/slint-bridge-mma-fixed-20261017/start.sh",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "font": "/run/slint-bridge-display/DejaVuSans.ttf",
-    "bridge_commit": "8bd65c7",
-    "slint_commit": "c49ec2918037c5dac3ec61302e7cfa618f32bd15",
-    "procedure": "Recheck display ownership, stop the current UI, then run sh /tmp/slint-bridge-mma-v2-20261016/start.sh."
+    "bridge_commit": "cae1f6c9c04d45f50eac401215d43a1cefa152c4",
+    "slint_commit": "93b2ee03af1e53300f4cb09e8138559973f728f9",
+    "procedure": "Recheck display ownership and quiesce/stop the current UI before running sh /tmp/slint-bridge-mma-fixed-20261017/start.sh."
   },
   "alpha_validation": {
     "report": "docs/nx5-display.md#nx5-alpha",
@@ -1298,6 +1298,18 @@
       "font": "/run/slint-bridge-display/DejaVuSans.ttf",
       "source_revision_note": "Music ELF identity verified; its bridge/Slint source commits were not independently established in this task. Temporary showcase build identity is recorded separately below.",
       "procedure": "Stop the current display only after rechecking ownership; run sh /tmp/slint-bridge-music3-20261015/start.sh. No automatic state replay."
+    },
+    {
+      "path": "/tmp/slint-bridge-mma-v2-20261016/showcase",
+      "sha256": "cdab572094a846ab6d0a0a89cba6e7a2fd279c7f569e3d9ffbc27ff72431870f",
+      "startup_script": "/tmp/slint-bridge-mma-v2-20261016/start.sh",
+      "library_path": "/tmp/slint-bridge-c03c3bb/lib",
+      "font": "/run/slint-bridge-display/DejaVuSans.ttf",
+      "bridge_commit": "8bd65c7",
+      "slint_commit": "c49ec2918037c5dac3ec61302e7cfa618f32bd15",
+      "procedure": "Recheck display ownership, stop the current UI, then run sh /tmp/slint-bridge-mma-v2-20261016/start.sh.",
+      "device_availability": "Binary and startup files archived and SHA256-verified on host, then removed from device; redeploy before recovery",
+      "host_archive": "evidence/nx5-config-deploy/2026-10-17/cleanup-final/files/tmp/slint-bridge-mma-v2-20261016/showcase"
     }
   ],
   "rich_render_validation": {
@@ -1973,5 +1985,116 @@
       "sha256": "e2a0f1245c3a471329091f215b68311f16362db954837901e63b4fcc53449f39",
       "archive": "evidence/nx5-mma-fixed/2026-10-17/deploy/files/tmp/slint-bridge-rich-render-2fddc04/showcase"
     }
+  },
+  "config_background_validation": {
+    "report": "docs/nx5-mma-background.md",
+    "evidence": "evidence/nx5-config-deploy/2026-10-17/summary.json (local ignored archive, acquired separately)",
+    "source": {
+      "bridge_commit": "edcf2f0bf93251601a6452a7d5c8a9a985a229f5",
+      "slint_commit": "a2cc406ff9e523f729d0ca1adfcc96062136f0d7",
+      "cargo_lock_sha256": "80ebd6b65abb445836ef6bd4ff42ca1c63945407d3d264128b3e5ca1732822dc",
+      "target": "arm-unknown-linux-gnueabi",
+      "boot_id": "4aa4f5d2-8de2-42cb-9c2b-44c3e74d6e2b",
+      "mode_seconds": 150,
+      "diagnostic_modes": [
+        "heap",
+        "mma",
+        "fallback"
+      ],
+      "binaries": {
+        "production": {
+          "path": "target/nx5-config-deploy/showcase-production",
+          "bytes": 11760000,
+          "sha256": "8f04381977918714330f10d5fdf66227e06c315c091fa53b43639e65d870c6ce",
+          "features": [
+            "nx5-mma-background",
+            "slint/mcp"
+          ]
+        },
+        "diagnostics": {
+          "path": "target/nx5-config-deploy/showcase-diagnostics",
+          "bytes": 11760000,
+          "sha256": "0e0282843b909efca16da3314984eb500e142830b2e4b05e15de594c35b251cd",
+          "features": [
+            "nx5-test-hooks",
+            "slint/mcp"
+          ]
+        }
+      }
+    },
+    "modes": {
+      "baseline": {
+        "VmRSS": 17968,
+        "RssAnon": 7204,
+        "rss_samples_kib": [
+          17968,
+          17968,
+          17968
+        ],
+        "mmz_kib": 12760,
+        "mmz_blocks": 6,
+        "exit_code": 0,
+        "after_exit_mmz_kib": 4900,
+        "kernel_release_warnings": 0
+      },
+      "shared": {
+        "VmRSS": 15448,
+        "RssAnon": 4804,
+        "rss_samples_kib": [
+          15448,
+          15448,
+          15448
+        ],
+        "mmz_kib": 12760,
+        "mmz_blocks": 6,
+        "exit_code": 0,
+        "after_exit_mmz_kib": 4900,
+        "kernel_release_warnings": 0
+      },
+      "fallback": {
+        "VmRSS": 15388,
+        "RssAnon": 4804,
+        "rss_samples_kib": [
+          15388,
+          15388,
+          15388
+        ],
+        "mmz_kib": 12760,
+        "mmz_blocks": 6,
+        "exit_code": 0,
+        "after_exit_mmz_kib": 4900,
+        "kernel_release_warnings": 0
+      }
+    },
+    "rss_reduction_kib": 2520,
+    "anonymous_reduction_kib": 2400,
+    "physical_pixels": 3072000,
+    "controls_exact_across_diagnostic_and_production": true,
+    "rich_max_channel_error": 1,
+    "production": {
+      "VmRSS": 15528,
+      "RssAnon": 4800,
+      "rss_samples_kib": [
+        15528,
+        15528,
+        15528
+      ],
+      "physical_pixels": 614400,
+      "physical_max_channel_error": 0,
+      "exit_code": 0,
+      "after_exit_mmz_kib": 4900,
+      "kernel_release_warnings": 0
+    },
+    "production_evidence": "evidence/nx5-config-deploy/2026-10-17/production-summary.json",
+    "old_resident_stop": "PID 16705 SIGTERM after static page and idle presentation worker; kernel forced reclamation archived separately in deploy-diagnostics-retry/files/tmp/slint-bridge-config-test/old.*",
+    "archived_reference_binary": {
+      "path": "/tmp/slint-bridge-holes-20261015/background-holes",
+      "sha256": "e9630815aab2023601d57ce54390bdb04fd9a439a09a6a703a064fb3ad536d22",
+      "host_archive": "evidence/nx5-config-deploy/2026-10-17/deploy-diagnostics-retry/files/tmp/slint-bridge-holes-20261015/background-holes",
+      "device_availability": "Archived and removed; not the recovery program"
+    },
+    "cleanup_final_archived_files": 64,
+    "resident_post_cleanup_evidence": "evidence/nx5-config-deploy/2026-10-17/final-state.txt",
+    "resident_mem_available_kib": 36184
   }
 }

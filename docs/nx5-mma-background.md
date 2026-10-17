@@ -158,3 +158,51 @@ NX5 正式/诊断 ARM 构建与 X9 ARM 构建通过，并核对故障注入环�
 锁文件只把所有 Slint 包统一更新到本地提交 `cc8b86f65b1dbc49d94fa9b42593c792d2f36466`，其他依赖版本与解析保持原状。
 配套远端仍需先发布此提交，新机器才能获取锁定依赖；本地构建验证不代表已发布。
 原始日志与主机截图位于本地忽略目录 `evidence/nx5-config-background/2026-10-17/`，需要另行取得。
+
+## 2026-10-17 Config 版部署复测
+
+本轮实际部署桥接层 `edcf2f0bf93251601a6452a7d5c8a9a985a229f5`、Slint `a2cc406ff9e523f729d0ca1adfcc96062136f0d7`，包含外部图像尺寸更新的审查修复。
+设备重新核验为同一 NX5 #233、1024×600、无旋转，启动 ID `4aa4f5d2-8de2-42cb-9c2b-44c3e74d6e2b`；未更换 SDK、驱动或固件。
+锁文件中的全部 Slint 包使用同一已发布提交，ARM 构建使用普通 Cargo 入口。
+
+三种对照使用同一 `nx5-test-hooks,slint/mcp` 诊断 ELF，SHA256 为 `0e0282843b909efca16da3314984eb500e142830b2e4b05e15de594c35b251cd`。
+分别通过 Config 对应的 `--background=heap`、`--background=mma` 和 MMA 加已知完成状态的软件回退运行，每种 150 秒。
+相同预热顺序为 Controls → Rich list → Controls，截图前各取三次内存，三次 RSS 均一致。
+
+| 指标（KiB） | 普通背景 | MMA 背景 | MMA + 软件回退 |
+| --- | ---: | ---: | ---: |
+| RSS | 17,968 | 15,448 | 15,388 |
+| RssAnon | 7,204 | 4,804 | 4,804 |
+| `[heap]` RSS | 3,284 | 3,284 | 3,284 |
+| 匿名映射 RSS | 3,592 | 1,192 | 1,192 |
+| MMZ 总分配 / 块数 | 12,760 / 6 | 12,760 / 6 | 12,760 / 6 |
+
+MMA 相对普通背景的 RSS 减少 **2,520 KiB（2.46 MiB，约 14.0%）**，背景对应的匿名映射减少 **2,400 KiB**。
+其余 120 KiB 净差来自 ELF 与共享库驻留页；回退与 MMA 的 60 KiB 差异也来自文件驻留页，不代表额外背景优化。
+软件回退仍读取原 MMA 背景，没有重新保留一份堆背景，也没有增加 MMZ 分配。
+
+三个 Controls 物理前台页各 614,400 像素，跨模式逐字节相同，与原生 MCP 软件参考的 RGB 和板级 alpha 编码完全一致。
+MMA 富列表另检查 614,400 像素，最大通道误差 1、alpha 完全一致。
+Motion 稳态批次约 29 FPS；这些是短时功能观察，跨静态阶段的批次不作为动画性能结果。
+回退仅在首次背景 DMA 前注入一次 `-10001`，日志确认 `unknown completion=false`；后续持续 `copy=0, blend=0, cache_hits=0, errors=1`，导航与动画正常。
+
+三个进程均退出 0，MMZ 回到 4,900 KiB / 两块，新增内核日志无 MMB 泄漏回收、强制 unmap 或强制关闭 VO。
+切换前旧 PID 16705 在静态页、提交线程空闲时用 SIGTERM 停止，其内核回收记录单独保存，不计入本轮正常退出结果。
+本轮未重跑六个实机专用 ignored 测试，也没有新的 WBC、实体触摸、旋转、LCD 扫描无撕裂或未知 DMA 注入验证。
+
+常驻版本单独用 `nx5-mma-background,slint/mcp` 构建，不含 `nx5-test-hooks`；ELF SHA256 为 `8f04381977918714330f10d5fdf66227e06c315c091fa53b43639e65d870c6ce`。
+正式 ELF 另运行 150 秒：同样预热后的三次 RSS 均为 15,528 KiB、RssAnon 为 4,800 KiB，Controls 614,400 物理像素与诊断三模式逐字节相同，Motion 约 29 FPS、TDE 错误为 0。
+正常退出码为 0，MMZ 回到 4,900 KiB / 两块，新增内核日志无上述释放告警。
+
+正式程序已常驻 `/tmp/slint-bridge-config-20261017/showcase`，同目录 `start.sh` 使用 `--background=mma`，关闭 trace 和故障注入，不设置退出时限。
+收尾核验 PID 30636、启动 tick 26572096、PPid 1、Overview 页，独占 framebuffer 和触摸设备；PID 仍只是本次观察快照。
+原生查询及截图后的 RSS 为 12,644 KiB，系统 MemAvailable 为 36,184 KiB；这是 Overview 常驻阶段，不能与预热后的 Controls 表格直接相减。
+上一修复版 `/tmp/slint-bridge-mma-fixed-20261017/showcase` 保留为恢复程序，播放器、共享字体和 SDK 保留。
+
+首次诊断上传因 `/tmp` 可用空间不足而拒绝，未发布不完整程序。非当前、非恢复的历史 `background-holes` ELF 经 SHA256 归档到主机后移除，再完成部署。
+诊断三模式结束后归档清理 107 个文件，再上传正式 ELF；最终另归档清理 64 个文件，包括更早的 MMA v2 恢复版及本次测试脚本、数据。
+各事务控制文件也已归档移除；当前程序和恢复程序摘要在收尾再次核对，未受清理影响。
+
+新证据位于本地忽略目录 `evidence/nx5-config-deploy/2026-10-17/`，需另行取得：`manifest.json`、`summary.json`、`production-summary.json`、`raw-diagnostic/`、`raw-production/`、`raw-resident/`、物理帧、原生 MCP 参考及部署归档。
+分析脚本 `analyze.py`（参数为 `raw-diagnostic/` 的实际路径）和 `analyze-production.py` 重放本轮数据，不查询当前设备。
+本轮没有修改实现；正式/诊断 ARM 构建通过，常规主机测试结果仍按前一轮功能化和审查修复的记录理解。
