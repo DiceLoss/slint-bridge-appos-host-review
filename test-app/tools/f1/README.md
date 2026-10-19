@@ -1,4 +1,4 @@
-# F1 只读查询
+# F1 查询与离屏验证
 
 `inspect-device.c` 用于 [F1 显示调查](../../../docs/f1-display.md) 中的参数采集，
 不是后端准入或翻页测试。当前验证对象为
@@ -58,3 +58,55 @@ normal-mode 结构及请求编码；不运行设备代码：
 /opt/F1/bin/riscv64-unknown-linux-gnu-gcc -std=c11 -Wall -Wextra -Werror \
   -Ithird-party/f1/include -fsyntax-only test-app/tools/f1/check-ge-abi.c
 ```
+
+## 离屏 G2D 与缓存验证
+
+库内 `backends::f1::g2d::native::hardware::offscreen_fill_cache` 是仅在
+RISC-V 编译的 ignored 实机测试。它直接使用原生 `Native`，不允许堆画布
+回退；不经过 `init()`，也不打开 framebuffer，不提供显示准入的绕过入口。
+普通单元测试仍使用软件画布，不能用普通 `cargo test` 当作硬件通过。
+
+先核对身份、显示/GE 所有者、SD 挂载及可用内存，保留原应用运行。从根目录
+编译，Cargo 输出会给出实际测试二进制路径：
+
+```sh
+cargo --config .cargo/f1.toml test --locked --offline --release --features f1-g2d \
+  --target riscv64gc-unknown-linux-gnu --lib --no-run
+```
+
+用 `/opt/F1/bin/riscv64-unknown-linux-gnu-strip -o 输出路径 Cargo输出的测试二进制`
+生成部署副本，上传到已核对的 `/tmp/sdcard` 独立目录，并回读核对 SHA256。
+在保持连接的 ADB 前台会话内仅运行这个用例（`F1_TEST_DIR` 替换为本轮目录）：
+
+```sh
+adb -s "$F1_SERIAL" shell \
+  'F1_TEST_DIR/g2d-tests --ignored --exact backends::f1::g2d::native::hardware::offscreen_fill_cache --nocapture --test-threads=1'
+```
+
+当前旧版 adbd 的后台 shell 启动可能在断开时终止子进程；不要依赖 `&`。
+保留会话并将日志放在 SD 卡，可用另一个只读 ADB 会话观察进展。
+成功条件为 `F1_GE_DONE`、测试结果 `1 passed` 和退出码 0。
+若出现 `F1_GE_QUARANTINED`，测试会停止提交并保持 GE/DMA 资源；不要用
+Ctrl-C、超时 kill 或断开会话强制清理，先记录 PID/日志并按板级恢复条件处理。
+本测试不主动注入真实硬件超时或复位。
+
+用例顺序验证 64×32、256×128、1024×600，每个尺寸 16 轮，最多一份 DMA
+画布常驻。CPU 写入不同预乘像素，再执行 GE 整幅、内部奇数边界、四角单像素
+及交叉细条填充；flush/invalidate 后逐像素比较覆盖区和未覆盖区。
+测试耗时包括 CPU 图案生成、读回、比较和校验和，不能作为 GE 吞吐基准。
+它验证该调用序列的正向数据一致性，不证明缓存同步可省略、所有故障均可恢复
+或显示翻页完成。结束后核对原应用身份、显示配置、内存池和驱动错误日志。
+
+## 固定内核镜像重放
+
+`analyze-kernel.py` 是 [当前固件分析](../../../docs/f1-kernel-analysis.md) 的
+离线复核工具，不访问设备。默认输入为本地归档的 FIT 与已解压 Image，
+须另行取得 `evidence/f1-display-20261019/` 原始档案：
+
+```sh
+python3 test-app/tools/f1/analyze-kernel.py
+```
+
+它先核验两个固定 SHA256，再提取操作表、ioctl 分派表并用 `/opt/F1` objdump
+生成六段反汇编。其他镜像会被拒绝，不能把这些固定地址套用于新固件；
+成功重放也不是新的实机翻页或设备准入验证。

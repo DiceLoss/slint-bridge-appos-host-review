@@ -7,7 +7,7 @@ use i_slint_renderer_software::{
 };
 use slint::Brush;
 
-#[cfg(all(target_arch = "riscv64", not(test)))]
+#[cfg(target_arch = "riscv64")]
 mod native;
 
 #[derive(Clone, Copy, Debug)]

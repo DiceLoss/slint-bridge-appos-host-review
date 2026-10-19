@@ -12,7 +12,7 @@
 | [测试应用](../test-app/README.md) | 页面、参数、素材、测试及业务使用方式 |
 | [NX5 设备与工具](../test-app/devices/nx5/README.md) | [部署归档与诊断工具](../test-app/tools/nx5/README.md)、SDK/字体、回归运行前提 |
 | [X9 设备与工具](../test-app/devices/x9/README.md) | [DRM/evdev 与性能工具](../test-app/tools/x9/README.md)、旋转及控制台恢复 |
-| [F1 集成状态](../test-app/devices/f1/README.md) | RISC-V 构建、候选 G2D 路径、[只读查询与 ABI 校验](../test-app/tools/f1/README.md)；显示尚未准入 |
+| [F1 集成状态](../test-app/devices/f1/README.md) | RISC-V 构建、G2D 路径、[查询、ABI 与离屏验证](../test-app/tools/f1/README.md)；显示尚未准入 |
 | [随仓库资源](../third-party/README.md) | SDK 头文件、动态库、字体、版权及 SHA256 |
 
 [项目结构图](diagrams/project-structure.html) · [双页时序图](diagrams/runtime-sequence.html)。`diagrams/` 同时保留图源及 SVG/PNG/HTML 导出。
@@ -27,6 +27,7 @@
 | [NX5 验证记录](nx5-validation.md) | 启动/退出失败与修复、真实输入、界面、物理双页及资源清理 |
 | [X9 接入调查](x9-framebuffer.md) | DRM 完成契约、控制台、Type-A 输入、旋转及实际页验证 |
 | [F1 显示接入调查](f1-display.md) | 原应用运行中的只读查询、BGRA8888 与触摸轴、配置时序、参考驱动完成机制及未验证范围 |
+| [F1 当前内核镜像分析](f1-kernel-analysis.md) | 固定镜像的 PAN/VSYNC/IRQ 调用链、GE 完成路径、可重放反汇编及旧页退休缺口 |
 | [X9 性能与流水线](x9-performance.md) | 初始基线、旋转/写页、全屏与卡片缓存、渲染热点、线程边界、内存总账、分配跟踪及 MCP 保留归因 |
 | [Slint 纹理优化对照](slint-optimization.md) | X9 批量混合、NX5 兼容性及 Pixel 接入三轮结果 |
 

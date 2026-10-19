@@ -234,3 +234,6 @@ impl Drop for Native {
         }
     }
 }
+
+#[cfg(test)]
+mod hardware;

@@ -4,7 +4,7 @@
 
 `f1` / `f1-g2d` 是 RISC-V F1 的集成目标，目前显示完成契约尚未建立，
 `init()` 在打开 framebuffer、GE 或输入设备前返回 `DisplayNotAdmitted`。
-`f1-g2d` 包含候选 GE normal-mode 画布路径，尚未做硬件绘制作业验证；
+`f1-g2d` 包含 GE normal-mode 画布路径，已完成限定范围的离屏填充和缓存同步实测；
 不能将编译通过或 `Backend::F1` 解释为已支持上屏。状态见 [F1](../test-app/devices/f1/README.md)。
 
 日常构建和运行见 [测试工程](../test-app/README.md) 、[NX5 设备说明](../test-app/devices/nx5/README.md) 与 [X9 设备说明](../test-app/devices/x9/README.md)。各轮硬件测量由 [文档索引](README.md) 导航；历史报告中的测试数量、PID 和性能数据不定义当前接口。
@@ -138,6 +138,9 @@ CPU fence 不等于 DMA 缓存一致性。设备专有实现仍须负责缓存�
 没有跳过准入的环境变量、测试 feature 或公共回调。F1 参考工程的
 `PAN → WAITFORVSYNC` 没有成为本库的 `PresentationContract`；新增板级实现
 必须先补足目标更新与旧页退休的关联，见 [F1 调查](f1-display.md)。
+后续 [当前镜像二进制核验](f1-kernel-analysis.md) 已确认普通 PAN 更新后直接
+返回且丢弃更新错误，VSYNC 等共享标志，所审计 DE IRQ 未处理 CFG_DONE。
+这不是显示完成契约，离屏 GE 通过也不改变该准入决定。
 
 [src/backends/mod.rs](../src/backends/mod.rs) 将 NX5 分派给 [src/backends/nx5/mod.rs](../src/backends/nx5/mod.rs)。检查 ARM32，再获取进程锁、检查 VO 未被占用并加载厂商库。不读取内核版本、构建时间或 framebuffer 驱动名称，也不计算 SDK、fyfb、vou 文件的 SHA256；兼容重编译不再因这些元数据变化被拒绝。库加载本身具有 SYS/VO 初始化副作用，不能与其他 SDK 进程并用。[current-target.json](../test-app/devices/nx5/current-target.json) 仅保存带时间戳的环境观测，不控制代码准入，也不实时更新设备状态。
 
@@ -204,9 +207,12 @@ normal 模式的绘制 ioctl 本身等待作业完成，不调用只属于命令
 回调只访问隔离行，不重试或提交残缺画布。作业开始后结果不确定时保留 GE fd、
 DMA-BUF fd 和映射，禁止 CPU 访问。它不读写物理显示页，不改变通用双页调度。
 
-以上是实现边界，尚未完成实机绘图、缓存一致性及故障验证。当前 F1 准入在
-画布构造之前拒绝，因此普通应用不会触发上述硬件路径。主机像素对照使用
-软件模拟填充器，不能证明硬件输出或驱动版本对应；详见 [F1 集成状态](../test-app/devices/f1/README.md)。
+该路径已通过 [F1 离屏正向验证](f1-display.md#f1-offscreen-ge)：三个尺寸、
+每个尺寸 16 轮，检查不透明填充与 CPU/GE 交替访问后的全缓冲像素。
+尚未验证真实硬件故障、显示页复用或物理输出。当前 F1 准入在画布构造之前
+拒绝，因此普通应用不会触发该硬件路径；实机用例是仅在 RISC-V 构建中存在、
+须显式选择的库内 ignored 测试，不扩大公共 API。主机模拟与实机证据分别记录，
+详见 [F1 集成状态](../test-app/devices/f1/README.md)。
 
 两个 package 均要求 Linux、Rust 1.92 或更新版本，默认 features 为空，必须显式选择 `fbdev` 或 `nx5`；`nx5-tde` 包含 `nx5`，`nx5-mma-background` 包含 `nx5-tde` 并自动启用 Slint 外部像素 feature。`fbdev` 与上述任一 NX5 feature 组合均编译失败。`nx5-test-hooks` 只用于诊断，不用于正式常驻构建。根 workspace 的默认成员只有库；检查测试工程使用 `-p slint-bridge-test-app`，检查两者使用 `--workspace`。
 
