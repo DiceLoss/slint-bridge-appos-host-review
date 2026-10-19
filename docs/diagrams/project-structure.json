@@ -163,7 +163,7 @@
       "width": 310,
       "height": 70,
       "label": "Cargo.toml / Cargo.lock",
-      "sublabel": "库 + test-app workspace · 统一版本",
+      "sublabel": "Slint 官方源码 + 本地补丁",
       "fill": "#f8fafc",
       "stroke": "#cbd5e1",
       "flat": true
@@ -175,8 +175,8 @@
       "y": 814,
       "width": 310,
       "height": 70,
-      "label": ".cargo/ + build.rs",
-      "sublabel": "ARM / RISC-V · C 桥与 UAPI 校验",
+      "label": ".cargo/ + build.rs + tools/",
+      "sublabel": "源码准备 · 交叉编译 · C 桥校验",
       "fill": "#f8fafc",
       "stroke": "#cbd5e1",
       "flat": true
@@ -411,7 +411,7 @@
       "flow": "control"
     }
   ],
-  "footer": "板级特性互斥：fbdev / nx5 / f1；f1-g2d 包含 f1，F1 使用参考 PAN/VSYNC 约定。Slint 1.18.1 同源。",
+  "footer": "板级特性互斥：fbdev / nx5 / f1；f1-g2d 包含 f1，F1 使用参考 PAN/VSYNC 约定。Slint 1.18.1：官方固定基线 + 补丁。",
   "footer_x": 48,
   "footer_y": 1296
 }

@@ -1,0 +1,2 @@
+# Diff payloads contain required context prefixes, including space-only lines.
+patches/slint/*.patch -whitespace

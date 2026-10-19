@@ -7,3 +7,6 @@ __pycache__/
 /.agents/
 /.aws/
 /.codex/
+
+# Verified official Slint checkout and machine-local Cargo overrides.
+/.slint/

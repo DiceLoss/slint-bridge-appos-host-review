@@ -249,17 +249,19 @@ DMA 槽容量保留到画布销毁。新源先按软件相同顺序准备预乘�
 
 业务默认设备属于业务工程，不改变适配库或测试工程的默认值。`slint-bridge/nx5` 是 Cargo 的依赖 feature 转发语法，不是文件路径；只定义转发项不会启用它，必须通过应用 `default` 或 `--features` 选择。没有选板时的编译错误表示 feature 未启用，不表示 Git 源码未下载。ARM target 选择工具链和 ABI，不替代板级 feature；设备路径和旋转属于运行时 `Config`。
 
-外部业务通过 [适配层 Git 仓库](http://192.168.253.238/wshl/slint_bridge.git) 引用本库，Cargo 将依赖和 SDK 头文件放在 Git 缓存中，无需业务目录内的源码副本。本仓库 `test-app` 的 `path = ".."` 仅用于测试同一工作区的适配层改动，不是外部业务的接入要求。交叉编译器仍由业务工程自己的 Cargo 配置指定；完整独立配置见 [使用指南](getting-started.md#业务工程的交叉编译配置)。
+外部业务可通过同一个 checkout 的 `path` 或已发布的适配层 Git 版本引用本库。准备脚本及补丁必须与库版本一致，顶层 Cargo 命令显式传入生成的配置；依赖库的 Cargo 配置不会自动继承。交叉编译器由业务工程自己的 Cargo 配置指定，见[业务接入](getting-started.md#在自己的-rust-应用中接入)。
 
-Slint 使用用户指定的 Git 仓库 [Slint 源码仓库](http://192.168.253.238/wshl/slint-last.git)，依赖清单不设置 `rev` 或 tag，跟随仓库默认分支。X9 与 NX5 统一使用同一来源，保留现有修复、纹理批量混合及 NX5 `Pixel` 委托，不按设备另分 Slint 补丁版本。依赖关闭默认桌面后端，启用 `std`、`renderer-software` 和 `compat-1-18`。`fbdev` 的背景缓存与 `nx5-tde` 均启用同源软件 renderer 的 `experimental` 目标缓冲接口。`nx5-tde` 的 ARM 构建额外编译使用仓库内 `third-party/nx5/include/` SDK 头文件的 C 接口，运行时复用已加载的 SDK 会话。
+Slint 固定为官方 1.18.1 加仓库内补丁，不再依赖私有 `slint-last`。`tools/prepare-slint.py` 在 Cargo 解析前下载固定官方提交，校验原始树、补丁 SHA256 和应用后的整棵源码树，准备到忽略目录 `.slint/source`。具体版本、提交、结果树及 17 个包的映射维护在 `patches/slint/manifest.json`；`.cargo/config.toml` 为仓库构建统一覆盖这些包，`.slint/cargo-patch.toml` 为外部业务提供绝对路径覆盖。脚本用锁串行化准备，先在临时目录完成验证再发布；已有修改或版本不符会报错保留。`--offline` 仅验证已有源码，不下载。
+
+NX5、X9 和 F1 共用同一份补丁源码。Slint 关闭默认桌面后端，启用 `std`、`renderer-software` 和 `compat-1-18`；自定义 renderer 路径启用 `experimental`。NX5 MMA 额外启用补丁提供的 Rust-only `external-pixel-buffer`，不能与 FFI 组合。补丁还保留关闭 Parley 复杂文字字典的既有取舍，并包含空图片相等性修复；本次接入不改变设备运行契约。
 
 NX5 的构建默认头文件、观察器链接所需动态库，以及两设备部署用 DejaVu 字体均纳入 [third-party/](../third-party/README.md)，保留来源、版权说明和 SHA256。`NX5_SDK_INCLUDE` 可覆盖默认头文件目录；构建脚本按 package 根目录定位资源，消费方无需设置原开发机器的路径。运行时仍通过 `libVideoDec.so` 和设备动态库搜索路径加载 SDK，不绑定主机资源目录。交叉工具链和 sysroot 仍需按设备配置安装，Rust/Cargo 依赖仍按锁文件获取。
 
 `fontique` 固定到 Slint 当前使用的 0.11.1，并启用 `fontconfig-dlopen`，避免 ARM 构建依赖主机的 Fontconfig 链接配置。没有系统字体库的设备仍需由应用提供字体，例如设置 `SLINT_DEFAULT_FONT` 或在 `.slint` 中导入字体资源。
 
-运行库、软件 renderer、测试所用内部 crate 与 `slint-build` 均引用同一个 Git 地址。`Cargo.lock` 自动记录本次解析的 Git 提交，以支持 `--locked` 和离线复现；这不是依赖清单中的 `rev` 固定。首次构建前联网执行 `cargo fetch --locked`；需要跟进远端更新时执行 `cargo update -p slint`，核对所有 Slint crate 仍来自同一提交后提交更新的锁文件。现有 `=1.18.1` 版本约束仍保留，升级 Slint 版本号时需同步调整相关依赖。
+运行库、renderer、编译器和 `slint-build` 必须全部解析到同一准备目录。依赖清单仍固定 `=1.18.1`；锁文件中的这些包使用 path 来源，不再有私有 Git 提交行。`Cargo.lock` 不校验 path 内容，因此构建前应运行准备脚本做完整性复查，CI 也应如此。首次准备后执行 `cargo fetch --locked` 获取其余依赖；完整接入及更新步骤见[使用指南](getting-started.md)。
 
-后续升级 Slint 时按功能迁移现有补丁；先检查新版是否已有等价实现，再应用仍需要的补丁，保留独立提交以便追踪。本轮增量范围为 `95becfd3d6bc2e840df4956b4004bfef936bfe95..c878901fb9793efc3d515aee37225cbad57de40d`，该范围不代表相对官方 Slint 的全部定制差异。升级验收包括主机 feature 矩阵、缓存/旋转/纹理像素回归、两设备 ARM 构建，以及受影响路径的实机画面、功能和性能对照；补丁应用成功或编译通过不能替代验证。
+后续升级必须先调整固定基线并迁移仍需要的补丁，再同步包映射和锁文件。验收包括准备脚本失败/复用回归、顶层外部业务构建、主机 feature 矩阵、缓存/旋转/纹理回归、目标交叉构建及受影响路径的实机对照；源码树相同或编译成功不能替代实机验证。
 
 该版本还修复文字布局缓存淘汰时未通知重绘依赖的问题：否则持续动画后切页可能保留旧标题，而完整截图仍显示新标题。展示应用的保留缓冲回归见 `test-app/tests/showcase_repaint.rs`。缓存容量限制仍保持不变。
 

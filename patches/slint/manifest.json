@@ -1,0 +1,31 @@
+{
+  "version": "1.18.1",
+  "upstream": {
+    "url": "https://github.com/slint-ui/slint.git",
+    "commit": "372cf0ee5577c3dfec309a45e7b778ba4e81b734",
+    "tree": "b49d21cc696c4aba26074e24fab0e17448fed8da"
+  },
+  "patch": "slint-1.18.1-b62643e.patch",
+  "patch_sha256": "85e3c9a73157aaad250205e500c06559e3eb8c45c586433b1ed2e7a8f5da88b6",
+  "patched_tree": "17ffa560ec9ad91dca05e3be309b7a95e52d2324",
+  "source_commit": "b62643ef757a77733b82832abc38c49b079a9d1b",
+  "packages": {
+    "const-field-offset": "helper_crates/const-field-offset",
+    "const-field-offset-macro": "helper_crates/const-field-offset/macro",
+    "i-slint-backend-linuxkms": "internal/backends/linuxkms",
+    "i-slint-backend-selector": "internal/backends/selector",
+    "i-slint-backend-testing": "internal/backends/testing",
+    "i-slint-backend-winit": "internal/backends/winit",
+    "i-slint-common": "internal/common",
+    "i-slint-compiler": "internal/compiler",
+    "i-slint-core": "internal/core",
+    "i-slint-core-macros": "internal/core-macros",
+    "i-slint-renderer-skia": "internal/renderers/skia",
+    "i-slint-renderer-software": "internal/renderers/software",
+    "slint": "api/rs/slint",
+    "slint-build": "api/rs/build",
+    "slint-macros": "api/rs/macros",
+    "vtable": "helper_crates/vtable",
+    "vtable-macro": "helper_crates/vtable/macro"
+  }
+}

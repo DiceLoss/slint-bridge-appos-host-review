@@ -5,3 +5,23 @@ linker = "/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linu
 CC_arm_unknown_linux_gnueabi = "/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-gcc"
 CXX_arm_unknown_linux_gnueabi = "/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-g++"
 AR_arm_unknown_linux_gnueabi = "/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-ar"
+
+# Prepared by tools/prepare-slint.py; all Slint packages share one source tree.
+[patch.crates-io]
+const-field-offset = { path = ".slint/source/helper_crates/const-field-offset" }
+const-field-offset-macro = { path = ".slint/source/helper_crates/const-field-offset/macro" }
+i-slint-backend-linuxkms = { path = ".slint/source/internal/backends/linuxkms" }
+i-slint-backend-selector = { path = ".slint/source/internal/backends/selector" }
+i-slint-backend-testing = { path = ".slint/source/internal/backends/testing" }
+i-slint-backend-winit = { path = ".slint/source/internal/backends/winit" }
+i-slint-common = { path = ".slint/source/internal/common" }
+i-slint-compiler = { path = ".slint/source/internal/compiler" }
+i-slint-core = { path = ".slint/source/internal/core" }
+i-slint-core-macros = { path = ".slint/source/internal/core-macros" }
+i-slint-renderer-skia = { path = ".slint/source/internal/renderers/skia" }
+i-slint-renderer-software = { path = ".slint/source/internal/renderers/software" }
+slint = { path = ".slint/source/api/rs/slint" }
+slint-build = { path = ".slint/source/api/rs/build" }
+slint-macros = { path = ".slint/source/api/rs/macros" }
+vtable = { path = ".slint/source/helper_crates/vtable" }
+vtable-macro = { path = ".slint/source/helper_crates/vtable/macro" }

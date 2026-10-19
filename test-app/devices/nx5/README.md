@@ -8,7 +8,7 @@
 
 构建默认使用 [仓库内 SDK 头文件与动态库](../../../third-party/README.md)，无需设置 `NX5_SDK_INCLUDE`。新机器仍需安装本文件指定的交叉工具链。字体及版权说明使用 `third-party/fonts/` 中的文件；部署 SDK 时保留版本库与 `libVideoDec.so` 别名，设备上的 `LD_LIBRARY_PATH` 指向实际部署目录。
 
-以下命令从仓库根执行：
+首次先运行 `python3 tools/prepare-slint.py` 和 `cargo fetch --locked`，准备固定的官方 Slint 补丁源码及依赖。以下命令从仓库根执行：
 
 ```sh
 # 纯软件测试程序。

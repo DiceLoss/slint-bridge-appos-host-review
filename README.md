@@ -12,7 +12,9 @@
 slint_bridge/
 ├── Cargo.toml / Cargo.lock    # 根库 + test-app workspace
 ├── build.rs                  # 可选 NX5 TDE 原生桥构建
-├── .cargo/                   # ARM 工具链和 NX5 / X9 CPU 预设
+├── .cargo/                   # ARM 工具链、CPU 预设及 Slint 来源覆盖
+├── patches/slint/            # 官方 1.18.1 基线、补丁与摘要
+├── tools/prepare-slint.py    # 下载、校验并准备统一 Slint 源码
 ├── src/
 │   ├── lib.rs                # Config、init、Error、Backend
 │   ├── runtime.rs            # UI 事件循环与调度
@@ -39,15 +41,24 @@ slint_bridge/
 
 ## 接入库
 
-适配代码集中在本仓库；NX5 SDK 所需头文件、动态库及部署字体保存在 [third-party/](third-party/README.md)，构建脚本默认使用仓库内资源。当前从 [Slint 仓库](http://192.168.253.238/wshl/slint-last.git) 获取同源 Slint / 软件 renderer，依赖清单不指定提交哈希；该源码包含所需扩展，不能只凭相同版本号替换为另一个来源。首次构建前联网执行 `cargo fetch --locked`，之后可使用文档中的离线构建命令。
+适配代码、NX5 SDK、字体和 Slint 补丁都在本仓库中。首次构建先运行：
+
+```sh
+python3 tools/prepare-slint.py
+cargo fetch --locked
+```
+
+准备脚本从官方获取固定的 Slint 1.18.1，校验并应用补丁到忽略目录 `.slint/source`，不依赖私有 `slint-last` 仓库。之后从本仓库根运行普通 Cargo 命令；离线复查用 `python3 tools/prepare-slint.py --offline`。首次下载需要 GitHub 网络及 Cargo 依赖缓存准备，完整步骤见[使用指南](docs/getting-started.md)。
+
+外部业务可将本仓库放在业务目录旁，使用同一个 checkout 中的库、准备脚本和补丁：
 
 ```toml
 [dependencies]
-slint-bridge = { git = "http://192.168.253.238/wshl/slint_bridge.git", default-features = false, features = ["nx5-tde"] }
-slint = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
+slint-bridge = { path = "../slint_bridge", default-features = false, features = ["nx5-tde"] }
+slint = { version = "=1.18.1", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
 ```
 
-上例直接为业务应用启用 NX5 TDE，不需要将适配层源码放入业务目录，也不需要再定义应用 feature 转发。X9 将依赖的 `features` 改为 `["fbdev"]`；需要同一应用切换设备时使用 [业务模板](docs/getting-started.md#在自己的-rust-应用中接入)。本仓库的库和 `test-app` 默认均不选板，运行仓库构建命令时必须显式传 `--features`，具体分层规则见 [平台说明](docs/software-platform.md#构建依赖)。
+业务工程每条 Cargo 命令都传入准备脚本生成的顶层覆盖配置，例如 `cargo --config ../slint_bridge/.slint/cargo-patch.toml build`。依赖库的 Cargo 配置不会自动传递给业务 workspace，不能省略这一步。继续使用适配层 Git 依赖的条件及完整业务模板见[业务接入](docs/getting-started.md#在自己的-rust-应用中接入)。X9 将板级 feature 改为 `fbdev`；库和 `test-app` 默认均不选板。
 
 在 UI 线程、创建 Slint 根组件前安装平台：
 
