@@ -151,3 +151,176 @@ fn offscreen_fill_cache() {
         started.elapsed().as_millis()
     );
 }
+
+slint::slint! {
+    export component BlendScene inherits Window {
+        width: 320px; height: 240px;
+        background: base;
+        in property <color> base: #234567;
+        in property <image> picture;
+        in property <float> opacity-value: 1;
+        Rectangle { x: 9px; y: 7px; width: 281px; height: 171px; clip: true;
+            Image { x: -5px; y: -3px; width: 300px; height: 160px;
+                source: root.picture; opacity: root.opacity-value; image-fit: fill; }
+        }
+    }
+}
+
+#[test]
+#[ignore = "F1-only offscreen image/cache test; SD deployment and no display test load"]
+fn offscreen_texture_cache() {
+    use super::super::{Buffer, DrawTextureArgs};
+    use slint::platform::software_renderer::{MinimalSoftwareWindow, RepaintBufferType};
+    use slint::{ComponentHandle, Image, Rgba8Pixel, SharedPixelBuffer};
+    use std::{cell::Cell, rc::Rc};
+    struct Platform(Rc<MinimalSoftwareWindow>);
+    impl slint::platform::Platform for Platform {
+        fn create_window_adapter(
+            &self,
+        ) -> Result<Rc<dyn slint::platform::WindowAdapter>, slint::PlatformError> {
+            Ok(self.0.clone())
+        }
+    }
+    struct Observed {
+        native: Native,
+        calls: Rc<Cell<usize>>,
+        uploads: Rc<Cell<usize>>,
+    }
+    impl Canvas for Observed {
+        fn pixels(&self) -> &[PremultipliedRgbaColor] {
+            self.native.pixels()
+        }
+        fn pixels_mut(&mut self) -> &mut [PremultipliedRgbaColor] {
+            self.native.pixels_mut()
+        }
+        fn texture(
+            &mut self,
+            args: &DrawTextureArgs,
+            rects: &[Rect],
+            slot: usize,
+            upload: bool,
+        ) -> Result<bool, String> {
+            let result = self.native.texture(args, rects, slot, upload);
+
+            if let Err(error) = &result
+                && self.native.buffer.quarantined
+            {
+                eprintln!("F1_GE_QUARANTINED pid={} error={error}", std::process::id());
+                loop {
+                    std::thread::park();
+                }
+            }
+            if matches!(result, Ok(true)) {
+                self.calls.set(self.calls.get() + 1);
+                self.uploads.set(self.uploads.get() + usize::from(upload));
+            }
+            result
+        }
+    }
+    let window = MinimalSoftwareWindow::new(RepaintBufferType::NewBuffer);
+    slint::platform::set_platform(Box::new(Platform(window.clone()))).unwrap();
+    let scene = BlendScene::new().unwrap();
+    scene.show().unwrap();
+    window.set_size(slint::PhysicalSize::new(320, 240));
+    let calls = Rc::new(Cell::new(0));
+    let uploads = Rc::new(Cell::new(0));
+    let mut buffer = Buffer::new(320, 240).unwrap();
+    buffer.canvas = Box::new(Observed {
+        native: Native::new(320, 240).unwrap(),
+        calls: calls.clone(),
+        uploads: uploads.clone(),
+    });
+    let mut max_delta = 0u8;
+    let mut frames = 0;
+    for premul in [true, false] {
+        for opaque_target in [true, false] {
+            scene.set_base(slint::Color::from_argb_u8(
+                if opaque_target { 255 } else { 128 },
+                35,
+                69,
+                103,
+            ));
+            let mut source = SharedPixelBuffer::<Rgba8Pixel>::new(300, 160);
+            for (i, p) in source.make_mut_slice().iter_mut().enumerate() {
+                let a = (i * 13 % 256) as u8;
+                let c = |v: u8| {
+                    if premul {
+                        (u16::from(v) * u16::from(a) / 255) as u8
+                    } else {
+                        v
+                    }
+                };
+                *p = Rgba8Pixel {
+                    r: c((i * 3) as u8),
+                    g: c((i * 7) as u8),
+                    b: c((i * 11) as u8),
+                    a,
+                };
+            }
+            for opacity in [1., 0.5, 0.01, 0.99, 0.] {
+                scene.set_opacity_value(opacity);
+                scene.set_picture(if premul {
+                    Image::from_rgba8_premultiplied(source.clone())
+                } else {
+                    Image::from_rgba8(source.clone())
+                });
+                for pass in 0..3 {
+                    if pass == 2 {
+                        source.make_mut_slice()[1025] = Rgba8Pixel {
+                            r: 0,
+                            g: 0,
+                            b: 0,
+                            a: 0,
+                        };
+                        scene.set_picture(if premul {
+                            Image::from_rgba8_premultiplied(source.clone())
+                        } else {
+                            Image::from_rgba8(source.clone())
+                        });
+                    }
+                    let before = calls.get();
+                    let mut expected = vec![PremultipliedRgbaColor::default(); 320 * 240];
+                    window.request_redraw();
+                    window.draw_if_needed(|renderer| {
+                        renderer.render(&mut expected, 320);
+                        buffer.render(renderer).unwrap();
+                    });
+                    if opaque_target && opacity >= 0.5 {
+                        assert!(
+                            calls.get() > before,
+                            "hardware path was not exercised: premul={premul} opaque={opaque_target} opacity={opacity} corner_alpha={}",
+                            buffer.pixels()[0].alpha
+                        );
+                    }
+                    if !opaque_target {
+                        assert_eq!(
+                            calls.get(),
+                            before,
+                            "transparent destination must use software"
+                        );
+                    }
+                    for (a, b) in expected.iter().zip(buffer.pixels()) {
+                        for (a, b) in bytes(*a).into_iter().zip(bytes(*b)) {
+                            let d = a.abs_diff(b);
+                            max_delta = max_delta.max(d);
+                            assert!(
+                                d <= u8::from(opaque_target),
+                                "delta={d} premul={premul} opaque={opaque_target} opacity={opacity}"
+                            );
+                        }
+                    }
+                    frames += 1;
+                }
+            }
+        }
+    }
+    assert!(
+        calls.get() > uploads.get(),
+        "stable images must reuse source DMA pixels"
+    );
+    eprintln!(
+        "F1_GE_TEXTURE_DONE frames={frames} calls={} uploads={} max_delta={max_delta}",
+        calls.get(),
+        uploads.get()
+    );
+}

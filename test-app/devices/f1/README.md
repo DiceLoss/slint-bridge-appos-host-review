@@ -8,7 +8,9 @@
 [镜像分析](../../../docs/f1-kernel-analysis.md) 的限制仍成立。
 
 [设备调查](../../../docs/f1-display.md) 保存初始查询与离屏 GE 结果；
-[showcase 实测](../../../docs/f1-showcase.md) 保存本轮显示、性能和内存结果。
+[showcase 实测](../../../docs/f1-showcase.md) 保存初始上屏基线；
+[图片与透明合成优化](../../../docs/f1-optimization.md) 保存后续实机对照。
+G2D 图片源槽最多增加 1 MiB DMA 内存，不复制全屏背景；能力边界见平台说明。
 
 ## 构建
 

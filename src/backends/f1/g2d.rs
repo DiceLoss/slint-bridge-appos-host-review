@@ -1,11 +1,15 @@
-//! Optional GE normal-mode fills on an offscreen RGBA canvas.
-//! Display admission is independent and remains closed. No GE job targets either
-//! scanout page. Transparent/rounded/textured drawing retains Slint semantics.
+//! GE normal-mode fills and bounded image blends on an offscreen RGBA canvas.
+//! No GE job targets either scanout page. Unscaled images use direct CPU rows
+//! or bounded GE blends; other textures and rounded shapes keep Slint rendering.
 use crate::Error;
 use i_slint_renderer_software::{
-    DrawRectangleArgs, PhysicalRegion, PremultipliedRgbaColor, SoftwareRenderer, TargetPixelBuffer,
+    DrawRectangleArgs, DrawTextureArgs, PhysicalRegion, PremultipliedRgbaColor, RenderingRotation,
+    SoftwareRenderer, TargetPixel, TargetPixelBuffer, TextureCacheKey, TexturePixelFormat,
 };
 use slint::Brush;
+
+// Two lazy 512 KiB source slots; no full-screen source duplication.
+const SOURCE_PIXELS: usize = 128 * 1024;
 
 #[cfg(target_arch = "riscv64")]
 mod native;
@@ -24,6 +28,15 @@ struct Rect {
 trait Canvas {
     fn pixels(&self) -> &[PremultipliedRgbaColor];
     fn pixels_mut(&mut self) -> &mut [PremultipliedRgbaColor];
+    fn texture(
+        &mut self,
+        _args: &DrawTextureArgs,
+        _rects: &[Rect],
+        _slot: usize,
+        _upload: bool,
+    ) -> Result<bool, String> {
+        Ok(false)
+    }
     fn fill(&mut self, _color: PremultipliedRgbaColor, _rects: &[Rect]) -> Result<bool, String> {
         Ok(false)
     }
@@ -44,6 +57,14 @@ pub(crate) struct Buffer {
     height: u32,
     failed: Option<String>,
     discard: Vec<PremultipliedRgbaColor>,
+    // Retain only the full-canvas immutable source identity, never copied pixels.
+    opaque_background: Option<(TextureCacheKey, bool)>,
+    background_seen: bool,
+    texture_keys: [Option<(TextureCacheKey, u8)>; 2],
+    texture_frames: [u64; 2],
+    frame: u64,
+    #[cfg(test)]
+    texture_hits: usize,
 }
 
 fn allocate(count: usize) -> Result<Vec<PremultipliedRgbaColor>, Error> {
@@ -79,6 +100,13 @@ impl Buffer {
             height,
             failed: None,
             discard,
+            opaque_background: None,
+            background_seen: false,
+            texture_keys: [None, None],
+            texture_frames: [0; 2],
+            frame: 0,
+            #[cfg(test)]
+            texture_hits: 0,
         })
     }
 
@@ -91,7 +119,17 @@ impl Buffer {
         if let Some(error) = &self.failed {
             return Err(Error::AccelerationFailed(error.clone()));
         }
+        self.frame += 1;
+        self.background_seen = false;
         let region = renderer.render_into_buffer(self);
+        for slot in 0..2 {
+            if self.texture_frames[slot] != self.frame {
+                self.texture_keys[slot] = None;
+            }
+        }
+        if !self.background_seen {
+            self.opaque_background = None;
+        }
         match &self.failed {
             Some(error) => Err(Error::AccelerationFailed(error.clone())),
             None => Ok(region),
@@ -173,6 +211,160 @@ impl TargetPixelBuffer for Buffer {
         };
         let rects = self.clipped((0, 0, self.width.into(), self.height.into()), clip.iter());
         self.fill((*color).into(), &rects)
+    }
+
+    fn draw_texture(&mut self, args: &DrawTextureArgs, clip: &PhysicalRegion) -> bool {
+        if self.failed.is_some() {
+            return true;
+        }
+        let source = args.source();
+        if !matches!(
+            source.pixel_format,
+            TexturePixelFormat::Rgba | TexturePixelFormat::RgbaPremultiplied
+        ) || args.rotation != RenderingRotation::NoRotation
+            || args.colorize.is_some()
+            || args.tiling.is_some()
+            || args.dst_width != source.width as usize
+            || args.dst_height != source.height as usize
+            || source.width == 0
+            || source.height == 0
+        {
+            return false;
+        }
+        let row_bytes = source.width as usize * 4;
+        if source.byte_stride < row_bytes
+            || (source.height as usize - 1)
+                .checked_mul(source.byte_stride)
+                .and_then(|n| n.checked_add(row_bytes))
+                .is_none_or(|n| n > source.data.len())
+        {
+            return false;
+        }
+        let (x, y) = (args.dst_x as i64, args.dst_y as i64);
+        let Some(right) = x.checked_add(i64::from(source.width)) else {
+            return false;
+        };
+        let Some(bottom) = y.checked_add(i64::from(source.height)) else {
+            return false;
+        };
+        let rects = self.clipped((x, y, right, bottom), clip.iter());
+        let mut opaque = false;
+        if args.alpha == 255
+            && x == 0
+            && y == 0
+            && source.width == self.width
+            && source.height == self.height
+            && let Some(key) = args.source_cache_key()
+        {
+            self.background_seen = true;
+            if self
+                .opaque_background
+                .as_ref()
+                .is_none_or(|entry| entry.0 != key)
+            {
+                let is_opaque = (0..source.height as usize).all(|y| {
+                    source.data[y * source.byte_stride..y * source.byte_stride + row_bytes]
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
+                        .all(|p| p[3] == 255)
+                });
+                self.opaque_background = Some((key, is_opaque));
+            }
+            opaque = self.opaque_background.as_ref().unwrap().1;
+        }
+        let area = rects
+            .iter()
+            .map(|r| u64::from(r.width) * u64::from(r.height))
+            .sum::<u64>();
+        if !opaque
+            && u64::from(source.width) * u64::from(source.height) <= SOURCE_PIXELS as u64
+            && source.width <= 4096
+            && source.height <= 4096
+            && area >= 32768
+            && !rects.is_empty()
+            && area / rects.len() as u64 >= 16384
+            && let Some(key) = args.source_cache_key()
+        {
+            let key = (key, args.alpha);
+            let cached = self
+                .texture_keys
+                .iter()
+                .position(|k| k.as_ref() == Some(&key));
+            let slot = cached.unwrap_or_else(|| {
+                if self.texture_frames[0] <= self.texture_frames[1] {
+                    0
+                } else {
+                    1
+                }
+            });
+            match self.canvas.texture(args, &rects, slot, cached.is_none()) {
+                Ok(true) => {
+                    self.texture_keys[slot] = Some(key);
+                    self.texture_frames[slot] = self.frame;
+                    #[cfg(test)]
+                    {
+                        self.texture_hits += 1;
+                    }
+                    return true;
+                }
+                Ok(false) => {
+                    self.texture_keys[slot] = None;
+                }
+                Err(error) => {
+                    self.failed = Some(error);
+                    return true;
+                }
+            }
+        }
+        let pixels = self.canvas.pixels_mut();
+        for rect in rects {
+            for dy in rect.y..rect.y + rect.height {
+                let at = (i64::from(dy) - y) as usize * source.byte_stride
+                    + (i64::from(rect.x) - x) as usize * 4;
+                let src = &source.data[at..at + rect.width as usize * 4];
+                let start = dy as usize * self.width as usize + rect.x as usize;
+                let dst = &mut pixels[start..start + rect.width as usize];
+                if opaque {
+                    // SAFETY: repr(C) RGBA consists of four initialized bytes.
+                    // Source image and exclusive canvas do not overlap; both
+                    // byte ranges are checked above. Byte copy permits any alignment.
+                    unsafe {
+                        std::ptr::copy_nonoverlapping(
+                            src.as_ptr(),
+                            dst.as_mut_ptr().cast::<u8>(),
+                            src.len(),
+                        );
+                    }
+                } else {
+                    for (dst, src) in dst.iter_mut().zip(src.as_chunks::<4>().0.iter()) {
+                        let scale = |v: u8| (u16::from(v) * u16::from(args.alpha) / 255) as u8;
+                        let color = if source.pixel_format == TexturePixelFormat::RgbaPremultiplied
+                        {
+                            PremultipliedRgbaColor {
+                                red: scale(src[0]),
+                                green: scale(src[1]),
+                                blue: scale(src[2]),
+                                alpha: scale(src[3]),
+                            }
+                        } else {
+                            PremultipliedRgbaColor::from(slint::Color::from_argb_u8(
+                                scale(src[3]),
+                                src[0],
+                                src[1],
+                                src[2],
+                            ))
+                        };
+                        dst.blend(color);
+                    }
+                }
+            }
+        }
+        #[cfg(test)]
+        {
+            self.texture_hits += 1;
+        }
+        true
     }
 
     fn draw_rectangle(&mut self, args: &DrawRectangleArgs, clip: &PhysicalRegion) -> bool {

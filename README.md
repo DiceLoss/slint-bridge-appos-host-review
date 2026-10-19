@@ -64,7 +64,7 @@ slint_bridge::init(Config {
 | Feature | 行为 |
 | --- | --- |
 | `fbdev` | 纯 CPU framebuffer；当前接入 X9 Lombo #452 板级完成契约 |
-| `f1` / `f1-g2d` | F1 RISC-V；使用参考 PAN + WAITFORVSYNC，后者包含 GE normal-mode 画布 |
+| `f1` / `f1-g2d` | F1 RISC-V；使用参考 PAN + WAITFORVSYNC，后者包含 GE 填充与受限图片混合 |
 | `nx5` | NX5 VO 初始化、软件渲染与双页显示 |
 | `nx5-mma-background` | 包含 `nx5-tde` 与同源 Slint 外部像素支持；运行时由 Config 选择背景存储 |
 | `nx5-tde` | 包含 `nx5`，加速大块 RGBA 复制和透明混合；另有 QuickFill 诊断开关 |

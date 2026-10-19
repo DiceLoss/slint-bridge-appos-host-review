@@ -1,6 +1,6 @@
 //! ArtInChip normal-mode UAPI, equivalent to the reference MPP GE operations.
 //! No decoder/VO SDK is loaded. DMA storage is never a physical display page.
-use super::{Canvas, PremultipliedRgbaColor, Rect};
+use super::{Canvas, DrawTextureArgs, PremultipliedRgbaColor, Rect, TexturePixelFormat};
 use std::{
     fs::{File, OpenOptions},
     io,
@@ -42,7 +42,16 @@ struct Fill {
     control: [u32; 10],
 }
 
+#[repr(C)]
+#[derive(Default)]
+struct Bitblt {
+    source: MppBuffer,
+    destination: MppBuffer,
+    control: [u32; 10],
+}
+
 const _: () = {
+    assert!(size_of::<Bitblt>() == 168);
     assert!(size_of::<Allocation>() == 24);
     assert!(size_of::<MppBuffer>() == 64);
     assert!(size_of::<Fill>() == 116);
@@ -147,6 +156,7 @@ impl Drop for DmaBuffer {
 pub(super) struct Native {
     ge: Option<File>,
     buffer: DmaBuffer,
+    sources: [Option<DmaBuffer>; 2],
     width: u32,
     height: u32,
 }
@@ -170,6 +180,7 @@ impl Native {
         Ok(Self {
             ge: Some(ge),
             buffer,
+            sources: [None, None],
             width,
             height,
         })
@@ -182,6 +193,124 @@ impl Canvas for Native {
     }
     fn pixels_mut(&mut self) -> &mut [PremultipliedRgbaColor] {
         self.buffer.pixels_mut()
+    }
+
+    fn texture(
+        &mut self,
+        args: &DrawTextureArgs,
+        rects: &[Rect],
+        slot: usize,
+        upload: bool,
+    ) -> Result<bool, String> {
+        // The hardware path is proven only over opaque destination pixels.
+        // It rounds RGB by at most one; transparent targets keep Slint's exact
+        // premultiplied arithmetic and are not converted in place.
+        for r in rects {
+            for y in r.y..r.y + r.height {
+                let start = (y * self.width + r.x) as usize;
+                if self.buffer.pixels()[start..start + r.width as usize]
+                    .iter()
+                    .any(|p| p.alpha != 255)
+                {
+                    return Ok(false);
+                }
+            }
+        }
+        let data = args.source();
+        if self.sources[slot].is_none() {
+            let Ok(source) = DmaBuffer::new(super::SOURCE_PIXELS) else {
+                return Ok(false);
+            };
+            self.sources[slot] = Some(source);
+        }
+        let source = self.sources[slot].as_mut().unwrap();
+        if upload {
+            for y in 0..data.height as usize {
+                let row = &data.data
+                    [y * data.byte_stride..y * data.byte_stride + data.width as usize * 4];
+                for (dst, src) in source.pixels_mut()
+                    [y * data.width as usize..(y + 1) * data.width as usize]
+                    .iter_mut()
+                    .zip(row.as_chunks::<4>().0)
+                {
+                    let scale = |v: u8| (u16::from(v) * u16::from(args.alpha) / 255) as u8;
+                    *dst = if data.pixel_format == TexturePixelFormat::RgbaPremultiplied {
+                        PremultipliedRgbaColor {
+                            red: scale(src[0]),
+                            green: scale(src[1]),
+                            blue: scale(src[2]),
+                            alpha: scale(src[3]),
+                        }
+                    } else {
+                        PremultipliedRgbaColor::from(slint::Color::from_argb_u8(
+                            scale(src[3]),
+                            src[0],
+                            src[1],
+                            src[2],
+                        ))
+                    };
+                }
+            }
+            source
+                .cache(7)
+                .map_err(|e| format!("F1 GE source flush: {e}"))?;
+        }
+        self.buffer
+            .cache(7)
+            .map_err(|e| format!("F1 GE destination flush: {e}"))?;
+        self.buffer.quarantined = true;
+        source.quarantined = true;
+        for r in rects {
+            let mut blt = Bitblt {
+                source: MppBuffer {
+                    fd: [source.file.as_ref().unwrap().as_raw_fd(), -1, -1],
+                    stride: [data.width * 4, 0, 0],
+                    size: [data.width as i32, data.height as i32],
+                    crop_enabled: 1,
+                    crop: [
+                        (i64::from(r.x) - args.dst_x as i64) as i32,
+                        (i64::from(r.y) - args.dst_y as i64) as i32,
+                        r.width as i32,
+                        r.height as i32,
+                    ],
+                    format: 1,
+                    flags: 1 << 8,
+                    ..Default::default()
+                },
+                // With opaque destination, straight and premultiplied bytes
+                // coincide. Do not enable the driver's destination de/pre-multiply
+                // path, which corrupts this firmware's blended RGB.
+                destination: MppBuffer {
+                    fd: [self.buffer.file.as_ref().unwrap().as_raw_fd(), -1, -1],
+                    stride: [self.width * 4, 0, 0],
+                    size: [self.width as i32, self.height as i32],
+                    crop_enabled: 1,
+                    crop: [r.x as i32, r.y as i32, r.width as i32, r.height as i32],
+                    format: 1,
+                    flags: 0,
+                    ..Default::default()
+                },
+                // alpha_en=1 (header prose is reversed), GE_PD_NONE. The
+                // driver's premultiplied-source branch selects Fs=1,Fd=1-Sa.
+                control: [1, 0, 0, 255, 0, 255, 0, 0, 0, 0],
+            };
+            ioctl(self.ge.as_ref().unwrap(), 0x40a8_4703, &mut blt)
+                .map_err(|e| format!("F1 GE bitblt completion unknown: {e}"))?;
+        }
+        self.buffer
+            .cache(1)
+            .map_err(|e| format!("F1 GE destination invalidate: {e}"))?;
+        self.buffer.quarantined = false;
+        source.quarantined = false;
+        for r in rects {
+            for y in r.y..r.y + r.height {
+                let start = (y * self.width + r.x) as usize;
+                for p in &mut self.buffer.pixels_mut()[start..start + r.width as usize] {
+                    p.alpha = 255;
+                }
+            }
+        }
+        Ok(true)
     }
 
     fn fill(&mut self, color: PremultipliedRgbaColor, rects: &[Rect]) -> Result<bool, String> {

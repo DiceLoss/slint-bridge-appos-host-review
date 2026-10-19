@@ -153,3 +153,18 @@ MemAvailable 不足 16 MiB 时跳过；富列表前不足 8 MiB 时结束并记�
 CPU 用该 phase 首末 ticks 差 / CLK_TCK / 秒数。没有周期 trace 的静态页面
 标记按需绘制，不把面板 IRQ 率当作应用 FPS。实测及已知干扰见
 [F1 showcase 报告](../../../docs/f1-showcase.md)。
+
+## GE 图片混合回归
+
+`backends::f1::g2d::native::hardware::offscreen_texture_cache` 是另一个
+RISC-V ignored 用例，部署和异常隔离要求与离屏填充相同。使用同一条
+`cargo ... test --no-run` 命令构建，将 `--exact` 改为该名称。
+它直接构造原生 GE 画布，经真实 Slint 图片回调比较软件像素，覆盖奇数位置、
+嵌套裁剪、straight/预乘输入、整体透明度、共享源复用和写时复制源变化。
+不透明目标硬件 RGB 容差为 1，透明目标要求软件回退且逐字节一致；
+验证每次硬件完成及缓存同步后的完整画布。成功须同时出现
+`F1_GE_TEXTURE_DONE`、`1 passed`、退出码 0，不能只看进程正常退出。
+该用例不访问 framebuffer，也不主动注入真实 DMA 超时。
+
+性能与内存比较继续使用前述本地采样工具；像素误差的实测口径、
+一次性微基准源码及原始数据获取条件见 [优化记录](../../../docs/f1-optimization.md)。

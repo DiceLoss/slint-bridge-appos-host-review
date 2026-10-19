@@ -128,7 +128,7 @@
   <g id="node-f1" data-graph-role="node" data-node-id="f1" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1040,610,1440,680">
   <rect x="1040.0" y="610.0" width="400.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fdba74" stroke-width="1.8"/>
   <text data-text-role="title" data-full-text="f1/ + g2d/" data-text-max-width="376.0" x="1240.0" y="645.0" text-anchor="middle" class="node-title" font-size="18">f1/ + g2d/</text>
-  <text data-text-role="subtitle" data-full-text="PAN + VSYNC · GE 画布" data-text-max-width="376.0" x="1240.0" y="667.0" text-anchor="middle" class="node-sub" font-size="12">PAN + VSYNC · GE 画布</text>
+  <text data-text-role="subtitle" data-full-text="PAN/VSYNC · GE 混合 · 1 MiB 源槽" data-text-max-width="376.0" x="1240.0" y="667.0" text-anchor="middle" class="node-sub" font-size="12">PAN/VSYNC · GE 混合 · 1 MiB 源槽</text>
   </g>
   <g id="node-cargo" data-graph-role="node" data-node-id="cargo" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,814,370,884">
   <rect x="60.0" y="814.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8"/>

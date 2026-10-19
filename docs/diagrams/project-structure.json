@@ -150,7 +150,7 @@
       "width": 400,
       "height": 70,
       "label": "f1/ + g2d/",
-      "sublabel": "PAN + VSYNC · GE 画布",
+      "sublabel": "PAN/VSYNC · GE 混合 · 1 MiB 源槽",
       "fill": "#fff7ed",
       "stroke": "#fdba74",
       "flat": true

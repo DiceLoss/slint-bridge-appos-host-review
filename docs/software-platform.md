@@ -203,25 +203,39 @@ F1 构建使用 `.cargo/f1.toml` 和 `riscv64gc-unknown-linux-gnu`，链接到
 F1 不切换 Slint 源码、不链接 NX5 SDK，也不加载参考工程中的视频解码库。
 
 `f1-g2d` 用 `/dev/dma_heap/reserved` 分配一份预乘 RGBA 保留画布，
-替代堆画布；另保留一行隔离缓冲。仅接受 GE normal mode=0、version=0x100。
-通过 `IOC_GE_FILLRECT` 在该画布上执行不透明纯色填充，使用
-`MPP_FMT_ABGR_8888`（小端 RGBA 字节）及预乘标记；至少 32768 像素、至多
-16 个裁剪片段时走该路径。边框、圆角、渐变、整体透明度、纹理及较小区域
-沿用软件 renderer，未实现 GE 纹理/混合/缩放。
+通过 `/dev/ge` normal mode 提交同步作业；不加载 MPP 解码/VO SDK，
+不让 GE 访问两张物理显示页。初始化失败且尚未提交作业时可回退堆画布。
+仅接受 normal mode=0、version=0x100，另保留一行故障隔离缓冲。
+不透明、无圆角/边框的纯色矩形在至少 32768 像素、至多 16 个裁剪块时
+仍可走 GE 填充。其余矩形保留软件行为。
 
-normal 模式的绘制 ioctl 本身等待作业完成，不调用只属于命令队列模式的
-`IOC_GE_SYNC`。作业前使用参考 SDK 同样的 DMA-BUF cache flush（flags=7），
-成功后 invalidate（flags=1），所有返回值均检查。构造期间未提交作业，资源
-不可用时可以退回堆画布；运行中的任何 GE/缓存同步错误都使该帧失败，后续
-回调只访问隔离行，不重试或提交残缺画布。作业开始后结果不确定时保留 GE fd、
-DMA-BUF fd 和映射，禁止 CPU 访问。它不读写物理显示页，不改变通用双页调度。
+等尺寸、无旋转/平铺/染色的 RGBA 图片走直接行路径：先与实际裁剪和画布
+求交；预乘输入按整体透明度缩放，straight 输入先合并 alpha 再预乘。
+软件混合与 Slint 的整数规则一致。不透明全屏背景只记住不可变共享源的身份
+及 opacity 判定，直接复制裁剪行，不保存第二份全屏像素；源改变重新检查，
+本帧不再使用时释放该身份引用。缩放、旋转、染色、AlphaMap 等继续交给 Slint。
 
-该路径已通过 [F1 离屏正向验证](f1-display.md#f1-offscreen-ge)：三个尺寸、
-每个尺寸 16 轮，检查不透明填充与 CPU/GE 交替访问后的全缓冲像素。
-本轮另有 [showcase 及静止前台页验证](f1-showcase.md)，尚未验证真实硬件故障或所有帧无撕裂。
-普通 F1-G2D 应用在板级检查后构造该画布；离屏实机用例仍是仅在
-RISC-V 构建中存在、须显式选择的库内 ignored 测试，不扩大公共 API。主机模拟与实机证据分别记录，
-详见 [F1 集成状态](../test-app/devices/f1/README.md)。
+对较小且反复使用的透明图片，GE 混合另保留两个惰性分配的源槽，每槽
+512 KiB、合计最多 1 MiB。源最多 128K 像素，单边不超过 4096；可见面积
+至少 32768 像素，平均每个裁剪块至少 16384 像素。共享源身份及整体 alpha
+共同作为缓存键，按绘制帧复用/替换；不再参与本帧绘制的源身份会释放，
+DMA 槽容量保留到画布销毁。新源先按软件相同顺序准备预乘像素，稳定源不重复上传。
+源分配失败时，在提交作业之前回退软件，未放宽未知完成状态的处理。
+
+硬件混合仅接受全部目标 alpha=255 的区域；透明目标仍用精确软件路径。
+当前固件使用 `alpha_en=1`、`GE_PD_NONE`、预乘 source、非预乘 destination
+标志（不透明目标的两种表示相同）。不能照搬 UAPI 注释中颠倒的 alpha_en
+说明，也不能将两端均设预乘：当前固件的该组合会产生明显色差。
+实机回归支持单次 RGB 误差不超过 1/255；完成并同步后精确恢复目标 alpha=255，
+避免物理页反预乘扩大色差。硬件缩放的采样规则没有与 Slint 对齐，本路径不接管缩放。
+
+源上传后执行 DMA-BUF flush（flags=7）；每次 GE 读改写前 flush 目标，
+阻塞 ioctl 成功后 invalidate（flags=1），不调用 cmdq 的 `IOC_GE_SYNC`。
+任一已提交操作或作业后同步失败会使画布失效并隔离相关 GE、DMA-BUF 与映射；
+不再读写画布，不重试、不软件回退，也不提交该帧。两页提交协议不变。
+离屏填充、图片混合和缓存用例保留为库内 RISC-V ignored 测试；普通主机测试
+不接触硬件。基线与优化结果分别见 [初始 showcase](f1-showcase.md) 和
+[F1 性能优化](f1-optimization.md)，构建及设备操作见 [设备说明](../test-app/devices/f1/README.md)。
 
 两个 package 均要求 Linux、Rust 1.92 或更新版本，默认 features 为空，必须显式选择 `fbdev`、`nx5` 或 `f1`；`nx5-tde` 包含 `nx5`，`nx5-mma-background` 包含 `nx5-tde` 并自动启用 Slint 外部像素 feature。`fbdev` 与上述任一 NX5 feature 组合均编译失败。`nx5-test-hooks` 只用于诊断，不用于正式常驻构建。根 workspace 的默认成员只有库；检查测试工程使用 `-p slint-bridge-test-app`，检查两者使用 `--workspace`。
 
