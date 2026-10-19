@@ -1,6 +1,6 @@
 # Slint Bridge 测试工程
 
-这是独立的 Cargo package `slint-bridge-test-app`，通过 `path = ".."` 依赖适配库，按真实应用的方式调用 `slint_bridge::init(Config)`。它与库处于同一 workspace，共用仓库根的 `Cargo.lock` 和 `target/`。这里使用 path 是为了测试本仓库尚未发布的改动；外部业务应用使用 [接入配置](../docs/getting-started.md#在自己的-rust-应用中接入)，不需要本测试工程。
+这是独立的 Cargo package `slint-bridge-test-app`，通过 `path = ".."` 依赖适配库，按真实应用的方式调用 `slint_bridge::init(Config)`。它与库处于同一 workspace，共用仓库根的 `Cargo.lock` 和 `target/`。这里使用 path 是为了测试本仓库尚未发布的改动；外部业务应用使用 [Git 接入配置](../docs/getting-started.md#在自己的-rust-应用中接入)，不需要本测试工程或本地适配层目录。
 
 界面、应用逻辑、测试素材及设备工具分别存放：
 
@@ -40,7 +40,7 @@ test-app/
     └── nx5/                  # WBC、TDE、翻页等硬件诊断及历史证据重放
 ```
 
-首次先从仓库根运行 `python3 tools/prepare-slint.py` 和 `cargo fetch --locked`；之后以下命令从仓库根目录执行。根目录不加 package 选择时默认只检查适配库；使用 `-p slint-bridge-test-app`、`--manifest-path test-app/Cargo.toml` 或进入本目录可单独选择测试工程，使用 `--workspace` 检查两者。
+以下命令从仓库根目录执行。根目录不加 package 选择时默认只检查适配库；使用 `-p slint-bridge-test-app`、`--manifest-path test-app/Cargo.toml` 或进入本目录可单独选择测试工程，使用 `--workspace` 检查两者。
 
 ## 从最小例子看接入方法
 
@@ -233,7 +233,7 @@ cargo build --locked --offline --release -p slint-bridge-test-app \
 
 NX5 部署与测试后的归档清理统一使用 [deploy.py](tools/nx5/README.md#部署归档清理和截图)，保留当前程序、一份恢复版本及其依赖；截图子命令会即时检查设备可用内存。
 
-NX5 TDE、观察器插件、部署与 MCP 运行命令见 [devices/nx5/README.md](devices/nx5/README.md)。NX5 SDK 头文件/动态库和两设备字体已随 [third-party/](../third-party/README.md) 保存。所有构建均使用准备后的同一份官方 Slint 1.18.1 补丁源码；首次联网准备及更新锁文件的方法见 [平台说明](../docs/software-platform.md#构建依赖)。
+NX5 TDE、观察器插件、部署与 MCP 运行命令见 [devices/nx5/README.md](devices/nx5/README.md)。NX5 SDK 头文件/动态库和两设备字体已随 [third-party/](../third-party/README.md) 保存。所有构建均从仓库配置的同一个 Slint Git 来源解析依赖，不指定 `rev`；首次联网准备及更新锁文件的方法见 [平台说明](../docs/software-platform.md#构建依赖)。
 
 启动、退出、路径、输入和物理页的历史验证统一见 [NX5 验证记录](../docs/nx5-validation.md)；显示合成见 [NX5 显示调查](../docs/nx5-display.md)，性能见 [NX5 性能记录](../docs/nx5-performance.md) 和 [Slint 两设备对照](../docs/slint-optimization.md)。当前操作只采用设备说明中的流程，历史 PID 和测试计数不作为当前运行状态。
 

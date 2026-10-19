@@ -18,7 +18,7 @@ SLINT_EMIT_DEBUG_INFO=1 cargo --config .cargo/x9.toml build --locked --offline -
   -p slint-bridge-test-app --bin showcase
 ```
 
-[.cargo/x9.toml](../../../.cargo/x9.toml) 使用用户提供的 `/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf`，hard-float ABI、Cortex-A7。不要用 NX5 的 `gnueabi` 工具链替代。构建依赖同源 Slint 及旋转截图修复，官方源码与补丁准备方式见平台说明；首次离线构建前先运行 `python3 tools/prepare-slint.py`，再执行 `cargo fetch --locked`。
+[.cargo/x9.toml](../../../.cargo/x9.toml) 使用用户提供的 `/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf`，hard-float ABI、Cortex-A7。不要用 NX5 的 `gnueabi` 工具链替代。构建依赖同源 Slint 及旋转截图修复，Git 来源及更新方式见平台说明；Cargo.lock 记录解析版本，首次离线构建前需联网执行 `cargo fetch --locked`。
 
 ## 部署和运行
 

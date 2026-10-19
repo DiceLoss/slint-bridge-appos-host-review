@@ -2,16 +2,23 @@
 
 本指南用于在新的 Linux 开发机上获取工程、配置交叉编译环境、构建 NX5/X9 示例，以及在业务应用中引用适配层。NX5 和 X9 共用同一个 Slint 来源，使用不同的板级 feature 和 ARM 工具链。设备运行只适用于已经准入验证的硬件与固件，详细契约以 [平台说明](software-platform.md) 为准。
 
-仅在自己的业务工程中使用适配层时，按[业务接入](#在自己的-rust-应用中接入)准备顶层 Cargo 覆盖。本方案只需一个私有仓库，不需要私有 Slint fork；官方源码仍会下载到本地。
+仅在自己的业务工程中使用适配层时，直接按 [业务接入](#在自己的-rust-应用中接入) 配置 Git 依赖即可，无需手动克隆或把适配层源码放入项目目录。前面的仓库克隆步骤用于构建仓库自带示例。
 
 ## 仓库地址
 
 | 仓库 | 地址 | 用途 |
 | --- | --- | --- |
-| 适配层 | [slint_bridge](http://192.168.253.238/wshl/slint_bridge.git) | 库、测试应用、SDK、字体、Slint 补丁和准备脚本 |
-| Slint 官方源码 | [slint-ui/slint](https://github.com/slint-ui/slint) | 固定 1.18.1，具体提交和校验树由 `patches/slint/manifest.json` 管理 |
+| 适配层 | [slint_bridge](http://192.168.253.238/wshl/slint_bridge.git) | Rust 适配库、测试应用、设备工具、NX5 SDK 资源和字体 |
+| Slint | [slint-last](http://192.168.253.238/wshl/slint-last.git) | 与适配层配套的 Slint 运行库、软件 renderer 和构建工具 |
 
-首次准备需要访问适配层内网仓库、GitHub 及 Cargo registry。不要把凭据写入清单或仓库 URL。
+配套 Slint 更新须先发布，再发布引用它的桥接层及锁文件；仅有本地 Slint 提交不能供新机器 `cargo fetch --locked` 获取。
+
+两个地址都需要开发机能访问 `192.168.253.238`。如服务器要求认证，先配置 Git 的账户凭据；不要把密码或令牌写入 Cargo 清单或仓库 URL。可用下面的只读命令检查访问权限：
+
+```sh
+git ls-remote http://192.168.253.238/wshl/slint_bridge.git HEAD
+git ls-remote http://192.168.253.238/wshl/slint-last.git HEAD
+```
 
 ## 准备开发环境
 
@@ -40,16 +47,19 @@ Rust target 提供 Rust 标准库，不能替代板级 C/C++ 交叉工具链及 
 ```sh
 git clone http://192.168.253.238/wshl/slint_bridge.git
 cd slint_bridge
-python3 tools/prepare-slint.py
 cargo fetch --locked
 (cd third-party && sha256sum -c SHA256SUMS)
 ```
 
-准备脚本先校验补丁 SHA256，再取得官方固定提交、核验原始源码树、应用补丁并核验结果树，最后发布到 `.slint/source`。该目录及生成的 `.slint/cargo-patch.toml` 不入库。本仓库 `.cargo/config.toml` 已包含对应的相对路径覆盖，因此完成准备后可直接运行 Cargo。
+正常构建不需要另行克隆 Slint，Cargo 会从配置的 Slint Git 地址获取源码。`Cargo.toml` 不设置 `rev` 或 tag；`Cargo.lock` 自动记录本次解析的提交，使 `--locked` 和离线构建可复现。普通构建不会自动升级到远端每个新提交。
 
-重复执行会校验并复用源码，不重复下载或打补丁。`python3 tools/prepare-slint.py --offline` 不联网；源码尚未准备时明确失败。源码被修改、补丁摘要错误或版本不匹配时保留现有文件并报错，不自动覆盖。准备与发布使用本地锁和临时目录，失败时不发布半成品。
+如果 Cargo 获取私有 Git 依赖时需要复用已经配置好的 Git CLI 凭据，可执行：
 
-Cargo registry 依赖仍需通过 `cargo fetch --locked` 获取；准备 Slint 不等于下载了所有依赖。两者完成后可使用后文的离线构建命令。不要修改 Cargo 全局源码缓存，也不要用 `build.rs` 代替构建前准备。
+```sh
+CARGO_NET_GIT_FETCH_WITH_CLI=true cargo fetch --locked
+```
+
+依赖下载完成后可以使用后文的 `--offline` 命令。新电脑直接运行离线构建而没有先获取依赖，会报缓存缺失。
 
 仓库已经保存以下资源，无需准备原开发机上的其他项目目录：
 
@@ -173,17 +183,7 @@ NX5 endpoint 为 `http://127.0.0.1:19315/mcp`，X9 为 `http://127.0.0.1:19316/m
 
 ## 在自己的 Rust 应用中接入
 
-推荐将 `slint_bridge` 与 `panel-app` 放在同一父目录，业务工程通过 `path` 使用该 checkout，使库代码、准备脚本和补丁保持一致。先从 `panel-app` 目录执行：
-
-```sh
-# 已有相邻 checkout 时无需重复 clone。
-git clone http://192.168.253.238/wshl/slint_bridge.git ../slint_bridge
-python3 ../slint_bridge/tools/prepare-slint.py
-```
-
-下例默认选择 NX5 TDE。X9 构建时关闭默认 feature 后选择 `fbdev`。所有 Slint 包使用精确版本和统一的本地补丁源码。
-
-也可保留 `slint-bridge = { git = "http://192.168.253.238/wshl/slint_bridge.git", ... }`；准备脚本所在 checkout 必须与业务锁定的适配层版本一致，并同样传入生成的 `--config`。需要先发布本次适配层改动，才能从远端消费该版本。适配层依赖自身的 `[patch]` 或 `.cargo/config.toml` 不会自动传给业务根 workspace。
+业务工程直接声明两个 Git 依赖；Cargo 将源码下载到自己的 Git 缓存，不要求业务目录中存在 `slint-bridge/`，也不需要 `path` 依赖。下面的应用默认选择 NX5 TDE，X9 构建时关闭默认 feature 后选择 `fbdev`。所有 Slint 包使用同一 Git 地址，不设置提交哈希。
 
 ### Cargo.toml
 
@@ -201,11 +201,11 @@ nx5-tde = ["nx5", "slint-bridge/nx5-tde"]
 fbdev = ["slint-bridge/fbdev"]
 
 [dependencies]
-slint-bridge = { path = "../slint_bridge", default-features = false }
-slint = { version = "=1.18.1", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
+slint-bridge = { git = "http://192.168.253.238/wshl/slint_bridge.git", default-features = false }
+slint = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
 
 [build-dependencies]
-slint-build = { version = "=1.18.1" }
+slint-build = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git" }
 
 [profile.release]
 lto = "thin"
@@ -262,7 +262,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### 业务工程的交叉编译配置
 
-**依赖库中的 `.cargo/` 不会自动成为业务工程的交叉编译配置。** 在业务工程中创建以下 `.cargo/config.toml`，与命令行传入的 Slint 覆盖配置并用。按实际安装位置修改工具链路径，保持两个 target 的 ABI 参数不变。SDK 头文件随适配层 checkout 或 Git 依赖提供，由库自身定位，不需要复制到业务工程。
+**Git 依赖中的 `.cargo/` 不会自动成为业务工程的交叉编译配置。** 在业务工程中自行创建以下 `.cargo/config.toml` 即可，不需要克隆适配层仓库。按实际安装位置修改工具链路径，保持两个 target 的 ABI 参数不变。SDK 头文件随 Git 依赖提供，由适配层自身定位，不需要复制到业务工程。
 
 ### .cargo/config.toml
 
@@ -289,14 +289,14 @@ CFLAGS_arm_unknown_linux_gnueabihf = "-march=armv7-a -mtune=cortex-a7 -mfpu=neon
 从业务工程根目录执行首次解析，生成并提交业务工程自己的 `Cargo.lock`：
 
 ```sh
-cargo --config ../slint_bridge/.slint/cargo-patch.toml fetch
+cargo fetch
 # NX5 TDE，使用应用默认 feature。
-cargo --config ../slint_bridge/.slint/cargo-patch.toml build --locked --offline --release --target arm-unknown-linux-gnueabi
+cargo build --locked --offline --release --target arm-unknown-linux-gnueabi
 # X9，先关闭默认的 NX5 TDE。
-cargo --config ../slint_bridge/.slint/cargo-patch.toml build --locked --offline --release --target arm-unknown-linux-gnueabihf \
+cargo build --locked --offline --release --target arm-unknown-linux-gnueabihf \
   --no-default-features --features fbdev
 # NX5 纯软件模式，同样先关闭默认的 TDE。
-cargo --config ../slint_bridge/.slint/cargo-patch.toml build --locked --offline --release --target arm-unknown-linux-gnueabi \
+cargo build --locked --offline --release --target arm-unknown-linux-gnueabi \
   --no-default-features --features nx5
 ```
 
@@ -304,25 +304,35 @@ cargo --config ../slint_bridge/.slint/cargo-patch.toml build --locked --offline 
 
 ## 更新代码与 Slint
 
-拉取适配层后先验证准备状态，再获取锁定依赖：
+在适配层仓库中拉取代码后，先获取更新后的锁定依赖：
 
 ```sh
 git pull --ff-only
-python3 tools/prepare-slint.py
 cargo fetch --locked
 ```
 
-本方案固定官方 1.18.1；`cargo update -p slint` 不会下载另一版补丁源码。补丁或上游版本变化时，先保留需要的本地修改并将旧 `.slint/source` 移出，再重新准备。移动仓库目录后也应重跑准备脚本，刷新外部业务使用的绝对路径配置。
+需要主动跟进 Slint 远端更新时执行：
 
-维护者更新 `patches/slint/` 中的补丁、基线提交、补丁摘要及源码树摘要；包映射变化时同步 `.cargo/config.toml`。`Cargo.lock` 记录依赖解析，官方提交及补丁清单保证 path 源码的身份，二者不能互相替代。验证脚本见 `python3 -m unittest discover -s tools/tests -v`。升级时检查上游已包含的修复，迁移剩余补丁；完成 feature 矩阵、ARM 构建和受影响路径的实机验证后再发布。
+```sh
+cargo update -p slint
+```
+
+检查 `Cargo.lock` 中所有 Slint crate 仍来自同一个 Git 来源和提交，完成主机检查、ARM 构建及受影响路径的实机回归后提交锁文件。业务工程更新适配层 Git 依赖时使用 `cargo update -p slint-bridge`，其锁文件独立于适配层仓库。
+
+如果需要修改 Slint 本身，再另行克隆：
+
+```sh
+git clone http://192.168.253.238/wshl/slint-last.git
+```
+
+编辑这个克隆目录不会自动影响 Cargo 的 Git 依赖；不要直接改 Cargo 缓存。将需要使用的修改提交并推送到 Slint 仓库后，再在消费工程更新依赖。升级 Slint 版本号时同步调整所有 `=1.18.1` 约束；补丁迁移约定见 [平台说明](software-platform.md#构建依赖)。
 
 ## 常见配置问题
 
 | 现象 | 检查项 |
 | --- | --- |
-| 缺少 `.slint/source` 或 `external-pixel-buffer` | 先准备源码；外部业务检查是否漏传 `--config`，不要改用未经补丁的官方包 |
-| Git/Cargo 不能访问仓库 | 内网适配层、GitHub、registry 的连通性及 Git 凭据 |
-| 离线构建提示找不到依赖或提交 | 先运行准备脚本，再获取 Cargo 依赖；业务工程的命令还须携带生成的 `--config` |
+| Git/Cargo 不能访问仓库 | 内网连通性、两个 URL 的访问权限、Git 凭据；需要时使用 Git CLI 获取依赖 |
+| 离线构建提示找不到依赖或提交 | 先联网运行 `cargo fetch --locked`；首次新业务工程没有锁文件时使用 `cargo fetch` |
 | 找不到交叉 gcc，或 ELF/浮点 ABI 不匹配 | 检查对应 target 的 linker、CC/CXX/AR 和完整 sysroot，确认没有混用 NX5/X9 工具链 |
 | 报必须选择板级 feature 或 feature 互斥 | `default = []` 时必须传 `--features`；已有默认设备时，切换设备或模式使用 `--no-default-features --features ...`。不要用 `--all-features`；这类错误不表示缺少本地源码目录 |
 | 找不到 `mpi_tde.h` | 检查 `third-party/` 是否完整；清除指向旧机器目录的 `NX5_SDK_INCLUDE` 覆盖 |

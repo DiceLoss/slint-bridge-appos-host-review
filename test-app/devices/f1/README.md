@@ -14,8 +14,6 @@ G2D 图片源槽最多增加 1 MiB DMA 内存，不复制全屏背景；能力�
 
 ## 构建
 
-首次先从仓库根运行 `python3 tools/prepare-slint.py`，再执行 `cargo fetch --locked`，见[依赖准备](../../../docs/getting-started.md#获取示例工程和依赖)。
-
 需要 `riscv64gc-unknown-linux-gnu` Rust target 和 `/opt/F1` T-HEAD GCC 10.2.0。
 从仓库根执行，CPU 对照将 `f1-g2d` 改为 `f1`，并另存输出：
 

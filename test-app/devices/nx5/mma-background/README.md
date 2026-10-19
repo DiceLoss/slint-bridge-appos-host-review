@@ -11,8 +11,8 @@ MMA 复用现有 **0 号全尺寸源槽**，不新增分配。
 
 ## 构建
 
-首次运行 `python3 tools/prepare-slint.py`，所有 Slint 包统一使用已校验的官方 1.18.1 补丁源码。
-`nx5-mma-background` 自动启用配套 Slint 的 `external-pixel-buffer`，补丁由准备脚本应用，完成准备后使用普通 Cargo 命令，无需临时修改锁文件。
+所有 Slint 包由 `Cargo.lock` 锁定到同一 Git 来源。
+`nx5-mma-background` 自动启用配套 Slint 的 `external-pixel-buffer`，不需要手工补丁、路径替换或临时修改锁文件。
 Slint 外部像素 feature 为显式 Rust/std 能力，与 FFI 互斥；普通构建不启用它，保持原像素布局。
 
 ```sh
