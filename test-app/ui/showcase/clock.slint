@@ -1,0 +1,53 @@
+component Hand inherits Path {
+    in property <angle> angle;
+    in property <float> reach;
+    in property <float> tail;
+    in property <float> thickness;
+    viewbox-width: 400; viewbox-height: 400;
+    MoveTo { x: 200 + sin(root.angle) * root.reach - cos(root.angle) * root.thickness / 2; y: 200 - cos(root.angle) * root.reach - sin(root.angle) * root.thickness / 2; }
+    LineTo { x: 200 + sin(root.angle) * root.reach + cos(root.angle) * root.thickness / 2; y: 200 - cos(root.angle) * root.reach + sin(root.angle) * root.thickness / 2; }
+    LineTo { x: 200 - sin(root.angle) * root.tail + cos(root.angle) * root.thickness / 2; y: 200 + cos(root.angle) * root.tail + sin(root.angle) * root.thickness / 2; }
+    LineTo { x: 200 - sin(root.angle) * root.tail - cos(root.angle) * root.thickness / 2; y: 200 + cos(root.angle) * root.tail - sin(root.angle) * root.thickness / 2; }
+    Close { }
+}
+
+export component Clock inherits Rectangle {
+    in property <int> seconds;
+    in property <string> time-label;
+    background: @linear-gradient(135deg, #bbd8e0, #81adba);
+    // The software renderer has no box-shadow support. Layer translucent circles.
+    for i in 12: Rectangle {
+        width: dial.width + (24 - i * 2) * 1px; height: self.width;
+        x: dial.x + 9px - (self.width - dial.width) / 2;
+        y: dial.y + 13px - (self.height - dial.height) / 2;
+        border-radius: self.width / 2; background: #173f5209;
+    }
+    dial := Rectangle {
+        width: min(parent.width - 60px, parent.height - 56px);
+        height: self.width;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 - 6px;
+        border-radius: self.width / 2;
+        background: #eeeeec;
+        for n in 12: Text {
+            width: parent.width * 0.17; height: parent.height * 0.16;
+            x: parent.width / 2 + sin(n * 30deg) * parent.width * 0.405 - self.width / 2;
+            y: parent.height / 2 - cos(n * 30deg) * parent.height * 0.405 - self.height / 2;
+            text: n == 0 ? "12" : "" + n;
+            font-size: parent.width * 0.105; font-weight: 400;
+            color: #303230;
+            horizontal-alignment: center; vertical-alignment: center;
+        }
+        hour-hand := Hand { width: 100%; height: 100%; angle: root.seconds / 120.0 * 1deg; reach: 106; tail: 22; thickness: 7; fill: #232624; }
+        minute-hand := Hand { width: 100%; height: 100%; angle: root.seconds / 10.0 * 1deg; reach: 164; tail: 26; thickness: 5; fill: #232624; }
+        second-hand := Hand { width: 100%; height: 100%; angle: mod(root.seconds, 60) * 6deg; reach: 151; tail: 43; thickness: 2; fill: #c95350; }
+        Rectangle { width: parent.width * 0.047; height: self.width; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; border-radius: self.width / 2; background: #b93639;
+            Rectangle { width: parent.width * 0.36; height: self.width; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; border-radius: self.width / 2; background: #272b2b; }
+        }
+    }
+    clock-time := Text {
+        y: parent.height - 28px; width: 100%; height: 20px;
+        text: "LOCAL TIME  /  " + root.time-label;
+        font-size: 11px; color: #244b5c; horizontal-alignment: center;
+    }
+}

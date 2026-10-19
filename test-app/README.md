@@ -11,7 +11,7 @@ test-app/
 ├── src/
 │   ├── lib.rs                 # 生成的界面类型、设备路径配置
 │   ├── main.rs                # display：运动、纹理、暂停/恢复
-│   ├── bin/showcase.rs        # showcase：八页触屏展示与交互测试
+│   ├── bin/showcase.rs        # showcase：九页触屏展示与交互测试
 │   ├── showcase.rs            # 模拟数据、跨页状态、回调与动画时钟
 │   ├── bin/basic.rs           # basic：最小接入示例
 │   ├── bin/init-retry.rs      # NX5 同进程初始化失败与资源清理验证
@@ -23,7 +23,7 @@ test-app/
 │   ├── basic.slint            # 不依赖设备尺寸的基础窗口
 │   ├── display.slint          # 随窗口尺寸布局的运动/纹理场景
 │   ├── showcase.slint         # 展示应用外壳、导航及模态对话框
-│   ├── showcase/              # 六个页面、共享控件及模型类型
+│   ├── showcase/              # 九个页面、共享控件及模型类型
 │   ├── assets/                # 编译时嵌入的图片背景及生成来源
 │   ├── startup.slint          # 可拒绝布局与纯色像素验证
 │   └── alpha.slint            # 半透明色块与黑底参考色
@@ -81,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | 用例 | 运行选择 | 验证内容 |
 | --- | --- | --- |
 | 最小显示 | `--bin basic` | 从公开接口初始化平台并创建窗口 |
-| 完整界面展示 | `--bin showcase -- --touch=/dev/input/event0` | 八页导航、表单、列表、动画、透明区域、交互记录、运行时图片缩放 |
+| 完整界面展示 | `--bin showcase -- --touch=/dev/input/event0` | 九页导航、表单、列表、动画、透明区域、交互记录、运行时图片缩放 |
 | 运动与触摸 | `--bin display -- --touch=/dev/input/event0` | 连续更新；点击暂停、再次点击恢复 |
 | 纹理与透明混合 | `--bin display -- --textures` | 大图、透明图和运动组合；是否实际使用硬件加速由板级统计确认 |
 | MCP 交互 | `display` 加 MCP 构建和运行环境 | 元素树、截图、点击/拖动、输入事件录制 |
@@ -109,8 +109,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | Interaction lab | 三个点击目标、拖动面板、六项交互练习、最近 24 条操作记录 | 点击/拖动区别、页面回调、清空记录 |
 | Image scaling | SVG/PNG 并排预览、50%～200% 缩放滑块、100% 复位 | 运行时尺寸与像素变化、非整数比例、透明边缘、放大裁剪、缩小后脏区清理 |
 | Rich list | 100 张含渐变阴影 PNG、运行时 SVG 图标及多行文本的卡片，横纵切换及回到起点 | 大范围持续滑动、边界夹紧、拖动误触、按稳定 ID 选中首末项 |
+| Clock | 系统本地时间、模拟指针表盘 | 数字布局、秒针更新、时分针角度与页面重入同步 |
 
-Rich list 首次进入时才加载两套 PNG 底图和五个原始 SVG，并建立 100 项模型。1024×600 面板上可视区为 800×340；纵向总长 11992 px、可滚动 11652 px（约 34.3 屏），横向总长 25588 px、可滚动 24788 px（约 31.0 屏）。两套底图交替使用；每张卡片都含 32×32 SVG 主图标、16×16 SVG 箭头和文本，透明边缘与阴影参与合成。每张卡片限定自身裁剪边界，使 renderer 跳过屏外子树，保留原图像、阴影、文字和命中区域。当前固定 100 个卡片实例，没有列表虚拟化；这是本例的负载范围，不代表无限列表的内存特性。方向切换回到起点，选择状态在离开页面后仍保留；侧栏导航高度为 44 px，以容纳八页。
+Clock 按白色圆盘、黑色数字和时分针、红色秒针绘制，配浅蓝背景及阴影；表盘随可用区域等比例缩放。使用 Slint 文字与 Path，无额外表盘位图。显示设备系统的本地时间（含系统时区），秒针每秒跳动，时分针含秒数偏移；进入页面立即同步，离开页面停止更新时间属性。Motion 的暂停不影响时钟；没有联网校时或设置设备时间的行为，设备 RTC/系统时间不准时显示也会不准。
+
+Rich list 首次进入时才加载两套 PNG 底图和五个原始 SVG，并建立 100 项模型。1024×600 面板上可视区为 800×340；纵向总长 11992 px、可滚动 11652 px（约 34.3 屏），横向总长 25588 px、可滚动 24788 px（约 31.0 屏）。两套底图交替使用；每张卡片都含 32×32 SVG 主图标、16×16 SVG 箭头和文本，透明边缘与阴影参与合成。每张卡片限定自身裁剪边界，使 renderer 跳过屏外子树，保留原图像、阴影、文字和命中区域。当前固定 100 个卡片实例，没有列表虚拟化；这是本例的负载范围，不代表无限列表的内存特性。方向切换回到起点，选择状态在离开页面后仍保留；侧栏导航高度为 40 px，以容纳九页。
 
 Controls 预览圆环从顶部顺时针显示配置百分比：0% 只显示底轨，100% 显示完整着色环。关闭输出时仍保留配置进度，并改用灰色；下方线性 Meter 显示关闭后的零输出。修复与设备验证见 [圆环报告](../docs/nx5-validation.md#nx5-controls-ring)。
 
@@ -135,9 +138,9 @@ python3 test-app/tools/check-showcase.py --output target/showcase-check
 SLINT_MCP_PORT=19316 target/debug/showcase --preview --seconds=300
 ```
 
-原生 MCP 地址为 `http://127.0.0.1:19316/mcp`，连接方式见 [MCP 指南](../docs/slint-mcp.md)。自动检查脚本通过原生 MCP 实际操作八页，保存 19 张 PNG（含横向起点/末端/返回，图片 50%、125%、200%、100% 缩放，以及富内容列表横纵两种布局）、元素树、事件记录和检查摘要；它只启动自己的主机进程，不接受设备 endpoint。截图应进一步人工检查排版，脚本通过不等于像素视觉验收。脚本终止自己创建的主机进程，不作为 NX5 SDK 正常退出验证。
+原生 MCP 地址为 `http://127.0.0.1:19316/mcp`，连接方式见 [MCP 指南](../docs/slint-mcp.md)。自动检查脚本通过原生 MCP 实际操作九页，保存 20 张 PNG（含横向起点/末端/返回，图片 50%、125%、200%、100% 缩放，以及富内容列表横纵两种布局）、元素树、事件记录和检查摘要；它只启动自己的主机进程，不接受设备 endpoint。截图应进一步人工检查排版，脚本通过不等于像素视觉验收。脚本终止自己创建的主机进程，不作为 NX5 SDK 正常退出验证。
 
-导航 ID 为 `Showcase::nav-overview`、`nav-controls`、`nav-devices`、`nav-motion`、`nav-media`、`nav-lab`、`nav-scaling`、`nav-rich-list`（各 ID 均带 `Showcase::` 前缀）；页面控件例如 `Controls::level-slider`、`Devices::search-input`、`Motion::motion-toggle`、`Media::alpha-slider`、`Lab::drag-pad`、`Scaling::zoom-slider` 和 `Scaling::zoom-reset`。弹窗关闭/确认 ID 为 `Showcase::dialog-cancel` / `Showcase::dialog-confirm`。横向模式入口为 `Devices::orientation-toggle`，滚动区为 `Devices::horizontal-list`，卡片重复使用 `Devices::device-card`；原生 MCP 只枚举当前可见卡片。重建页面或切换模式后重新查询元素句柄。
+导航 ID 为 `Showcase::nav-overview`、`nav-controls`、`nav-devices`、`nav-motion`、`nav-media`、`nav-lab`、`nav-scaling`、`nav-rich-list`、`nav-clock`（各 ID 均带 `Showcase::` 前缀）；页面控件例如 `Controls::level-slider`、`Devices::search-input`、`Motion::motion-toggle`、`Media::alpha-slider`、`Lab::drag-pad`、`Scaling::zoom-slider` 和 `Scaling::zoom-reset`。弹窗关闭/确认 ID 为 `Showcase::dialog-cancel` / `Showcase::dialog-confirm`。横向模式入口为 `Devices::orientation-toggle`，滚动区为 `Devices::horizontal-list`，卡片重复使用 `Devices::device-card`；原生 MCP 只枚举当前可见卡片。重建页面或切换模式后重新查询元素句柄。
 
 自动横向用例从首项连续滑到末项再返回，在 1024×600 下验证累计移动超过四个可视宽度、单次手势至少跨过 60% 可视宽度、两端夹紧、无纵向漂移及拖动不打开详情，并检查末项/筛选后的稳定 ID 和空状态。横向每次手势单独录制，避免长距离遍历超过原生 MCP 的 1024 条事件环形缓冲。
 

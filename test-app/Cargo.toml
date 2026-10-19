@@ -10,7 +10,7 @@ description = "Standalone usage examples and device validation for slint-bridge"
 [features]
 default = []
 fbdev = ["slint-bridge/fbdev"]
-nx5 = ["slint-bridge/nx5", "dep:libloading", "dep:libc"]
+nx5 = ["slint-bridge/nx5", "dep:libloading"]
 nx5-mma-background = ["nx5-tde", "slint-bridge/nx5-mma-background"]
 nx5-test-hooks = ["nx5-mma-background", "slint-bridge/nx5-test-hooks"]
 nx5-tde = ["nx5", "slint-bridge/nx5-tde"]
@@ -22,7 +22,7 @@ slint = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git
 # Decode the Fluent widgets' embedded SVG icons without a desktop backend.
 i-slint-core = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["image-decoders", "svg"] }
 libloading = { version = "0.8.9", optional = true }
-libc = { version = "0.2.190", optional = true }
+libc = "0.2.190"
 i-slint-backend-testing = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", optional = true, features = ["renderer-software"] }
 
 [build-dependencies]

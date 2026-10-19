@@ -5,6 +5,7 @@ import { Devices } from "showcase/devices.slint";
 import { Motion } from "showcase/motion.slint";
 import { Media } from "showcase/media.slint";
 import { Scaling } from "showcase/scaling.slint";
+import { Clock } from "showcase/clock.slint";
 import { RichList } from "showcase/rich-list.slint";
 import { Lab } from "showcase/lab.slint";
 import { DeviceRow, EventRow } from "showcase/models.slint";
@@ -19,6 +20,8 @@ export component Showcase inherits Window {
     background: transparent;
     in-out property <int> page;
     in property <int> ticks;
+    in property <int> clock-seconds;
+    in property <string> clock-label;
     in property <float> phase;
     in property <int> event-count;
     in property <[float]> samples;
@@ -79,9 +82,9 @@ export component Showcase inherits Window {
     sidebar := Rectangle {
         x: 0; y: 0; width: 174px; height: 100%; background: #112a3b;
         VerticalLayout {
-            padding: 12px; spacing: 7px;
+            padding: 12px; spacing: 6px;
             Rectangle {
-                height: 83px;
+                height: 70px;
                 Rectangle { x: 8px; y: 14px; width: 30px; height: 30px; border-radius: 8px; background: #51dec0; Text { text: "S"; font-size: 21px; font-weight: 800; color: #112a3b; horizontal-alignment: center; vertical-alignment: center; } }
                 Text { x: 47px; y: 14px; text: "SLINT"; font-size: 21px; font-weight: 700; color: white; }
                 Text { x: 8px; y: 57px; text: "B R I D G E  /  S T U D I O"; font-size: 9px; color: #90aaba; }
@@ -94,6 +97,7 @@ export component Showcase inherits Window {
             nav-lab := NavItem { text: "Interaction lab"; number: "06"; selected: root.page == 5; clicked => { root.navigate(5); } }
             nav-scaling := NavItem { text: "Image scaling"; number: "07"; selected: root.page == 6; clicked => { root.navigate(6); } }
             nav-rich-list := NavItem { text: "Rich list"; number: "08"; selected: root.page == 7; clicked => { root.navigate(7); } }
+            nav-clock := NavItem { text: "Clock"; number: "09"; selected: root.page == 8; clicked => { root.navigate(8); } }
             Rectangle { vertical-stretch: 1; }
             Rectangle { height: 66px; border-radius: 8px; background: #1b3546;
                 Text { x: 12px; y: 12px; text: "●  DEMO SESSION"; font-size: 11px; color: #67dfc5; }
@@ -106,8 +110,8 @@ export component Showcase inherits Window {
         Rectangle { y: parent.height - 1px; height: 1px; width: 100%; background: Palette.line; }
         VerticalLayout {
             padding-left: 24px; padding-top: 15px; padding-bottom: 15px;
-            Caption { text: "SLINT SHOWCASE   /   " + (root.page + 1) + " OF 8"; font-size: 10px; }
-            Heading { text: ["The interface, in motion", "Controls & forms", "A connected workspace", "Animation studio", "Images & transparency", "Interaction lab", "Image scaling", "Rich content lists"][root.page]; font-size: 25px; }
+            Caption { text: "SLINT SHOWCASE   /   " + (root.page + 1) + " OF 9"; font-size: 10px; }
+            Heading { text: ["The interface, in motion", "Controls & forms", "A connected workspace", "Animation studio", "Images & transparency", "Interaction lab", "Image scaling", "Rich content lists", "Time, simply"][root.page]; font-size: 25px; }
         }
         if root.width >= 950px: Rectangle { x: parent.width - 163px; y: 25px; width: 140px; height: 30px; border-radius: 15px; background: #e9f4f0;
             Label { text: "●  Interactive demo"; font-size: 11px; color: Palette.teal; horizontal-alignment: center; }
@@ -122,6 +126,7 @@ export component Showcase inherits Window {
         if root.page == 4: Media { overlay: root.overlay; alpha <=> root.alpha; cutout: root.cutout; toggle-cutout => { root.toggle-cutout(); } blend-changed => { root.blend-changed(); } }
         if root.page == 5: Lab { events: root.events; exercised: root.exercised; completed: root.completed; taps: root.taps; drag-count: root.drag-count; drag-x <=> root.drag-x; drag-y <=> root.drag-y; tap(i) => { root.tap(i); } dragged => { root.dragged(); } clear => { root.clear-journal(); } }
         if root.page == 7: RichList { rows: root.rich-rows; backgrounds: root.rich-backgrounds; icons: root.rich-icons; selected-id: root.rich-selected-id; select(id) => { root.select-rich(id); } }
+        if root.page == 8: Clock { seconds: root.clock-seconds; time-label: root.clock-label; }
         if root.page == 6: Scaling { zoom <=> root.image-zoom; png: root.scaling-png; svg: root.scaling-svg; }
     }
     footer := Rectangle {

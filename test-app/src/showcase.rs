@@ -2,7 +2,7 @@ use crate::{DeviceRow, EventRow, Showcase};
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use std::{cell::RefCell, rc::Rc, time::Instant};
 
-const PAGES: [&str; 8] = [
+const PAGES: [&str; 9] = [
     "Overview",
     "Controls",
     "Devices",
@@ -11,12 +11,13 @@ const PAGES: [&str; 8] = [
     "Interaction lab",
     "Image scaling",
     "Rich list",
+    "Clock",
 ];
 
 struct Session {
     events: Rc<VecModel<EventRow>>,
     sequence: i32,
-    visited: u8,
+    visited: u16,
     exercised: [bool; 6],
     tap_targets: u8,
     toast_until: Instant,
@@ -159,6 +160,29 @@ fn configure_rich_list(app: &Showcase) {
     )));
 }
 
+fn update_clock(app: &Showcase) {
+    // SAFETY: localtime_r writes to a valid tm and does not retain either pointer.
+    let local = unsafe {
+        let now = libc::time(std::ptr::null_mut());
+        let mut local = std::mem::MaybeUninit::<libc::tm>::uninit();
+        if libc::localtime_r(&now, local.as_mut_ptr()).is_null() {
+            return;
+        }
+        local.assume_init()
+    };
+    let seconds = local.tm_hour * 3600 + local.tm_min * 60 + local.tm_sec.min(59);
+    if app.get_clock_label().is_empty() || app.get_clock_seconds() != seconds {
+        app.set_clock_seconds(seconds);
+        app.set_clock_label(
+            format!(
+                "{:02}:{:02}:{:02}",
+                local.tm_hour, local.tm_min, local.tm_sec
+            )
+            .into(),
+        );
+    }
+}
+
 pub fn configure(app: &Showcase) -> slint::Timer {
     // The application supplies the background before rendering. A .slint image
     // default decodes eagerly and leaves a second image in the resource cache
@@ -207,10 +231,13 @@ pub fn configure(app: &Showcase) -> slint::Timer {
         if page == 7 {
             configure_rich_list(&app);
         }
+        if page == 8 {
+            update_clock(&app);
+        }
         app.set_page(page);
         let mut state = state.borrow_mut();
         state.visited |= 1 << page;
-        if state.visited == 255 {
+        if state.visited == (1 << PAGES.len()) - 1 {
             state.exercise(&app, 0);
         }
         state.log(&app, format!("Opened {name}"));
@@ -423,6 +450,9 @@ pub fn configure(app: &Showcase) -> slint::Timer {
             if let Some(app) = weak.upgrade() {
                 if !app.get_toast().is_empty() && now >= session.borrow().toast_until {
                     app.set_toast("".into());
+                }
+                if app.get_page() == 8 {
+                    update_clock(&app);
                 }
                 if !app.get_running() || !matches!(app.get_page(), 0 | 3) || app.get_dialog() != 0 {
                     return;

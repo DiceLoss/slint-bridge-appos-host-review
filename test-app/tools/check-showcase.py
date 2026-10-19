@@ -277,6 +277,14 @@ def exercise(client, output):
     client.expect_text("The interface, in motion")
     client.call("start_event_recording", windowHandle=client.window)
     client.screenshot(output, "01-overview")
+    client.click("Showcase::nav-clock")
+    client.expect_text("Time, simply")
+    clock = client.find("Clock::clock-time")
+    before = client.data("get_element_properties", elementHandle=clock)["accessibleLabel"]
+    time.sleep(1.2)
+    after = client.data("get_element_properties", elementHandle=clock)["accessibleLabel"]
+    assert before != after, "Clock must follow wall time"
+    client.screenshot(output, "20-clock")
     client.click("Showcase::nav-controls")
     client.set("Controls::station-input", "MCP Studio")
     client.set("Controls::level-slider", 32)
@@ -472,7 +480,7 @@ def main():
             else:
                 horizontal = exercise(client, args.output)
                 summary = dict(result="passed", scope="host native Slint MCP; no device or evdev validation",
-                               pages=8, screenshots=19, horizontal=horizontal,
+                               pages=9, screenshots=20, horizontal=horizontal,
                                runtime_image_scales=[50, 125, 200, 100])
             args.output.joinpath("summary.json").write_text(json.dumps(summary, indent=2) + "\n")
             print(json.dumps(summary, indent=2))

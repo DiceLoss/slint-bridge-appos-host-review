@@ -215,7 +215,7 @@ fn showcase_state_forms_filtering_and_transparency() {
         app.invoke_tap(target);
     }
     app.invoke_dragged();
-    for page in 0..8 {
+    for page in 0..9 {
         app.invoke_navigate(page);
     }
     assert_eq!(app.get_rich_rows().row_count(), 100);
