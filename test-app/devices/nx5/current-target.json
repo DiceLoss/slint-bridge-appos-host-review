@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "checked_at_utc": "2026-10-17T08:47:47Z",
+  "checked_at_utc": "2026-10-19T01:56:06Z",
   "target": "nx5-usbtty1",
   "serial": {
     "device": "/dev/ttyUSB1",
@@ -46,7 +46,7 @@
     ],
     "pan": [
       0,
-      0
+      600
     ],
     "vo_device_enabled": true,
     "initialization_error_observed": "gui layer region(0,0,1024,600) cannot exceed frame region(0,0)",
@@ -140,9 +140,9 @@
     }
   ],
   "running_ui": {
-    "path": "/tmp/slint-bridge-config-20261017/showcase",
-    "pid": 30636,
-    "starttime_ticks": 26572096,
+    "path": "/tmp/slint-bridge-clock-20261019/showcase",
+    "pid": 5845,
+    "starttime_ticks": 41385958,
     "features": [
       "nx5-mma-background",
       "slint/mcp"
@@ -152,35 +152,35 @@
       "--framebuffer=/dev/fb0",
       "--touch=/dev/input/event0"
     ],
-    "sha256": "8f04381977918714330f10d5fdf66227e06c315c091fa53b43639e65d870c6ce",
-    "log": "/tmp/slint-bridge-config-20261017/live.log",
-    "pid_file": "/tmp/slint-bridge-config-20261017/live.pid",
-    "startup_script": "/tmp/slint-bridge-config-20261017/start.sh",
+    "sha256": "db4fe2d078f2f63d0f5b4cb7169b4e6dfc3976fd4b11471f2bac0a367e214b98",
+    "log": "/tmp/slint-bridge-clock-20261019/live.log",
+    "pid_file": "/tmp/slint-bridge-clock-20261019/live.pid",
+    "startup_script": "/tmp/slint-bridge-clock-20261019/start.sh",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "font": "/run/slint-bridge-display/DejaVuSans.ttf",
     "trace_enabled": false,
     "fault_injection_enabled": false,
-    "bridge_commit": "edcf2f0bf93251601a6452a7d5c8a9a985a229f5",
+    "bridge_commit": "271c590d314bb262557d86ff01cbb7f430b58e3e",
     "slint_commit": "a2cc406ff9e523f729d0ca1adfcc96062136f0d7",
-    "source_state": "Config background storage with external-image dimension update fix; production ELF excludes nx5-test-hooks and passed a separate 150-second hardware run.",
+    "source_state": "Nine-page showcase with a local-time analog clock; production ELF passed 180-second finite NX5 validation and was restarted without a timer, then navigated to Clock through native MCP.",
     "resources": {
-      "rss_kib": 12644,
-      "vm_hwm_kib": 17452,
+      "rss_kib": 12600,
+      "vm_hwm_kib": 17524,
       "threads": 3,
       "tracer_pid": 0,
       "mmz_used_kib": 12760,
       "mmz_blocks": 6,
-      "sample_scope": "Overview resident after native MCP query and screenshot; not the warmed Controls memory comparison"
+      "sample_scope": "Clock resident after native MCP observations, screenshot and archival cleanup"
     },
     "mcp": {
       "device_endpoint": "http://127.0.0.1:9315/mcp",
       "host_endpoint": "http://127.0.0.1:19315/mcp",
-      "verification": "evidence/nx5-config-deploy/2026-10-17/resident-tree.json"
+      "verification": "evidence/nx5-clock/2026-10-19/resident-clock-tree.json"
     },
-    "page": "Overview",
-    "report": "docs/nx5-mma-background.md"
+    "page": "Clock",
+    "report": "docs/nx5-validation.md#nx5-clock"
   },
-  "status": "config_mma_background_showcase_resident",
+  "status": "clock_showcase_resident",
   "previous_target": "192.168.1.152:5555 is the historical device; USB port numbering has changed",
   "notes": [
     "Current target is USB1 / 192.168.1.151, not the historical #22 board.",
@@ -203,7 +203,8 @@
     "2026-10-14 input-latency deployment: a0e880c resident PID 7241, c087071 kept for rollback. Full-alpha automatic input P95 16.88 -> 0.86 ms (1 ms MCP quantization); final showcase list 900 completed presentations at 29 FPS. Ordinary scene render/layout stalls remain. Initial slow replay and rejected initial-axis sample retained separately. Runtime instrumentation/prototype removed, 24 device artifacts archived/cleaned. No firmware, SDK, driver, Slint or boot-service change.",
     "2026-10-14 rich render: 2fddc04 + Slint 9a1a3b1 validated and resident. One 1225593 recovery binary retained; older 8d6bd47, abb2e33 and b1164e4 binaries archived to host with SHA256 before removal. Prior signal-exit reclaims remain separate from the final clean validation window.",
     "2026-10-15 BackgroundWithHoles uses public Slint APIs without Slint changes; 23 physical-page stages and 7 MCP states pass. Old resident PID 22711 stopped with SIGTERM after worker idle; its forced MMZ reclaim is separate from the new clean verification exit. Demo PID 412 left running; 2fddc04 kept for rollback, 1225593 and diagnostic files archived and removed.",
-    "2026-10-17 Config deployment: edcf2f0 / Slint a2cc406, diagnostic three-mode and separate production 150-second runs passed physical pixels and normal resource release. Production PID 30636 runs MMA without trace, fault injection or timer. Previous fixed MMA is recovery; older v2 and historical background-holes ELF were SHA256-archived to the host and removed, with all diagnostic files. Music, SDK and font retained."
+    "2026-10-17 Config deployment: edcf2f0 / Slint a2cc406, diagnostic three-mode and separate production 150-second runs passed physical pixels and normal resource release. Production PID 30636 runs MMA without trace, fault injection or timer. Previous fixed MMA is recovery; older v2 and historical background-holes ELF were SHA256-archived to the host and removed, with all diagnostic files. Music, SDK and font retained.",
+    "2026-10-19 Clock deployment: 271c590 / Slint a2cc406, 180-second production run passed time continuity, physical hand positions, static pixels and normal MMZ release. PID 5845 now resident on Clock, no timer/trace/fault injection. Config edition retained for recovery; older fixed MMA and diagnostic files archived and removed. Device system clock remains 1970 UTC."
   ],
   "previous_serial_device": "/dev/ttyUSB2",
   "serial_recheck_evidence": "evidence/nx5-rich-list/2026-10-14/reboot-restore.json",
@@ -219,7 +220,7 @@
     "task_batch_max_count": 128,
     "task_budget_note": "Checked between callbacks; at least one runs, single callbacks are not preempted. Remaining work stays FIFO."
   },
-  "observation_scope": "Config edition deployed and tested on NX5: diagnostic heap/MMA/known-retired software fallback plus separate production MMA, each 150 seconds; resident identity rechecked after archival cleanup. No new WBC, physical touch, rotation, LCD tear-free certification or unknown-DMA injection.",
+  "observation_scope": "Clock page: 180-second finite run, native MCP wall-time continuity, two stable physical front-page captures across a minute boundary, time-derived hand positions, static-region software reference and normal MMZ release. No new WBC, physical touch or continuous LCD scanout validation.",
   "hardware_regression": {
     "report": "docs/nx5-validation.md#nx5-hardware",
     "evidence": "evidence/nx5-hardware/2026-10-12-a9fd3c8/results.json",
@@ -352,14 +353,14 @@
     }
   },
   "recovery_ui": {
-    "path": "/tmp/slint-bridge-mma-fixed-20261017/showcase",
-    "sha256": "733277125fd47762a27145f0807313f4573f85a354ebc83606695e4ae59eb2d6",
-    "startup_script": "/tmp/slint-bridge-mma-fixed-20261017/start.sh",
+    "path": "/tmp/slint-bridge-config-20261017/showcase",
+    "sha256": "8f04381977918714330f10d5fdf66227e06c315c091fa53b43639e65d870c6ce",
+    "startup_script": "/tmp/slint-bridge-config-20261017/start.sh",
     "library_path": "/tmp/slint-bridge-c03c3bb/lib",
     "font": "/run/slint-bridge-display/DejaVuSans.ttf",
-    "bridge_commit": "cae1f6c9c04d45f50eac401215d43a1cefa152c4",
-    "slint_commit": "93b2ee03af1e53300f4cb09e8138559973f728f9",
-    "procedure": "Recheck display ownership and quiesce/stop the current UI before running sh /tmp/slint-bridge-mma-fixed-20261017/start.sh."
+    "bridge_commit": "edcf2f0bf93251601a6452a7d5c8a9a985a229f5",
+    "slint_commit": "a2cc406ff9e523f729d0ca1adfcc96062136f0d7",
+    "procedure": "Recheck display ownership, quiesce and stop the current UI, then run sh /tmp/slint-bridge-config-20261017/start.sh."
   },
   "alpha_validation": {
     "report": "docs/nx5-display.md#nx5-alpha",
@@ -1310,6 +1311,18 @@
       "procedure": "Recheck display ownership, stop the current UI, then run sh /tmp/slint-bridge-mma-v2-20261016/start.sh.",
       "device_availability": "Binary and startup files archived and SHA256-verified on host, then removed from device; redeploy before recovery",
       "host_archive": "evidence/nx5-config-deploy/2026-10-17/cleanup-final/files/tmp/slint-bridge-mma-v2-20261016/showcase"
+    },
+    {
+      "path": "/tmp/slint-bridge-mma-fixed-20261017/showcase",
+      "sha256": "733277125fd47762a27145f0807313f4573f85a354ebc83606695e4ae59eb2d6",
+      "startup_script": "/tmp/slint-bridge-mma-fixed-20261017/start.sh",
+      "library_path": "/tmp/slint-bridge-c03c3bb/lib",
+      "font": "/run/slint-bridge-display/DejaVuSans.ttf",
+      "bridge_commit": "cae1f6c9c04d45f50eac401215d43a1cefa152c4",
+      "slint_commit": "93b2ee03af1e53300f4cb09e8138559973f728f9",
+      "procedure": "Recheck display ownership and quiesce/stop the current UI before running sh /tmp/slint-bridge-mma-fixed-20261017/start.sh.",
+      "device_availability": "Archived and SHA256-verified on host, then removed from device; redeploy before recovery",
+      "host_archive": "evidence/nx5-clock/2026-10-19/cleanup/files/tmp/slint-bridge-mma-fixed-20261017/showcase"
     }
   ],
   "rich_render_validation": {
@@ -2096,5 +2109,60 @@
     "cleanup_final_archived_files": 64,
     "resident_post_cleanup_evidence": "evidence/nx5-config-deploy/2026-10-17/final-state.txt",
     "resident_mem_available_kib": 36184
+  },
+  "clock_validation": {
+    "report": "docs/nx5-validation.md#nx5-clock",
+    "evidence": "evidence/nx5-clock/2026-10-19/summary.json (local ignored archive, acquired separately)",
+    "source": {
+      "bridge_commit": "271c590d314bb262557d86ff01cbb7f430b58e3e",
+      "slint_commit": "a2cc406ff9e523f729d0ca1adfcc96062136f0d7",
+      "sha256": "db4fe2d078f2f63d0f5b4cb7169b4e6dfc3976fd4b11471f2bac0a367e214b98",
+      "bytes": 11854208,
+      "features": [
+        "nx5-mma-background",
+        "slint/mcp"
+      ],
+      "boot": "4aa4f5d2-8de2-42cb-9c2b-44c3e74d6e2b",
+      "old_pid": 30636,
+      "old_starttime": 26572096
+    },
+    "finite_seconds": 180,
+    "results": {
+      "exit_code": 0,
+      "after_exit_mmz_kib": 4900,
+      "after_exit_mmz_blocks": 2,
+      "new_kernel_lines": 14,
+      "kernel_release_warnings": 0,
+      "clock_consecutive_seconds": 12,
+      "physical": {
+        "clock-a": {
+          "seconds": 68073,
+          "second_hand_angle": 198.3245579210319,
+          "angle_error_degrees": 0.3245579210318965,
+          "red_hand_pixels": 116,
+          "hour_minute_points_passed": true
+        },
+        "clock-b": {
+          "seconds": 68116,
+          "second_hand_angle": 95.76931413289466,
+          "angle_error_degrees": 0.23068586710533623,
+          "red_hand_pixels": 113,
+          "hour_minute_points_passed": true
+        },
+        "static_reference": {
+          "reference_time": "18:54:38",
+          "physical_time": "18:54:33",
+          "compared_pixels": 594262,
+          "max_channel_error": 0,
+          "alpha_exact": true,
+          "excluded": "Hand regions at both recorded times and digital time label; captures are not simultaneous"
+        }
+      }
+    },
+    "resident_observed_consecutive_seconds": 13,
+    "resident_startup_page_note": "Clock selected through native MCP after startup; no new boot service or persistent startup-page option",
+    "system_clock_note": "Device still reports January 1970 UTC. Clock follows device local time; no time or timezone change performed.",
+    "resident_mem_available_kib": 36176,
+    "archived_files_removed": 52
   }
 }

@@ -1,6 +1,6 @@
 {
-  "current_binary": "/tmp/slint-bridge-config-20261017/showcase",
-  "recovery_binary": "/tmp/slint-bridge-mma-fixed-20261017/showcase",
+  "current_binary": "/tmp/slint-bridge-clock-20261019/showcase",
+  "recovery_binary": "/tmp/slint-bridge-config-20261017/showcase",
   "keep": [
     "/tmp/slint-bridge-music3-20261015",
     "/tmp/slint-bridge-c03c3bb/lib",
@@ -30,7 +30,7 @@
     "/tmp/slint-bridge-holes-20261015/live-after-neon-regression.pid",
     "/tmp/slint-bridge-holes-20261015/live-after-pixel-batch.log",
     "/tmp/slint-bridge-holes-20261015/live-after-pixel-batch.pid",
-    "/tmp/slint-bridge-mma-fixed-20261017",
-    "/tmp/slint-bridge-config-20261017"
+    "/tmp/slint-bridge-config-20261017",
+    "/tmp/slint-bridge-clock-20261019"
   ]
 }
