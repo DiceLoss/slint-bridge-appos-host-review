@@ -30,6 +30,8 @@ libloading = { version = "0.8.9", optional = true }
 fontique = { version = "=0.11.1", default-features = false, features = ["fontconfig-dlopen"] }
 slint = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
 i-slint-renderer-software = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "experimental"] }
+i-slint-core = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["image-decoders", "svg"] }
+resvg = { version = "=0.48.1", default-features = false, features = ["text", "raster-images", "svgz"] }
 
 [build-dependencies]
 cc = { version = "1.2", optional = true }

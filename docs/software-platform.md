@@ -105,6 +105,32 @@ flowchart LR
 
 [生命周期回归](../src/tests/framebuffer_lifecycle.rs) 验证首次显示失败后 TDE → SDK 析构与映射释放；[启动回归](../src/tests/runtime.rs) 验证连续失败后的隐藏状态、修正后实际像素、已排队任务、显式退出，以及任务积压/定时器中的延迟窗口创建和循环内显示失败重试。新增用例均先在 `177c18a` 上复现失败，再验证修复通过。
 
+## SVG 资源与栅格缓存
+
+应用在创建 Slint 组件和加载图片前调用已有的 `init(Config)`，随后照常使用 `slint::Image::load_from_data`、`load_from_svg_data`、`load_from_path` 或 `.slint` 的 `@image-url`。没有新增应用侧 SVG 加载、缓存注册或预热接口，也不需要逐张图片调用适配函数。
+
+同源 Slint 的 `Platform::load_svg_image` 是平台实现接口。SVG/SVGZ 的文件、内存数据和嵌入资源在格式识别后由 Slint 调用这个入口；`BridgePlatform` 内部委托给 [svg.rs](../src/svg.rs)，拥有 SVG 解析树、按目标物理尺寸栅格化以及缓存策略。Slint 仍处理通用文件读取、格式识别和原有资源缓存，并提供与 UI 共享的字体解析选项；SVG `<text>` 使用已注册字体。返回结果是标准预乘 RGBA 缓冲，继续走现有软件/TDE/GE 绘制路径。
+
+```mermaid
+flowchart LR
+    A[应用普通 Image / image-url] --> S[Slint 图片入口]
+    S --> P[已安装的 BridgePlatform]
+    P --> V[svg.rs 解析 SVG / SVGZ]
+    V --> I[Slint Image 持有可缩放图像]
+    I --> R[renderer 请求目标物理尺寸]
+    R --> C{bridge 栅格缓存命中?}
+    C -- 是 --> B[共享预乘 RGBA]
+    C -- 否 --> D[按原比例栅格化并更新缓存]
+    D --> B
+    B --> T[现有纹理绘制与提交]
+```
+
+每个平台的缓存最多保留 32 项、合计 2 MiB 像素，每个源只保留最近使用的一个请求尺寸，按 LRU 淘汰。键使用解析树的弱引用身份和目标尺寸，缓存不延长源树寿命；下次未命中时清除失效源。超预算的栅格正常返回而不缓存，预算不限制当次输出或解析树本身。返回像素采用 Slint 的共享缓冲和写时复制，修改某份结果不会污染下一次命中。缓存与图像都由 UI 线程持有，不新增渲染线程或物理页。
+
+平台入口返回 `None` 时 Slint 使用原生解码，返回错误则保留错误，不再静默尝试另一解码器。Slint 中原来的定制 SVG 栅格缓存已移除。未安装 bridge 的平台，以及在 `init()` 之前已创建的图像，仍使用 Slint 原生实现；现有图像不会在初始化时被替换。`showcase --preview` 明确使用 Slint 测试后端，因此走该默认路径；bridge 自动接入由库内真实 `BridgePlatform` 的内存显示回归验证。
+
+回归覆盖普通内存加载、自动识别、文件、SVGZ、`.slint` 嵌入资源和错误输入；比较原生解码与平台解码的四种旋转、缩放、裁剪、透明度、源替换、隐藏及字体像素。缓存上限、源释放、超预算输出、尺寸替换和写时复制分别验证。私有缓存与平台安装回归位于 `src/tests/svg_cache.rs`、`src/tests/svg.rs`，共用测试工程的 `.slint` 场景，不扩大 bridge 公共接口。
+
 ## Framebuffer 软件路径
 
 CPU 图片绘制由 [texture_renderer.rs](../src/texture_renderer.rs) 在 Slint 已有的 `TargetPixelBuffer::draw_texture()` 接口中处理。纯软件板级路径直接使用它；NX5 TDE、F1 GE 先尝试各自加速，fbdev 先尝试既有背景/旋转缓存，再使用这个公共 CPU 路径。已处理的纹理返回成功，避免再由 Slint 重复绘制；NX5 未知 DMA 或等待整帧回放时，不进入新的 CPU 写画布路径。
@@ -273,24 +299,7 @@ NX5 的构建默认头文件、观察器链接所需动态库，以及两设备�
 
 该源码还修复软件 renderer 的旋转截图：原生 `Window::take_snapshot()` 按窗口逻辑方向绘制，随后恢复面板旋转及 repaint 模式，避免 90°/270° 的 stride 断言以及 180° 截图倒置。`test-app/tests/rotation_snapshot.rs` 对四个旋转方向比较完整截图，并核对截图前后物理缓冲绘制一致；X9 原生 MCP 使用同一修复。旋转输出的 SVG 使用旋转前的目标尺寸栅格化，再由纹理路径旋转；避免 90°/270° 先交换栅格尺寸造成二次缩放和边缘失真。相同回归还比较四个方向的 PNG/SVG 全图像素。
 
-该源码对 90°/270°、宽高均不少于 64 像素的 RGB/RGBA 纹理按 32×32 块调用原采样与混合函数，提高源图列读取的缓存局部性；不增加纹理缓存或修改采样坐标。软件 renderer 的 `texture_tiles_tests` 对照旧扫描行路径，覆盖格式、旋转、缩放、透明度、着色和脏区裁剪。X9 阶段耗时与整机复测见 [优化报告](x9-performance.md#x9-optimization)。
-
-早期 Slint 的批量采样方法及 NX5 `Pixel` 委托已由上文的适配层公共 CPU 路径替代，不再从适配层调用扩展的 `blend_sampled_slice`。锁定的 Slint 本身尚未撤销早期优化，未被适配层接管的输入仍走其实现。历史热点计时、像素回归和设备性能保留在[纹理优化报告](slint-optimization.md)；这些数值不代表本次适配层版本的重新实测。
-
-该 Slint 版本还缓存运行时 SVG 的栅格结果：按解析源的弱引用身份和请求的物理尺寸匹配，每个源保留一个尺寸，最多 32 项、像素预算 2 MiB。尺寸或源改变会重新栅格化，超预算结果直接返回而不缓存；缓存不保留解析源树，失效源在插入时清除。返回像素仍采用共享缓冲的写时复制语义。没有 `std` 的构建沿用原有直接栅格化路径。
-
-```mermaid
-flowchart LR
-    S[原始 SVG 与物理尺寸] --> K{弱源身份与尺寸命中?}
-    K -- 是 --> P[复用不可变共享像素]
-    K -- 否 --> R[按原规则栅格化]
-    R --> B{在像素预算内?}
-    B -- 是 --> C[替换该源旧尺寸并按 LRU 限制缓存]
-    B -- 否 --> U[返回本次结果]
-    C --> U
-    P --> D[按原裁剪和透明度绘制]
-    U --> D
-```
+批量混合与旋转分块已由适配层承担，Slint 中的对应优化已撤销；未接管的纹理沿用 Slint 逐像素路径。SVG 解码和栅格缓存通过上文的平台接口接入，Slint 仅保留默认解码及委托机制。历史像素与性能结果见 [纹理优化报告](slint-optimization.md)，不能当作新版本实机验证。
 
 消费方若还有其他库从 crates.io 请求 Slint，应在自己的 workspace 根统一 `[patch.crates-io]` 来源，避免同版本号的不同来源混用；应用的 `slint-build` 也应来自同一树。
 

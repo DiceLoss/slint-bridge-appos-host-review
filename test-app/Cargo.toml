@@ -21,11 +21,13 @@ showcase-preview = ["slint/mcp", "dep:i-slint-backend-testing"]
 [dependencies]
 slint-bridge = { path = "..", default-features = false }
 slint = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
-# Decode the Fluent widgets' embedded SVG icons without a desktop backend.
-i-slint-core = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["image-decoders", "svg"] }
 libloading = { version = "0.8.9", optional = true }
 libc = "0.2.190"
 i-slint-backend-testing = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", optional = true, features = ["renderer-software"] }
+
+[dev-dependencies]
+# Public pixel-layout regression; SVG capabilities come from slint-bridge.
+i-slint-core = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false }
 
 [build-dependencies]
 image = { version = "0.25.10", default-features = false, features = ["png"] }

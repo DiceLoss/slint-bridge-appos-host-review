@@ -128,7 +128,9 @@ fn configure_rich_list(app: &Showcase) {
     app.set_rich_icons(ModelRc::new(VecModel::from(
         icons
             .iter()
-            .map(|data| slint::Image::load_from_svg_data(data).expect("decode rich list SVG"))
+            .map(|data| {
+                slint::Image::load_from_data(data, Some("svg")).expect("decode rich list SVG")
+            })
             .collect::<Vec<_>>(),
     )));
     app.set_rich_rows(ModelRc::new(VecModel::from(
@@ -217,8 +219,11 @@ pub fn configure(app: &Showcase) -> slint::Timer {
         .expect("decode PNG scaling fixture"),
     );
     app.set_scaling_svg(
-        slint::Image::load_from_svg_data(include_bytes!("../ui/assets/scaling-reference.svg"))
-            .expect("decode SVG scaling fixture"),
+        slint::Image::load_from_data(
+            include_bytes!("../ui/assets/scaling-reference.svg"),
+            Some("svg"),
+        )
+        .expect("decode SVG scaling fixture"),
     );
     session.borrow_mut().log(app, "Session started");
 

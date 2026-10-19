@@ -118,7 +118,7 @@ F1 使用已检查固件上的参考 PAN/VSYNC 方式，需先释放原显示所
 
 Clock 按白色圆盘、黑色数字和时分针、红色秒针绘制，配浅蓝背景及阴影；表盘随可用区域等比例缩放。使用 Slint 文字与 Path，无额外表盘位图。显示设备系统的本地时间（含系统时区），秒针每秒跳动，时分针含秒数偏移；进入页面立即同步，离开页面停止更新时间属性。Motion 的暂停不影响时钟；没有联网校时或设置设备时间的行为，设备 RTC/系统时间不准时显示也会不准。 NX5 的部署、指针及物理页验证见[钟表页实测](../docs/nx5-validation.md#nx5-clock)。
 
-Rich list 首次进入时才加载两套 PNG 底图和五个原始 SVG，并建立 100 项模型。1024×600 面板上可视区为 800×340；纵向总长 11992 px、可滚动 11652 px（约 34.3 屏），横向总长 25588 px、可滚动 24788 px（约 31.0 屏）。两套底图交替使用；每张卡片都含 32×32 SVG 主图标、16×16 SVG 箭头和文本，透明边缘与阴影参与合成。每张卡片限定自身裁剪边界，使 renderer 跳过屏外子树，保留原图像、阴影、文字和命中区域。当前固定 100 个卡片实例，没有列表虚拟化；这是本例的负载范围，不代表无限列表的内存特性。方向切换回到起点，选择状态在离开页面后仍保留；侧栏导航高度为 40 px，以容纳九页。
+Rich list 首次进入时才通过普通 `Image::load_from_data` 加载两套 PNG 底图和五个原始 SVG，并建立 100 项模型。1024×600 面板上可视区为 800×340；纵向总长 11992 px、可滚动 11652 px（约 34.3 屏），横向总长 25588 px、可滚动 24788 px（约 31.0 屏）。两套底图交替使用；每张卡片都含 32×32 SVG 主图标、16×16 SVG 箭头和文本，透明边缘与阴影参与合成。每张卡片限定自身裁剪边界，使 renderer 跳过屏外子树，保留原图像、阴影、文字和命中区域。当前固定 100 个卡片实例，没有列表虚拟化；这是本例的负载范围，不代表无限列表的内存特性。方向切换回到起点，选择状态在离开页面后仍保留；侧栏导航高度为 40 px，以容纳九页。
 
 Controls 预览圆环从顶部顺时针显示配置百分比：0% 只显示底轨，100% 显示完整着色环。关闭输出时仍保留配置进度，并改用灰色；下方线性 Meter 显示关闭后的零输出。修复与设备验证见 [圆环报告](../docs/nx5-validation.md#nx5-controls-ring)。
 
@@ -158,13 +158,15 @@ python3 test-app/tools/check-showcase.py --binary target/debug/showcase \
 
 稳定 ID 为 `RichList::listing`、`rich-item`、`orientation-toggle`、`start-button`（均带 `RichList::` 前缀）。
 
+`ui/tests/svg-platform.slint` 是测试工程与库内平台回归共用的普通 SVG 场景，包含嵌入图片、动态图片、透明度、裁剪和缩放。它不调用适配层资源接口。
+
 `tests/showcase.rs` 使用 Slint 内存软件窗口检查表单校验、状态保留、重置取消、键盘编辑、列表筛选、稳定 ID、日志上限及透明开口的实际 RGBA 像素。`tests/showcase_scaling.rs` 在同一个保留缓冲 renderer 中依次切换 50%→100%→125%→200%→125%→50%→100%，检查原始素材尺寸固定、PNG/SVG 实际色块随缩放变化，并与独立全量重绘逐像素对照，覆盖缩小后的残留清除。`tests/showcase_repaint.rs` 另外通过确定性的文字模型更新和独立参考 renderer，验证缓存淘汰后切页标题仍刷新；不会用截图清空被测 renderer 的缓存。`tests/showcase_rich_repaint.rs` 比较 25 个横纵滚动、奇数/小数偏移、首末端、选中、屏外模型修改及重新进入状态的保留缓冲与独立全量重绘，并验证滚动确实改变画面、屏外修改不改变当前画面。默认 feature 矩阵包含这些测试；MCP 交互检查单独运行。这些检查均不代替 evdev、TDE/DMA、物理双页和扫描输出验证。
 
 `tests/texture_blend.rs` 对预乘 RGBA 纹理建立独立整数混合参考：四种旋转、裁剪偏移、透明/半透明/不透明背景，以及保留缓冲重绘逐像素一致；批量采样覆盖全部 256×256 字节乘积、透明和不透明目标、32 像素批次边界与未对齐尾部。X9 release 测试程序还在实机执行，覆盖实际 NEON 代码；性能和部署验证见 [X9 纹理 NEON 报告](../docs/slint-optimization.md#x9-texture-neon)。
 
 NX5 的私有 `Pixel` 包装另由库内 `sampled_pixel_blending_matches_scalar_with_guards` 检查批量委托、采样顺序和切片保护区；实现及验证范围见 [NX5 Pixel 批量纹理混合](../docs/slint-optimization.md#nx5-pixel-batch)。
 
-界面固定使用 Fluent 标准控件，图标以 SVG 数据嵌入二进制；测试工程启用同源 `i-slint-core` 的图像/SVG 解码能力，不引入桌面或 GPU 后端。背景由 `showcase::configure` 在应用未指定 `wallpaper` 时加载；`.slint` 属性不提前解码图片，因此应用可以在配置前选择背景存储。图片背景使用编译时嵌入的 [coastal-background.png](ui/assets/coastal-background.png)，保留的源图为 1638×960 PNG；构建脚本在主机将它转换为 1024×600 RGBA PNG 后嵌入，默认面板不再反复缩放背景，且满足 TDE 复制的尺寸/格式条件。独立 Image scaling 页另用两份未经构建期变换的 256×160 原始 PNG/SVG，运行时加载后由同一尺寸滑块缩放；它与背景优化分开。其他窗口尺寸仍按 `cover` 适配；生成来源与提示词见 [素材说明](ui/assets/README.md)。动画区复用同一图片，卡片与列表行采用半透明底色，保证动画/滚动时图片实际参与绘制。径向 alpha 叠加图仍由 Rust 生成；Layers 透明开口会隐藏背景图片。无需另行部署素材文件，字体仍按设备说明提供。
+界面固定使用 Fluent 标准控件，图标以 SVG 数据嵌入二进制；图像/SVG 能力由 `slint-bridge` 的依赖提供，测试工程仅在像素布局回归的 dev-dependency 中引用 `i-slint-core`，不引入桌面或 GPU 后端。设备应用调用既有 `init()` 后，普通 Slint 加载和 `.slint` 嵌入 SVG 自动经过 bridge 平台实现，不额外注册加载器或调用缓存接口。Image scaling 与 Rich list 共用 `Image::load_from_data(data, Some("svg"))`。主机 `--preview` 使用原有 Slint 测试后端及默认 SVG 解码；平台接入和缓存由库内回归验证，见 [SVG 资源路径](../docs/software-platform.md#svg-资源与栅格缓存)。背景由 `showcase::configure` 在应用未指定 `wallpaper` 时加载；`.slint` 属性不提前解码图片，因此应用可以在配置前选择背景存储。图片背景使用编译时嵌入的 [coastal-background.png](ui/assets/coastal-background.png)，保留的源图为 1638×960 PNG；构建脚本在主机将它转换为 1024×600 RGBA PNG 后嵌入，默认面板不再反复缩放背景，且满足 TDE 复制的尺寸/格式条件。独立 Image scaling 页另用两份未经构建期变换的 256×160 原始 PNG/SVG，运行时加载后由同一尺寸滑块缩放；它与背景优化分开。其他窗口尺寸仍按 `cover` 适配；生成来源与提示词见 [素材说明](ui/assets/README.md)。动画区复用同一图片，卡片与列表行采用半透明底色，保证动画/滚动时图片实际参与绘制。径向 alpha 叠加图仍由 Rust 生成；Layers 透明开口会隐藏背景图片。无需另行部署素材文件，字体仍按设备说明提供。
 
 ## 专用诊断说明
 
