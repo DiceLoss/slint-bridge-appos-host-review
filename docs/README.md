@@ -31,7 +31,7 @@
 | [F1 showcase 实测](f1-showcase.md) | CPU/G2D 对照、原生 MCP、物理前台页、内存与最终部署 |
 | [F1 当前内核镜像分析](f1-kernel-analysis.md) | 固定镜像的 PAN/VSYNC/IRQ 调用链、GE 完成路径、可重放反汇编及旧页退休缺口 |
 | [X9 性能与流水线](x9-performance.md) | 初始基线、旋转/写页、全屏与卡片缓存、渲染热点、线程边界、内存总账、分配跟踪及 MCP 保留归因 |
-| [Slint 纹理优化对照](slint-optimization.md) | X9 批量混合、NX5 兼容性、Pixel 接入及适配层迁移实测 |
+| [Slint 纹理优化对照](slint-optimization.md) | X9 批量混合、NX5 兼容性、Pixel 接入、适配层迁移及 Slint 回退三板复测 |
 
 ## 独立专题
 
