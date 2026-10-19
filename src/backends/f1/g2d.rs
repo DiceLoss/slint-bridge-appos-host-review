@@ -4,7 +4,7 @@
 use crate::Error;
 use i_slint_renderer_software::{
     DrawRectangleArgs, DrawTextureArgs, PhysicalRegion, PremultipliedRgbaColor, RenderingRotation,
-    SoftwareRenderer, TargetPixel, TargetPixelBuffer, TextureCacheKey, TexturePixelFormat,
+    SoftwareRenderer, TargetPixelBuffer, TextureCacheKey, TexturePixelFormat,
 };
 use slint::Brush;
 
@@ -229,7 +229,12 @@ impl TargetPixelBuffer for Buffer {
             || source.width == 0
             || source.height == 0
         {
-            return false;
+            return crate::texture_renderer::draw(
+                args,
+                clip,
+                self.canvas.pixels_mut(),
+                self.width as usize,
+            );
         }
         let row_bytes = source.width as usize * 4;
         if source.byte_stride < row_bytes
@@ -337,10 +342,11 @@ impl TargetPixelBuffer for Buffer {
                         );
                     }
                 } else {
-                    for (dst, src) in dst.iter_mut().zip(src.as_chunks::<4>().0.iter()) {
+                    let mut samples = src.as_chunks::<4>().0.iter();
+                    crate::texture_renderer::blend_sampled_slice(dst, || {
+                        let src = samples.next().unwrap();
                         let scale = |v: u8| (u16::from(v) * u16::from(args.alpha) / 255) as u8;
-                        let color = if source.pixel_format == TexturePixelFormat::RgbaPremultiplied
-                        {
+                        if source.pixel_format == TexturePixelFormat::RgbaPremultiplied {
                             PremultipliedRgbaColor {
                                 red: scale(src[0]),
                                 green: scale(src[1]),
@@ -354,9 +360,8 @@ impl TargetPixelBuffer for Buffer {
                                 src[1],
                                 src[2],
                             ))
-                        };
-                        dst.blend(color);
-                    }
+                        }
+                    });
                 }
             }
         }

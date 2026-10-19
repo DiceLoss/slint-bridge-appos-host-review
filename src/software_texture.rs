@@ -1,7 +1,7 @@
 //! Bounded rotation cache for repeated, unscaled premultiplied image backgrounds.
 use i_slint_renderer_software::{
-    DrawTextureArgs, PhysicalRegion, PremultipliedRgbaColor, RenderingRotation, TargetPixel,
-    TextureCacheKey, TexturePixelFormat,
+    DrawTextureArgs, PhysicalRegion, PremultipliedRgbaColor, RenderingRotation, TextureCacheKey,
+    TexturePixelFormat,
 };
 
 // Two 512 KiB slots: the alternating row/card backgrounds fit without retaining
@@ -131,8 +131,8 @@ impl RotatedCache {
                     .iter()
                     .copied();
                 let dest = (origin.y as usize + row) * stride + origin.x as usize;
-                // Reuse Slint's exact alpha rounding and opaque-batch fast path.
-                PremultipliedRgbaColor::blend_sampled_slice(
+                // Use the adapter's exact alpha rounding and opaque-batch fast path.
+                crate::texture_renderer::blend_sampled_slice(
                     &mut pixels[dest..dest + size.width as usize],
                     || samples.next().unwrap(),
                 );

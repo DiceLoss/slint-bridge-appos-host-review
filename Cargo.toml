@@ -13,13 +13,13 @@ description = "Slint platform support for embedded Linux with explicit display a
 
 [features]
 default = []
-fbdev = ["dep:i-slint-renderer-software"]
+fbdev = []
 f1 = []
-f1-g2d = ["f1", "dep:i-slint-renderer-software"]
+f1-g2d = ["f1"]
 nx5 = ["dep:libloading"]
 nx5-mma-background = ["nx5-tde", "slint/external-pixel-buffer"]
 nx5-test-hooks = ["nx5-mma-background"]
-nx5-tde = ["nx5", "dep:i-slint-renderer-software", "dep:cc"]
+nx5-tde = ["nx5", "dep:cc"]
 
 [dependencies]
 libc = "0.2.190"
@@ -29,7 +29,7 @@ libloading = { version = "0.8.9", optional = true }
 # explicitly by the application via SLINT_DEFAULT_FONT or .slint font imports.
 fontique = { version = "=0.11.1", default-features = false, features = ["fontconfig-dlopen"] }
 slint = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
-i-slint-renderer-software = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", optional = true, default-features = false, features = ["std", "experimental"] }
+i-slint-renderer-software = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "experimental"] }
 
 [build-dependencies]
 cc = { version = "1.2", optional = true }

@@ -17,14 +17,6 @@ impl TargetPixel for Pixel {
         self.0.blend(color);
     }
 
-    fn blend_sampled_slice(slice: &mut [Self], sample: impl FnMut() -> PremultipliedRgbaColor) {
-        // SAFETY: Pixel is a transparent wrapper; layout, alignment and validity
-        // match PremultipliedRgbaColor. The slice retains its exclusive borrow.
-        let pixels =
-            unsafe { std::slice::from_raw_parts_mut(slice.as_mut_ptr().cast(), slice.len()) };
-        PremultipliedRgbaColor::blend_sampled_slice(pixels, sample);
-    }
-
     fn blend_slice(slice: &mut [Self], color: PremultipliedRgbaColor) {
         if color.alpha == 255 {
             slice.fill(Self(color));
@@ -621,11 +613,18 @@ impl TargetPixelBuffer for Buffer {
         self.fill(color.into(), &rects)
     }
     fn draw_texture(&mut self, args: &DrawTextureArgs, clip: &PhysicalRegion) -> bool {
-        let done = self.texture(args, clip);
-        if !done {
-            self.stats.software += 1;
+        if self.fatal.is_some() || self.replay_full {
+            return true;
         }
-        done
+        if self.texture(args, clip) {
+            return true;
+        }
+        self.stats.software += 1;
+        // A failed hardware job must be handled by render() before CPU drawing.
+        if self.fatal.is_some() || self.replay_full {
+            return true;
+        }
+        crate::texture_renderer::draw(args, clip, self.pixels.cpu_mut(), self.width as usize)
     }
 }
 

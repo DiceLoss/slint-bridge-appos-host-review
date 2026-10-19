@@ -60,6 +60,13 @@ impl TargetPixelBuffer for Buffer<'_> {
     }
 
     fn draw_texture(&mut self, args: &DrawTextureArgs, clip: &PhysicalRegion) -> bool {
+        self.draw_cached(args, clip)
+            || crate::texture_renderer::draw(args, clip, self.pixels, self.width)
+    }
+}
+
+impl Buffer<'_> {
+    fn draw_cached(&mut self, args: &DrawTextureArgs, clip: &PhysicalRegion) -> bool {
         if self.cache.rotated.draw(args, clip, self.pixels, self.width) {
             return true;
         }

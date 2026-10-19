@@ -17,6 +17,7 @@ slint_bridge/
 │   ├── lib.rs                # Config、init、Error、Backend
 │   ├── runtime.rs            # UI 事件循环与调度
 │   ├── framebuffer.rs        # 保留画布、双页与脏区
+│   ├── texture_renderer.rs   # CPU 批量混合与旋转纹理分块
 │   ├── software_background.rs # fbdev 不透明背景缓存
 │   ├── software_texture.rs    # 重复图片的等尺寸旋转缓存
 │   ├── presentation.rs       # 通用后台提交与完成通知

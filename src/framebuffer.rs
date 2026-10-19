@@ -694,7 +694,11 @@ impl Framebuffer {
             "at most one rendered frame may wait for submission"
         );
         #[cfg(not(any(feature = "nx5-tde", feature = "f1-g2d", feature = "fbdev")))]
-        let damage = renderer.render(&mut self.retained, self.layout.size.width as usize);
+        let damage = crate::texture_renderer::render(
+            renderer,
+            &mut self.retained,
+            self.layout.size.width as usize,
+        );
         #[cfg(feature = "fbdev")]
         let damage = self.background_cache.render(
             renderer,

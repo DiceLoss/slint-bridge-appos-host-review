@@ -110,6 +110,11 @@
   <text data-text-role="title" data-full-text="backends/mod.rs" data-text-max-width="376.0" x="750.0" y="535.0" text-anchor="middle" class="node-title" font-size="18">backends/mod.rs</text>
   <text data-text-role="subtitle" data-full-text="板级准入 · 完成契约 · 定时精度" data-text-max-width="376.0" x="750.0" y="557.0" text-anchor="middle" class="node-sub" font-size="12">板级准入 · 完成契约 · 定时精度</text>
   </g>
+  <g id="node-texture_renderer" data-graph-role="node" data-node-id="texture_renderer" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="550,610,950,680">
+  <rect x="550.0" y="610.0" width="400.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.8"/>
+  <text data-text-role="title" data-full-text="texture_renderer.rs" data-text-max-width="376.0" x="750.0" y="645.0" text-anchor="middle" class="node-title" font-size="18">texture_renderer.rs</text>
+  <text data-text-role="subtitle" data-full-text="CPU 批量混合 · 32×32 旋转分块" data-text-max-width="376.0" x="750.0" y="667.0" text-anchor="middle" class="node-sub" font-size="12">CPU 批量混合 · 32×32 旋转分块</text>
+  </g>
   <g id="node-nx5" data-graph-role="node" data-node-id="nx5" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1040,280,1440,350">
   <rect x="1040.0" y="280.0" width="400.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fdba74" stroke-width="1.8"/>
   <text data-text-role="title" data-full-text="nx5/mod.rs" data-text-max-width="376.0" x="1240.0" y="315.0" text-anchor="middle" class="node-title" font-size="18">nx5/mod.rs</text>

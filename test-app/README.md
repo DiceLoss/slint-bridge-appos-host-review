@@ -201,6 +201,8 @@ BackgroundWithHoles { source: wallpaper; holes: video-regions; }
 
 主机 `tests/background_holes.rs` 用独立的逐点区域并集判定，核对 22 个连续状态的 RGBA 输出，包含模型原地修改、重叠、越界、整数边界、隐藏恢复、图片替换、前景和弹窗；复用同一渲染缓冲，检查旧像素被修复。实机命令见 [NX5 工具](tools/nx5/README.md#图片背景透明区域的双页检查)，结果见 [实测报告](../docs/nx5-validation.md#nx5-background-holes)。
 
+适配层 CPU 批量混合与旋转分块的像素差分及边界回归位于 `src/tests/texture_renderer.rs`；它使用真实 Slint 绘制入口比较参考输出，不要求扩大库的公开接口。测试工程的 `texture_blend` 继续保留应用级旋转和透明像素检查。
+
 基础窗口适合新设备接入检查；运动/纹理场景使用窗口实际尺寸显示分辨率、安排绘图区和限制运动范围。默认不打开触摸设备，检查暂停/恢复时需指定 `--touch`，或使用 MCP 注入交互。
 
 MCP 使用 Slint 自带功能，不另建截图或输入服务器。稳定元素 ID 为 `App::pause-area` 和 `App::status`。先发现窗口与句柄，再执行以下流程：

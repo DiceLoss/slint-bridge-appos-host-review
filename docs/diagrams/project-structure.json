@@ -104,6 +104,19 @@
       "flat": true
     },
     {
+      "id": "texture_renderer",
+      "kind": "rect",
+      "x": 550,
+      "y": 610,
+      "width": 400,
+      "height": 70,
+      "label": "texture_renderer.rs",
+      "sublabel": "CPU 批量混合 · 32×32 旋转分块",
+      "fill": "#f0fdfa",
+      "stroke": "#5eead4",
+      "flat": true
+    },
+    {
       "id": "nx5",
       "kind": "rect",
       "x": 1040,

@@ -31,6 +31,7 @@ mod runtime;
 mod software_background;
 #[cfg(feature = "fbdev")]
 mod software_texture;
+mod texture_renderer;
 mod wake;
 
 pub use geometry::Rotation;
