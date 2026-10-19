@@ -25,6 +25,7 @@
 | [NX5 MMA 背景验证](nx5-mma-background.md) | 已有源槽共享、内存对照、物理像素与软件回退 |
 | [NX5 验证记录](nx5-validation.md) | 启动/退出失败与修复、真实输入、界面、物理双页及资源清理 |
 | [X9 接入调查](x9-framebuffer.md) | DRM 完成契约、控制台、Type-A 输入、旋转及实际页验证 |
+| [F1 显示接入调查](f1-display.md) | 原应用运行中的只读查询、BGRA8888 与触摸轴、配置时序、参考驱动完成机制及未验证范围 |
 | [X9 性能与流水线](x9-performance.md) | 初始基线、旋转/写页、全屏与卡片缓存、渲染热点、线程边界、内存总账、分配跟踪及 MCP 保留归因 |
 | [Slint 纹理优化对照](slint-optimization.md) | X9 批量混合、NX5 兼容性及 Pixel 接入三轮结果 |
 
