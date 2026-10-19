@@ -16,7 +16,6 @@ slint_bridge/
 ├── src/
 │   ├── lib.rs                # Config、init、Error、Backend
 │   ├── runtime.rs            # UI 事件循环与调度
-│   ├── svg.rs                # 平台自动接管 SVG 解析、栅格化与缓存
 │   ├── framebuffer.rs        # 保留画布、双页与脏区
 │   ├── texture_renderer.rs   # CPU 批量混合与旋转纹理分块
 │   ├── software_background.rs # fbdev 不透明背景缓存
@@ -62,8 +61,6 @@ slint_bridge::init(Config {
 })?;
 // 然后按普通 Slint 应用创建组件并调用 run()。
 ```
-
-SVG/SVGZ 继续使用 Slint 的普通 `Image` 接口或 `.slint` 的 `@image-url`。`init()` 安装的平台自动接管后续 SVG 解码与栅格缓存；应用不调用额外的加载器或缓存注册接口。详见 [SVG 资源路径](docs/software-platform.md#svg-资源与栅格缓存)。
 
 | Feature | 行为 |
 | --- | --- |

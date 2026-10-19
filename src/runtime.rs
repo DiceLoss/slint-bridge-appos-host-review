@@ -139,7 +139,6 @@ pub(crate) struct BridgePlatform {
     timer_quantum: Duration,
     created: Cell<bool>,
     running: Cell<bool>,
-    svg: crate::svg::SvgImages,
 }
 
 impl BridgePlatform {
@@ -181,7 +180,6 @@ impl BridgePlatform {
             timer_quantum: Duration::ZERO,
             created: Cell::new(false),
             running: Cell::new(false),
-            svg: crate::svg::SvgImages::default(),
         }
     }
 
@@ -325,14 +323,6 @@ impl BridgePlatform {
 }
 
 impl Platform for BridgePlatform {
-    fn load_svg_image(
-        &self,
-        data: &[u8],
-        options: &platform::SvgOptions<'_>,
-    ) -> Option<Result<Box<dyn platform::SvgImage>, platform::SvgError>> {
-        Some(self.svg.load(data, options))
-    }
-
     fn create_window_adapter(&self) -> Result<Rc<dyn WindowAdapter>, PlatformError> {
         if self.created.replace(true) {
             return Err(PlatformError::from(

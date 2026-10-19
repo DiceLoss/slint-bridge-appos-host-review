@@ -95,11 +95,6 @@
   <text data-text-role="title" data-full-text="wake.rs + event_wait.rs" data-text-max-width="376.0" x="260.0" y="535.0" text-anchor="middle" class="node-title" font-size="18">wake.rs + event_wait.rs</text>
   <text data-text-role="subtitle" data-full-text="跨线程唤醒 · 事件与期限等待" data-text-max-width="376.0" x="260.0" y="557.0" text-anchor="middle" class="node-sub" font-size="12">跨线程唤醒 · 事件与期限等待</text>
   </g>
-  <g id="node-svg" data-graph-role="node" data-node-id="svg" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,610,460,680">
-  <rect x="60.0" y="610.0" width="400.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8"/>
-  <text data-text-role="title" data-full-text="svg.rs" data-text-max-width="376.0" x="260.0" y="645.0" text-anchor="middle" class="node-title" font-size="18">svg.rs</text>
-  <text data-text-role="subtitle" data-full-text="平台 SVG 解析 / 栅格化 · 有界缓存" data-text-max-width="376.0" x="260.0" y="667.0" text-anchor="middle" class="node-sub" font-size="12">平台 SVG 解析 / 栅格化 · 有界缓存</text>
-  </g>
   <g id="node-framebuffer" data-graph-role="node" data-node-id="framebuffer" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="550,280,950,350">
   <rect x="550.0" y="280.0" width="400.0" height="70.0" rx="10.0" fill="#f0fdfa" stroke="#5eead4" stroke-width="1.8"/>
   <text data-text-role="title" data-full-text="framebuffer.rs" data-text-max-width="376.0" x="750.0" y="315.0" text-anchor="middle" class="node-title" font-size="18">framebuffer.rs</text>

@@ -211,5 +211,4 @@ mod admission;
 mod framebuffer;
 mod input;
 mod runtime;
-mod svg;
 mod wake;

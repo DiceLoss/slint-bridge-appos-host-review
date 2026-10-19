@@ -161,15 +161,3 @@ X9 内核仍有既有 `do protect lock_cnt=1` 信息，原始日志保留；不�
 F1 的参考 PAN/VSYNC 完成约定及旧页退休限制仍见 [F1 说明](../test-app/devices/f1/README.md)。
 原始数据位于 `evidence/slint-texture-revert/2026-10-19/`：NX5 汇总 `summary.json`，F1 汇总 `f1/summary.json`，X9 为 `x9/before-summary.json` 和 `x9/after-summary.json`。
 构建及锁文件、各板 ELF 摘要、MCP 位移记录、资源样本、完成事件、退出日志、恢复与清理记录均在同一档案中；这是被 Git 忽略的本地证据，需另行取得。
-
-<a id="svg-platform-migration"></a>
-
-## 2026-10-19：SVG 平台自动接入的主机验证
-
-Slint `720eda6` 增加 `Platform::load_svg_image`，默认返回 `None` 使用原生解码；原定制栅格缓存移到 bridge 的 `src/svg.rs`。应用通过既有 `init()` 安装平台，普通 Slint `Image` 加载和 `.slint` 嵌入 SVG 自动接入，不新增应用侧注册、预热或 bridge 加载调用。通用文件读取、格式识别、资源缓存及字体选项仍由 Slint 管理；解析树、按物理尺寸栅格化和 2 MiB / 32 项 LRU 策略由 bridge 管理。当前契约见 [SVG 资源路径](software-platform.md#svg-资源与栅格缓存)。
-
-主机先用未缓存实现复现“相同 SVG 两次取像素分配不同”的失败，再验证正式 `BridgePlatform` 安装后普通内存、自动识别、文件、SVGZ 和 `.slint` 嵌入资源复用像素。四种旋转、八个缩放/裁剪/透明/替换/隐藏/文字状态共 32 帧、1,572,864 个像素与 Slint 默认解码逐字节一致；字体通过同一 Slint 字体集合解析。另验证写时复制、每源单尺寸、条目/字节上限、超预算不缓存和弱引用释放。
-
-Slint 的 16 项图片测试及 `std,ffi,svg` 构建通过；bridge 七种 feature 矩阵、fmt、clippy、API 文档，以及 NX5 / X9 / F1 的 release 交叉构建通过。额外的 `libm,svg,unsafe-single-threaded` 检查在修改前 `796ea9f` 和新版本都因 `image.rs` 中既有 `std::eprintln!` 而失败；未在本任务中扩大为无 `std` SVG 支持。本库的 Linux `std` 构建不受此限制。
-
-本地主机原生 MCP 的九页导航、20 张截图、运行时缩放和富列表交互检查通过，并检查了缩放与横向列表的代表截图。该预览使用 Slint 测试后端的默认 SVG 路径，不能替代 bridge 平台回归。本轮没有部署实机或重新测量 FPS、WBC、物理页和真实输入。原始日志、失败负对照和构建记录位于 `evidence/svg-platform/2026-10-19/`，属于被 Git 忽略的本地档案，检出仓库后需另行取得。

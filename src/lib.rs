@@ -31,7 +31,6 @@ mod runtime;
 mod software_background;
 #[cfg(feature = "fbdev")]
 mod software_texture;
-mod svg;
 mod texture_renderer;
 mod wake;
 
