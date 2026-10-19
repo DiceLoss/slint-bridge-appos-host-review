@@ -44,6 +44,11 @@ name = "showcase"
 path = "src/bin/showcase.rs"
 
 [[bin]]
+name = "image-decode"
+path = "src/bin/image-decode.rs"
+required-features = ["f1"]
+
+[[bin]]
 name = "startup-regression"
 path = "src/bin/startup-regression.rs"
 required-features = ["nx5-tde"]

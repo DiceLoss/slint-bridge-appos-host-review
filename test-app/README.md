@@ -68,6 +68,10 @@ F1 集成构建选择 `--features f1` 或 `--features f1-g2d`，二者均通过
 F1 使用已检查固件上的参考 PAN/VSYNC 方式，需先释放原显示所有者；
 构建、SD 卡部署和实测范围见 [F1 设备说明](devices/f1/README.md)。
 
+F1 showcase 在 `init()` 前通过 `slint_bridge::try_decode_png` 尝试加载大背景，以降低与显示画布重叠的内存峰值；`Ok(None)` 才使用 Slint 软件加载。缩放页和富列表的小 PNG 保留软件解码，因为完整加载实测更快；SVG 保留 Slint 路径。`--preview` 始终使用软件图片加载。未知硬件完成错误会打印 `F1_PNG_QUARANTINED` 并保留进程，不自动退出或重新提交。
+
+`--bin image-decode` 使用同一个公开接口进行 CPU/VE 校验和计时，需 `f1` 或 `f1-g2d`，运行前提与命令见 [F1 图片解码验证](tools/f1/README.md#png-解码验证)。
+
 | 项目 | 选择方式 |
 | --- | --- |
 | 通用 framebuffer 软件组合 | `--features fbdev` |

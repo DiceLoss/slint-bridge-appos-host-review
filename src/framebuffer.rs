@@ -232,6 +232,14 @@ impl Layout {
 
     fn write_row(self, source: &[PremultipliedRgbaColor], destination: &mut [u8]) {
         assert_eq!(destination.len(), source.len() * self.bytes_per_pixel);
+        #[cfg(feature = "f1")]
+        if self.bytes_per_pixel == 4
+            && self.alpha_max == 255
+            && self.channels.map(|c| (c.offset, c.length)) == [(16, 8), (8, 8), (0, 8), (24, 8)]
+            && crate::backends::f1::pixels::copy_opaque(source, destination)
+        {
+            return;
+        }
         #[cfg(all(feature = "nx5-tde", target_arch = "arm"))]
         if self.bytes_per_pixel == 4
             && self.channels.map(|c| (c.offset, c.length)) == [(16, 8), (8, 8), (0, 8), (24, 8)]
@@ -367,9 +375,11 @@ mod row_tests {
     fn opaque_rows_and_transparent_fallback_preserve_pixels_and_guards() {
         let (fixed, variable) = crate::tests::info(80, 1, 32);
         let mut layout = Layout::new(&fixed, &variable).unwrap();
-        for length in [0, 1, 15, 16, 17, 31, 32, 33, 63, 64, 65] {
-            for source_offset in 0..4 {
-                let mut storage = vec![0u8; length * 4 + 4];
+        for length in [
+            0, 1, 2, 3, 4, 5, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65,
+        ] {
+            for source_offset in 0..8 {
+                let mut storage = vec![0u8; length * 4 + 8];
                 // SAFETY: repr(C) RGBA has byte alignment, accepts any byte
                 // pattern, and the initialized range holds exactly length pixels.
                 let source = unsafe {

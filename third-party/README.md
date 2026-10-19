@@ -7,7 +7,7 @@
 | `nx5/include/` | TDE/MMZ 和 WBC 构建需要的 `mpi_tde.h`、`mpi_sys.h`、`mpi_vo.h` 及传递依赖；`vd/VoApi.h` 及其依赖保留 Rust VO FFI 的 ABI 依据。共 15 个头文件，来自 LGUI3 的 `c_library/third_party/include/NX5/codec/`。 |
 | `nx5/lib/libVideoDec-1.6.6.so` | 来自同一工程 `c_library/third_party/lib/NX5/codec_rorate/` 的 ARM32 soft-float 厂商 SDK。与现有 NX5 #233 验证使用的库摘要一致；用于构建观察器插件和部署，不在主机执行。 |
 | `nx5/lib/libVideoDec.so` | 指向上述版本库的相对软链接，供动态加载与链接器查找。实际 SONAME 为 `libVideoDec-1.6.6.so`，部署时同时保留版本文件和别名。 |
-| `f1/include/` | 从 `/home/dpower/data/GitLab/slint-f1/lib/g2d/` 原样保存的 `dma-heap.h`、`video/artinchip_ge.h`、`video/mpp_types.h`；用于 F1 normal-mode UAPI 编译校验，保留原 SPDX/版权声明。Rust 路径直接使用内核 ioctl，不依赖视频解码库。 |
+| `f1/include/` | `dma-heap.h`、`video/artinchip_ge.h`、`video/mpp_types.h` 原样来自 `/home/dpower/data/GitLab/slint-f1/lib/g2d/`；新增 `video/artinchip_ve.h` 原样来自[官方 Luban 固定提交](https://github.com/artinchip/luban/blob/13fa021285a307ca345a6b05e0da371b635f18eb/source/linux-5.10/include/uapi/video/artinchip_ve.h)。用于 GE/VE UAPI 编译校验，保留 SPDX/版权声明。Rust 路径直接使用内核 ioctl，不依赖视频解码库。 |
 | `fonts/DejaVuSans.ttf` | 原 `/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf`，用于两设备部署及匹配字体的画面对照。 |
 | `fonts/DejaVu-COPYRIGHT` | 原 `fonts-dejavu-core` 包的版权说明；字体适用其中的 Bitstream Vera 许可，DejaVu 修改为公有领域。随字体部署。 |
 

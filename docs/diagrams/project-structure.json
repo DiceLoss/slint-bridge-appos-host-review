@@ -20,7 +20,7 @@
       "width": 500,
       "height": 72,
       "label": "src/lib.rs · 公共入口",
-      "sublabel": "Config / init() / Error / Backend",
+      "sublabel": "Config / init() / try_decode_png() / Error",
       "fill": "#eff6ff",
       "stroke": "#2563eb",
       "flat": true
@@ -162,8 +162,8 @@
       "y": 610,
       "width": 400,
       "height": 70,
-      "label": "f1/ + g2d/",
-      "sublabel": "PAN/VSYNC · GE 混合 · 1 MiB 源槽",
+      "label": "f1/ · PAN/VSYNC + GE + PNG",
+      "sublabel": "64 位写页 · 1 MiB 源槽 · 有界解码",
       "fill": "#fff7ed",
       "stroke": "#fdba74",
       "flat": true

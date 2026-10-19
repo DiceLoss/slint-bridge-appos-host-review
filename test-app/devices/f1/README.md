@@ -11,6 +11,7 @@
 [showcase 实测](../../../docs/f1-showcase.md) 保存初始上屏基线；
 [图片与透明合成优化](../../../docs/f1-optimization.md) 保存后续实机对照。
 G2D 图片源槽最多增加 1 MiB DMA 内存，不复制全屏背景；能力边界见平台说明。
+F1 使用普通 64 位整数批处理写页，没有启用 RVV/NEON。PNG VE 通过独立的公开加载入口使用，两个 F1 feature 都可调用；`f1`/`f1-g2d` 区分的是渲染中的 GE 路径，不是图片解码模式。图片解码 CPU/硬件对照须使用 [image-decode 工具](../../tools/f1/README.md#png-解码验证)。
 
 ## 构建
 
@@ -38,9 +39,9 @@ SD 卡 `/tmp/sdcard` 的独立版本目录，不放在 RAM `/tmp` 或 `/run`。
 未挂载时停止，不创建同名 RAM 目录。上传后回读核对 SHA256。
 
 同时检查当前 `/dev/fb0` 描述符/映射、进程 exe、cmdline 和 starttime；
-旧报告 PID 不能用于 kill。原显示程序为 `/system/app0`，配套程序为
-`/system/control_service`。本轮仅停止 app0，保留 control_service，
-未替换 `/system/app0` 或改动启动脚本。后端发现其他显示所有者会拒绝。
+旧报告 PID 不能用于 kill。原始显示程序为 `/system/app0`，配套程序为
+`/system/control_service`；当前所有者也可能是 SD 卡中的 showcase，以实时查询为准。
+保留 control_service，不替换 `/system/app0` 或改动启动脚本。后端发现其他显示所有者会拒绝。
 
 先记录原应用的 cwd、环境和恢复命令，再释放经过实时核对的显示所有者。
 不要执行系统服务的 `stop/restart`：本固件脚本会同时强杀配套服务。
@@ -58,7 +59,7 @@ SLINT_DEFAULT_FONT="$F1_RUN_DIR/DejaVuSans.ttf" SLINT_MCP_PORT=9315 \
 [第三方资源](../../../third-party/README.md)。旧版 adbd 不支持 `exec-out`，
 普通后台 `&` 可能被断连终止；使用 [工具说明](../../tools/f1/README.md) 的
 `run-detached`，它会创建独立会话并将标准流转到 SD 卡。日志名须未被使用。
-持续展示可省略 `--seconds`；本轮交付保留 G2D showcase 在 Overview 页面运行。
+持续展示可省略 `--seconds`；具体交付路径和页面见相应阶段报告，不把历史 PID 当作当前状态。
 
 ## 恢复与验证边界
 

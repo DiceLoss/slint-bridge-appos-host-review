@@ -27,7 +27,7 @@ slint_bridge/
 │   │   ├── mod.rs            # 私有板级契约与准入分派
 │   │   ├── nx5/              # NX5 翻页、SDK 会话及 tde/
 │   │   ├── x9/               # X9 纯 CPU framebuffer 与 DRM 完成事件
-│   │   └── f1/               # F1 参考 PAN/VSYNC、可选 GE 画布
+│   │   └── f1/               # PAN/VSYNC、64 位写页、GE 画布及 PNG VE
 │   └── tests/                # 按职责拆分的库内回归
 ├── third-party/              # NX5 SDK 头文件/动态库、部署字体及版权说明
 ├── test-app/                 # 独立测试程序、.slint 界面、设备工具
@@ -73,6 +73,8 @@ slint_bridge::init(Config {
 必须选择一个板级 feature；`fbdev`、`nx5` 与 `f1` 两两互斥。NX5 按 SDK/驱动接口和双页布局运行，不比对内核版本、驱动名称或文件摘要；`fbdev` 仅准入已验证的 X9 Lombo 固件与布局，其他 framebuffer 仍拒绝。F1 按用户选定的参考翻页约定运行，适用固件及验证限制见 [F1 设备说明](test-app/devices/f1/README.md)。SDK 目录由系统动态库搜索路径决定，见 [平台说明](docs/software-platform.md#准入边界)。
 
 `Config::background_storage` 默认为 `BackgroundStorage::Heap`。需要 MMA 时设为 `Mma`，在 `init(config.clone())` 后、首次绘制前通过 `config.prepare_background(image)` 准备图像；其他设备显式选择 MMA 会被拒绝。见 [背景接入与限制](test-app/devices/nx5/mma-background/README.md)。
+
+F1 可通过 `try_decode_png(encoded)` 显式请求有界 PNG 硬解，成功返回普通 Slint 图像；`Ok(None)` 时由应用选择软件解码。错误不能作为软件回退，须保留进程等待设备恢复。格式、内存及生命周期见[平台说明](docs/software-platform.md#f1-png-加载)。展示程序只对实测受益的大背景使用该入口，SVG 加载和缓存仍由 Slint 负责。
 
 `Config::frame_interval` 是最小渲染启动间隔，默认 16667 微秒；没有 NX5 专用 30 FPS 钳制。当前驱动的实际提交上限约为 29 FPS，原因及尚未实现的单周期改动见 [驱动调查](docs/nx5-display.md#nx5-single-cycle)。
 

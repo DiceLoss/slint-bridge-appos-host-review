@@ -3711,6 +3711,7 @@ name = "slint-bridge"
 version = "0.1.0"
 dependencies = [
  "cc",
+ "crc32fast",
  "fontique",
  "i-slint-renderer-software",
  "libc",

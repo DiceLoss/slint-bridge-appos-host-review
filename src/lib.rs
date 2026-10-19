@@ -59,6 +59,29 @@ pub const fn selected_backend() -> Backend {
     }
 }
 
+/// Try F1's bounded hardware PNG decoder, without installing a Slint platform.
+///
+/// `Ok(None)` means software decoding is required: the board, PNG encoding,
+/// image size, available memory or decoder ownership is unsuitable.
+/// Other boards always return `Ok(None)`. The returned image owns ordinary
+/// CPU pixels; no decoder buffer remains allocated after success.
+///
+/// Uncertain completion retains the decoder and DMA resources and returns an
+/// error. Completion or resource-release failures reject later hardware decodes.
+/// Do not retry or fall back on an error. Keep the process alive until device
+/// recovery establishes that DMA has stopped.
+pub fn try_decode_png(data: &[u8]) -> Result<Option<slint::Image>, Error> {
+    #[cfg(all(feature = "f1", target_arch = "riscv64"))]
+    {
+        backends::f1::png::decode(data)
+    }
+    #[cfg(not(all(feature = "f1", target_arch = "riscv64")))]
+    {
+        let _ = data;
+        Ok(None)
+    }
+}
+
 /// Storage used by [`Config::prepare_background`].
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum BackgroundStorage {
@@ -183,10 +206,7 @@ impl fmt::Display for Error {
                 f,
                 "presentation failed; page ownership is unknown: {reason}"
             ),
-            Self::AccelerationFailed(reason) => write!(
-                f,
-                "TDE completion is unknown; frame was not presented: {reason}"
-            ),
+            Self::AccelerationFailed(reason) => write!(f, "hardware acceleration failed: {reason}"),
             Self::Io { operation, source } => write!(f, "{operation}: {source}"),
             Self::Platform(source) => fmt::Display::fmt(source, f),
         }

@@ -7,6 +7,23 @@ use slint_bridge::{InputDevice, selected_backend};
 use std::time::Duration;
 
 #[test]
+fn unsupported_png_requests_allow_software_handling() {
+    for data in [&[][..], &b"not a PNG"[..]] {
+        assert!(slint_bridge::try_decode_png(data).unwrap().is_none());
+    }
+}
+
+#[test]
+#[cfg(not(all(feature = "f1", target_arch = "riscv64")))]
+fn optional_hardware_decoder_preserves_software_loading() {
+    let data = include_bytes!("../ui/assets/scaling-reference.png");
+    let decoded = slint_bridge::try_decode_png(data).unwrap();
+    assert!(decoded.is_none());
+    let image = decoded.unwrap_or_else(|| slint::Image::load_from_data(data, Some("png")).unwrap());
+    assert_eq!((image.size().width, image.size().height), (256, 160));
+}
+
+#[test]
 #[cfg(feature = "f1")]
 fn f1_selection_requires_board_admission() {
     assert_eq!(slint_bridge::selected_backend(), slint_bridge::Backend::F1);

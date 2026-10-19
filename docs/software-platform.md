@@ -57,6 +57,46 @@ flowchart LR
 
 每轮对每个输入设备最多进行 8 次非阻塞读取，每次缓冲最多 32 条原始 evdev 记录；这不是 Slint 事件数量或采样频率上限。仍有数据时，描述符保持可读，后续轮次继续处理。该批次限制与业务任务的 2 ms 预算分别执行，避免把输入或任务积压一次性处理到底。
 
+### F1 PNG 加载
+
+`try_decode_png(data: &[u8]) -> Result<Option<slint::Image>, Error>` 是显式的图片加载入口，可在 `init()` 前调用。
+它不拦截 Slint 的 `Image::load_from_data` 或 `.slint` 编译资源，也不改变 SVG 解析与栅格缓存。
+`f1`、`f1-g2d` 在指定的 RISC-V64 D211 固件上可使用 VE；其他板返回 `Ok(None)`。
+
+- `Ok(Some(image))`：已确认解码完成并完成 CPU 缓存同步，返回普通堆像素图像，临时 DMA、VE client、映射和锁已释放。
+- `Ok(None)`：提交前判定不适用，包括编码/尺寸、固件、可用内存、其他 VE 所有者、设备不可用或准备失败。调用者可选用 Slint 软件解码。
+- `Err`：完成状态不确定或解码器已被停用。不能重试或据此软件回退；保留进程直到板级恢复确认 DMA 停止。展示程序打印 `F1_PNG_QUARANTINED` 后等待，不用退出进程代替 DMA 退休。
+
+接受非隔行、8-bit RGB/RGBA PNG，至少 32768、至多 614400 像素，单边不超过 4096，编码不超过 2 MiB。
+检查 chunk 边界/CRC、IHDR/IEND、连续 IDAT、zlib 头；调色板、透明色键、APNG、其他位深和未知关键 chunk 在提交前返回 None。
+RGB 保留 RGB8 存储；RGBA 按 Slint 相同整数舍入预乘，排除行尾 padding。
+JPEG 等格式未接入此入口，继续由应用的软件解码器处理。
+
+VE 只使用一笔离屏任务：IDAT 缓冲、32 KiB LZ77 和对齐输出，不分配 MPP 的另一份 packet 副本，不保留解码缓存。
+提交前要求 `MemAvailable` 至少覆盖本次 DMA、返回堆图像及额外 8 MiB 余量；这是准入快照，不是系统内存预留。
+1024×600 当前背景使用 3428352 B 临时 DMA，返回像素约 2.344 MiB；具体图像按实际编码长度与 stride 计算。
+应用可在显示画布创建前加载背景，降低并存峰值。
+
+```mermaid
+flowchart LR
+    P[编码 PNG] --> A{格式 / 固件 / 内存 / VE 所有权}
+    A -- 不适用 --> N[None：应用软件解码]
+    A -- 准入 --> D[有界 DMA 与寄存器准备]
+    D -- 提交前失败 --> N
+    D --> S[START：单笔离屏任务]
+    S --> W{WAIT / FINISH / 计数 / 同步均通过}
+    W -- 确认完成 --> C[复制并预乘 / 释放临时资源]
+    C --> I[普通 Slint Image]
+    W -- 不确定 --> Q[保留全部资源与锁 / Err / 禁止再提交]
+```
+
+实现直接使用 F1 VE/DMA UAPI，不加载会忽略 PNG HAL 错误的旧 `libmpp_decoder.so`。
+持有独占锁，检查包括本进程在内的 VE 描述符/映射所有者；每笔任务前复位、清状态并消费旧 IRQ 标志。
+`WAIT` 的成功状态必须为单独的 FINISH，输出计数必须符合本次尺寸；混合/未知状态、超时或提交后的同步失败均隔离整个 Job。
+不把 IRQ 后读到的零状态、固定延时、reset 返回或进程退出当完成证明。
+提交前的零超时 IRQ 清理会在本固件内核日志中产生预期 `wait timeout` 行，此时没有在途解码作业。
+详细依据及限制见[解码器调查](f1-image-decoder-research.md)，实测见[F1 优化记录](f1-optimization.md#f1-scalar-png)。
+
 ## 事件循环
 
 UI 线程通过 [event_wait.rs](../src/event_wait.rs) 使用 `ppoll` 等待 evdev 与 `eventfd`。业务线程通过标准 `slint::invoke_from_event_loop()` 投递任务，或调用 `slint::quit_event_loop()` 退出；唤醒信号与受锁保护的任务队列配合，任务执行时不持有队列锁。
@@ -128,6 +168,12 @@ CPU 图片绘制由 [texture_renderer.rs](../src/texture_renderer.rs) 在 Slint 
 两条路径均在预乘 RGBA 画布中混合。写入含 8 位 alpha 的 framebuffer 时，RGB 精确反预乘为 straight RGB，通用格式保留原 alpha；alpha=0 写零，alpha=255 直接复制 RGB 通道，其余使用共享倒数表，结果等于 `min(255, (channel × 255 + alpha / 2) / alpha)` 的整数除法。NX5 当前板级显示契约使用 0–128 的逐像素 alpha 量程：写页时按 `round(alpha × 128 / 255)` 编码（等于 `(alpha + 1) / 2` 的整数除法），0 为全透明、128 为不透明。该量程来自实际 WBC 色块比较，不能从 8 位 alpha 位域推断；Slint 画布与 TDE 运算仍使用标准 0–255 alpha。NX5 的 BGRA 位域路径只在目标页交换红蓝并编码 alpha，不修改源画布；不透明和全透明连续区域分别使用独立的 16 像素 NEON 快路径，避免半透明计算的寄存器压力拖慢它们。半透明区域对 8 个像素复用 Q16 倒数，按颜色通道执行向量乘法、舍入收窄和饱和；同一组 alpha 相同时只查表一次。输出 alpha 为 128 或 255 量程时均逐字节等于原整数算法，短尾部及其他量程保留标量路径。算法和实测见 [NEON 反预乘优化](nx5-performance.md#nx5-neon-unpremultiply)。RGB565 或无 alpha 的 RGB888 输出保留预乘 RGB，相当于黑底合成，不能透出下层视频。位域转换按主机原生字节序写入，保留行尾 padding。
 
 通用 BGRA8888 写页在 alpha 量程为 255、源/目标均按 4 字节对齐且片段不少于 16 像素时，先按整段检查 alpha。全不透明段批量交换 R/B，避免逐像素反预乘分支；含透明像素、短段、不对齐地址及其他格式保留原路径。该优化不修改源画布、不分配缓存，且仍位于完成等待后的写页阶段；NX5 TDE 的既有转换入口优先执行。 X9 接入及这些共用改动在当前 NX5 部署上的验证范围见 [NX5 链路回归](nx5-validation.md#nx5-x9-regression)。
+
+F1 的 BGRA8888、255 alpha 量程增加 64 位整数写页路径：每次处理四个不透明像素，合并 alpha 检查与 R/B 交换，不分配缓冲。
+两侧均 4 字节对齐且具有相同 8 字节对齐偏移时，先处理一个必要的前导像素，再使用成对 64 位读写；尾部继续标量处理。
+遇到透明像素、不匹配对齐或其他布局时，原路径重写整段，包含优化路径可能已写的前缀。
+这是普通 RV64 整数操作，不启用 NEON、RVV 或全程序玄铁 feature；物理页保护和分段提交规则不变。
+ISA 依据见[指令集调查](f1-isa-research.md)，效果见[F1 实测](f1-optimization.md#f1-scalar-png)。
 
 应用需要透明区域时，在 `.slint` 根窗口设置 `background: transparent;`，并避免用不透明全屏背景覆盖开口；局部颜色 alpha 也会保留。透明 UI 通过独占设备的 `alpha-regression` 验证实际页与黑色 VO 底层上的 WBC 合成；视频解码和业务视频层尚未接入。视频接入方式未定，当前 SDK/VO 独占所有权、初始化和关闭流程保持原有约束。实际视频集成仍须验证非黑色视频底层、图层配置及共用会话生命周期；新增设备/固件还须重新核验 alpha 量程。历史背景见 [slint-nx5 经验](nx5-display.md#slint-nx5-lessons)。
 

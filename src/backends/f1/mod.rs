@@ -19,6 +19,9 @@ use std::{
 
 #[cfg(feature = "f1-g2d")]
 pub(crate) mod g2d;
+pub(crate) mod pixels;
+#[cfg(any(test, target_arch = "riscv64"))]
+pub(crate) mod png;
 
 fn rejected(reason: &'static str) -> Error {
     Error::DisplayNotAdmitted {

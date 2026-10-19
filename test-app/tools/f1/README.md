@@ -168,3 +168,40 @@ RISC-V ignored 用例，部署和异常隔离要求与离屏填充相同。使�
 
 性能与内存比较继续使用前述本地采样工具；像素误差的实测口径、
 一次性微基准源码及原始数据获取条件见 [优化记录](../../../docs/f1-optimization.md)。
+
+## PNG 解码验证
+
+`image-decode` 通过 `slint_bridge::try_decode_png` 校验和测量公开 PNG 加载入口，不安装显示平台、不访问 framebuffer。
+核验 F1 身份、SD 挂载、`/dev/aic_ve` 所有者和可用内存后再运行；完整尺寸对照优先在显示程序正常退出后执行。
+临时产物放在 SD 卡和主机 `target/`；只保存日志、哈希与汇总，不归档 ELF、像素帧或反汇编。
+
+```sh
+SLINT_EMIT_DEBUG_INFO=1 cargo --config .cargo/f1.toml build --locked --offline --release \
+  -p slint-bridge-test-app --features f1-g2d --target riscv64gc-unknown-linux-gnu \
+  --bin image-decode
+/opt/F1/bin/riscv64-unknown-linux-gnu-gcc -std=c11 -Wall -Wextra -Werror \
+  -Ithird-party/f1/include -fsyntax-only test-app/tools/f1/check-ve-abi.c
+```
+
+按前述规则 strip、上传并回读验证后，用 `run-detached` 在 SD 目录执行以下参数；日志名须不同：
+
+```sh
+"$F1_RUN_DIR/image-decode" verify all 1
+"$F1_RUN_DIR/image-decode" software all 20
+"$F1_RUN_DIR/image-decode" hardware all 20
+```
+
+`verify` 比较硬解与 Slint 软件解码的完整预乘字节；包含六张实际素材及 `fixtures/png/` 的 RGB/RGBA 夹具。
+夹具为 257×129，覆盖全部五种 filter、首行 Average、奇数宽及跨 IDAT 的 zlib 头/尾；用 `fixtures/png/generate.py` 重建。
+`software`/`hardware` 每项预热三次，随后记录 1–25 次完整加载耗时与 Rust 分配器的额外堆峰值。
+计时包含解析、准入、分配、等待、CPU 转换和临时资源释放，排除后续日志输出；分配器计数不包含 DMA 和内核内存。
+案例可选 `background`、`scaling`、`row-blue/row-amber`、`card-blue/card-amber`、`rgb-filters/rgba-filters` 或 `all`。
+
+硬件模式要求每次确实返回图像，提交前返回 None 会使强制硬件探针失败；应用正常用法可在 None 时软件解码。
+`Err` 会输出 `F1_PNG_QUARANTINED` 并保留进程与 DMA，不能通过终止该进程取得“清理通过”。
+不要在未知恢复能力的硬件上故意提交坏流；结构/CRC、拒绝格式、完成状态组合及预乘规则由主机回归检查。
+成功条件是所有 `F1_PNG_VERIFIED`、`F1_PNG_PROBE_DONE` 和退出码 0；核对内存、VE 所有者及锁释放。
+
+性能采样时关闭 `SLINT_BRIDGE_TRACE`，不截图或持续轮询设备；另起短诊断运行设置该变量，可记录 DMA 字节数及图像与 DMA 同时存在时的 `MemAvailable`。
+每次提交前消费旧 IRQ 的零超时 WAIT 会产生预期内核 `wait timeout` 日志，此时未启动解码；不能将它当作实际作业超时，也不能因此忽略其他错误。
+完整结果及默认只加速大背景的取舍见 [F1 优化记录](../../../docs/f1-optimization.md#f1-scalar-png)。

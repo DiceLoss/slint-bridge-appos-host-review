@@ -27,7 +27,9 @@
 | [NX5 验证记录](nx5-validation.md) | 启动/退出失败与修复、真实输入、界面、物理双页及资源清理 |
 | [X9 接入调查](x9-framebuffer.md) | DRM 完成契约、控制台、Type-A 输入、旋转及实际页验证 |
 | [F1 显示接入调查](f1-display.md) | 原应用运行中的只读查询、BGRA8888 与触摸轴、配置时序、参考驱动完成机制及未验证范围 |
-| [F1 图片与透明合成优化](f1-optimization.md) | 渲染/写页瓶颈、GE 配置与像素精度、1 MiB 源缓存、实机前后对照 |
+| [F1 图片与透明合成优化](f1-optimization.md) | GE 混合、64 位写页、PNG 硬解与低内存前后对照 |
+| [F1 指令集调查](f1-isa-research.md) | C906FD / RV64GC、玄铁标量扩展、RVV 边界及实机像素微基准 |
+| [F1 图片解码调查](f1-image-decoder-research.md) | VE 格式、实际 SDK ABI/吞错问题、有界原生 PNG 与 DMA 完成条件 |
 | [F1 showcase 实测](f1-showcase.md) | CPU/G2D 对照、原生 MCP、物理前台页、内存与最终部署 |
 | [F1 当前内核镜像分析](f1-kernel-analysis.md) | 固定镜像的 PAN/VSYNC/IRQ 调用链、GE 完成路径、可重放反汇编及旧页退休缺口 |
 | [X9 性能与流水线](x9-performance.md) | 初始基线、旋转/写页、全屏与卡片缓存、渲染热点、线程边界、内存总账、分配跟踪及 MCP 保留归因 |
