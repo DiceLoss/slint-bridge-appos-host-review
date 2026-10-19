@@ -1,6 +1,6 @@
 {
   "canvas": {
-    "height": 1220.0,
+    "height": 1330.0,
     "width": 1500.0
   },
   "composition": {
@@ -38,23 +38,23 @@
       "route": [
         [
           280.0,
-          1061.0
+          1171.0
         ],
         [
           350.0,
-          1061.0
+          1171.0
         ]
       ],
       "route_stretch": 1.0,
       "source": "flow_rt",
       "source_port": [
         280.0,
-        1061.0
+        1171.0
       ],
       "target": "flow_fb",
       "target_port": [
         350.0,
-        1061.0
+        1171.0
       ],
       "waypoints": []
     },
@@ -67,23 +67,23 @@
       "route": [
         [
           570.0,
-          1061.0
+          1171.0
         ],
         [
           640.0,
-          1061.0
+          1171.0
         ]
       ],
       "route_stretch": 1.0,
       "source": "flow_fb",
       "source_port": [
         570.0,
-        1061.0
+        1171.0
       ],
       "target": "flow_pr",
       "target_port": [
         640.0,
-        1061.0
+        1171.0
       ],
       "waypoints": []
     },
@@ -96,23 +96,23 @@
       "route": [
         [
           860.0,
-          1061.0
+          1171.0
         ],
         [
           930.0,
-          1061.0
+          1171.0
         ]
       ],
       "route_stretch": 1.0,
       "source": "flow_pr",
       "source_port": [
         860.0,
-        1061.0
+        1171.0
       ],
       "target": "flow_nx",
       "target_port": [
         930.0,
-        1061.0
+        1171.0
       ],
       "waypoints": []
     },
@@ -125,23 +125,23 @@
       "route": [
         [
           1150.0,
-          1061.0
+          1171.0
         ],
         [
           1220.0,
-          1061.0
+          1171.0
         ]
       ],
       "route_stretch": 1.0,
       "source": "flow_nx",
       "source_port": [
         1150.0,
-        1061.0
+        1171.0
       ],
       "target": "flow_dev",
       "target_port": [
         1220.0,
-        1061.0
+        1171.0
       ],
       "waypoints": []
     }
@@ -180,7 +180,7 @@
   "summary": {
     "bridged_crossings": 0,
     "edges": 4,
-    "nodes": 23
+    "nodes": 24
   },
   "text_metrics": "heuristic-v1",
   "typography": {

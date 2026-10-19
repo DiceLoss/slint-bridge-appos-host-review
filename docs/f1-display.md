@@ -204,3 +204,73 @@ D21x 用户手册给出以下硬件描述（章号和页码按手册印刷页码
 - 在明确接管与恢复流程后，验证至多一笔在途提交下的目标页生效、旧页不再被读取，以及 timeout / underflow 后停止写两页的处理；当前只读阶段不做这些测试。
 - 针对实际 stride、通道字段、旋转/HSBC、cache/coherent 映射建立准入条件；GE 完成与显示扫描完成应分别处理。
 - 保留通用运行时的双页保护，把 ArtInChip 专有 ioctl、更新确认和设备核验放在 F1 板级后端。参考源码中缺失的完成确认不能通过单缓冲或等待固定时间规避。
+
+## 2026-10-19：实现准备阶段
+
+本阶段参考用户指定的 `/home/dpower/data/GitLab/slint-f1` 工作树，HEAD 记录为
+`3f48f3bd2c54e936ae99e54da5f9983693963751`。用户确认没有当前固件对应源码。
+新增 `f1` / `f1-g2d` 构建及板级边界；**显示准入仍关闭，不代表可上屏运行**。
+当前实现与命令集中见 [平台说明](software-platform.md#构建依赖) 和
+[F1 集成状态](../test-app/devices/f1/README.md)，不改变前文只读调查的验证口径。
+
+参考工程 `src/platform/mod.rs:123–182` 用 G2D 把前台页复制到后台页，
+随后在后台页进行软件渲染。本库保留画布及相邻帧脏区修复已经承担历史像素
+维护，本次没有复制这一整页同步，也没有让 GE 访问两张物理显示页。
+参考 `src/framebuffer/mod.rs` 的 `fb_fix_screeninfo` 物理地址字段为 `c_uint`，
+本库继续使用 Linux LP64 所要求的 `c_ulong`，不照搬该结构。
+
+扩展后的只读探针查询 `IOC_GE_VERSION` / `IOC_GE_MODE`：设备返回
+`version=0x100, mode=0`，即 normal mode。`evidence/f1-implementation-20261019/`
+保存本阶段 `before.txt`、`probe.txt` 和 `after.txt`；boot ID 与两原应用的
+PID/starttime 保持一致，app0 继续持有 GE/fb/evdev，临时探针目录已移除。
+这些证据只证明参数查询和进程状态，不证明 GE 作业正确。
+
+参考工程的 `libmpp_ge.so` 区分 normal/cmdq 运行模式。进一步检查同一官方固定
+提交 `13fa021285a307ca345a6b05e0da371b635f18eb` 的 GE 内核实现：
+
+- [`ge_normal.c:295–318`](https://github.com/artinchip/luban/blob/13fa021285a307ca345a6b05e0da371b635f18eb/source/linux-5.10/drivers/video/artinchip/ge/ge_normal.c#L295)
+  在绘制作业内等待硬件中断，检查完成位；超时重置并返回 `-ETIMEDOUT`，
+  错误状态返回失败。此模式不支持单独 `IOC_GE_SYNC`。
+- [`ge_cmdq.c:278–298`](https://github.com/artinchip/luban/blob/13fa021285a307ca345a6b05e0da371b635f18eb/source/linux-5.10/drivers/video/artinchip/ge/ge_cmdq.c#L278)
+  按 client 的 batch_num 等待。等待超时后循环重试，而 IRQ 的硬件错误分支
+  重置后仍减少 batch_num，没有将该作业错误保存为 sync 返回值。
+  因此不能把该模式下的 SDK sync 成功等同于结果有效。本次实现拒绝 cmdq 模式。
+- 当前设备驱动与这份参考源码仍未完整对应；normal 模式查询本身不是完成契约验证。
+  两个参考源文件归档于本阶段 evidence 目录，不以源码审查替代实机故障验证。
+
+`f1-g2d` 直接使用 normal-mode UAPI，只实现独立 RGBA 画布上的大块不透明填充，
+没有引入厂商 decoder/VO 会话。UAPI 依据为参考工程的三个原样头文件，保存在
+`third-party/f1/include/`，摘要在 `third-party/SHA256SUMS`。
+`check-ge-abi.c` 对照这些头文件校验结构尺寸、偏移、枚举及 ioctl；
+DMA 缓存 flags=7/1 与参考 `libmpp_decoder.so` 的 `dmabuf_sync` 反汇编一致。
+此核对只确认调用 ABI，不确认当前设备缓存行为。
+
+主机测试模拟 GE 填充并比较 Slint 场景的完整像素，覆盖软件透明/圆角/渐变
+回退及四种旋转；注入未知完成错误后验证不重试、CPU 回调使用隔离行、像素访问被拒绝。
+查询工具、主机/交叉 ABI 编译检查、RISC-V 编译与主机回归属于本阶段验证范围。
+**未运行真实 GE 填充、DMA 缓存/硬件错误注入、显示接管、PAN 或物理扫描验证。**
+
+### SD 卡最小程序验证
+
+用户指定测试固件放在 `/tmp/sdcard`，避免占用 RAM `/tmp`。本阶段重新确认
+`/dev/mmcblk0` 以 exFAT 挂载到该路径，剩余约 7.2 GiB，部署前
+`MemAvailable=22408 KiB`。`f1-g2d` 的 release `basic` 经 strip 后为
+769,392 字节，放在当次独立目录：
+
+```text
+/tmp/sdcard/slint-bridge-f1-FZYRGj/basic
+/tmp/sdcard/slint-bridge-f1-FZYRGj/basic.log
+SHA256 cfeba80ae3f7db3b70bc33d999d2fea3bf732d6cae84ea12858af6af58a12b2c
+```
+
+上传后回读，字节与摘要一致。设备执行成功到达库入口，按预期报告
+`DisplayNotAdmitted { backend: F1, ... }` 并以 1 退出；这验证 ELF、T-HEAD
+加载器和拒绝准入路径，**不是显示或 G2D 绘图通过**。原应用 PID/starttime、
+boot ID、资源归属保持一致。上述固件及日志留在 SD 卡供复核，未启动常驻进程。
+原始记录为本阶段 evidence 下的 `sd-preflight.txt`、`basic-run.txt`、
+`basic-readback` 和 `sd-postflight.txt`。
+
+本阶段主机 feature 矩阵（含 F1/G2D 与板级互斥）、fmt、NX5 规定 clippy、
+F1 主机及 RISC-V clippy、Rust API 文档构建通过。F1 `basic` / `showcase`
+release 交叉构建及 NX5/X9 `basic` 交叉构建通过；后两者未部署到设备。
+GE UAPI 在主机和 RISC-V 编译器下的结构/请求校验通过。

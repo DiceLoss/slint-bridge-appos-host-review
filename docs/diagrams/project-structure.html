@@ -38,7 +38,7 @@
     <button type="button" data-action="download">Export</button>
   </header>
   <main id="stage" tabindex="0" aria-label="Interactive diagram. Drag to pan; use plus and minus to zoom.">
-    <div id="canvas"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1220" width="1500" height="1220" data-generator="fireworks-tech-graph" data-schema-version="1" data-text-metrics="heuristic-v1" data-style-id="1" data-visual-theme="Flat Icon" data-diagram-type="architecture" data-motion-scene="" data-semantic-profile="generic" data-semantic-valid="true" data-quality-profile="showcase" data-max-bends-per-edge="2" data-max-total-bends="8" data-max-route-stretch="1.35" data-max-bridged-crossings="0" data-min-node-gap="40.0" data-min-container-gutter="20.0" data-min-label-clearance="4.0" data-min-segment-length="16.0" role="img" focusable="false">
+    <div id="canvas"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1330" width="1500" height="1330" data-generator="fireworks-tech-graph" data-schema-version="1" data-text-metrics="heuristic-v1" data-style-id="1" data-visual-theme="Flat Icon" data-diagram-type="architecture" data-motion-scene="" data-semantic-profile="generic" data-semantic-valid="true" data-quality-profile="showcase" data-max-bends-per-edge="2" data-max-total-bends="8" data-max-route-stretch="1.35" data-max-bridged-crossings="0" data-min-node-gap="40.0" data-min-container-gutter="20.0" data-min-label-clearance="4.0" data-min-segment-length="16.0" role="img" focusable="false">
   <defs>
     <marker id="arrowA" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed" />
@@ -83,38 +83,38 @@
     .metric-value { font-size: 9.5px; font-weight: 700; fill: #111827; }
     </style>
   </defs>
-  <rect data-graph-role="background" width="1500.0" height="1220.0" fill="#ffffff" />
+  <rect data-graph-role="background" width="1500.0" height="1330.0" fill="#ffffff" />
   <text x="750.0" y="56" text-anchor="middle" class="title">Slint Bridge · 当前项目结构</text>
   <text x="750.0" y="82" text-anchor="middle" class="subtitle">Rust 适配库 + 独立测试工程 · 通用运行时与板级实现分离</text>
-  <g id="runtime_group" data-graph-role="container" data-container-id="runtime_group" data-semantic-role="boundary" data-graph-bounds="40,230,480,600">
-  <rect data-graph-role="container" x="40.0" y="230.0" width="440.0" height="370.0" rx="16.0" fill="none" stroke="#d1d5db" stroke-width="1.4" stroke-dasharray="6 5" />
+  <g id="runtime_group" data-graph-role="container" data-container-id="runtime_group" data-semantic-role="boundary" data-graph-bounds="40,230,480,710">
+  <rect data-graph-role="container" x="40.0" y="230.0" width="440.0" height="480.0" rx="16.0" fill="none" stroke="#d1d5db" stroke-width="1.4" stroke-dasharray="6 5" />
   <text x="58.0" y="254.0" class="section">通用运行时 · SRC/</text>
     <rect id="runtime_group-header" data-graph-role="reserved" data-reserved-kind="container-header" x="48" y="236" width="142.06" height="30" fill="none" stroke="none" />
   </g>
-  <g id="display_group" data-graph-role="container" data-container-id="display_group" data-semantic-role="boundary" data-graph-bounds="530,230,970,600">
-  <rect data-graph-role="container" x="530.0" y="230.0" width="440.0" height="370.0" rx="16.0" fill="none" stroke="#d1d5db" stroke-width="1.4" stroke-dasharray="6 5" />
+  <g id="display_group" data-graph-role="container" data-container-id="display_group" data-semantic-role="boundary" data-graph-bounds="530,230,970,710">
+  <rect data-graph-role="container" x="530.0" y="230.0" width="440.0" height="480.0" rx="16.0" fill="none" stroke="#d1d5db" stroke-width="1.4" stroke-dasharray="6 5" />
   <text x="548.0" y="254.0" class="section">通用显示与准入 · SRC/</text>
     <rect id="display_group-header" data-graph-role="reserved" data-reserved-kind="container-header" x="538" y="236" width="168.06" height="30" fill="none" stroke="none" />
   </g>
-  <g id="nx5_group" data-graph-role="container" data-container-id="nx5_group" data-semantic-role="boundary" data-graph-bounds="1020,230,1460,600">
-  <rect data-graph-role="container" x="1020.0" y="230.0" width="440.0" height="370.0" rx="16.0" fill="none" stroke="#d1d5db" stroke-width="1.4" stroke-dasharray="6 5" />
+  <g id="nx5_group" data-graph-role="container" data-container-id="nx5_group" data-semantic-role="boundary" data-graph-bounds="1020,230,1460,710">
+  <rect data-graph-role="container" x="1020.0" y="230.0" width="440.0" height="480.0" rx="16.0" fill="none" stroke="#d1d5db" stroke-width="1.4" stroke-dasharray="6 5" />
   <text x="1038.0" y="254.0" class="section">板级实现 · SRC/BACKENDS/</text>
     <rect id="nx5_group-header" data-graph-role="reserved" data-reserved-kind="container-header" x="1028" y="236" width="196.92" height="30" fill="none" stroke="none" />
   </g>
-  <g id="support" data-graph-role="container" data-container-id="support" data-semantic-role="boundary" data-graph-bounds="40,650,1460,930">
-  <rect data-graph-role="container" x="40.0" y="650.0" width="1420.0" height="280.0" rx="16.0" fill="none" stroke="#d1d5db" stroke-width="1.4" stroke-dasharray="6 5" />
-  <text x="58.0" y="674.0" class="section">工程配套 · 独立测试工程、库内回归与历史证据</text>
-    <rect id="support-header" data-graph-role="reserved" data-reserved-kind="container-header" x="48" y="656" width="306.9" height="30" fill="none" stroke="none" />
+  <g id="support" data-graph-role="container" data-container-id="support" data-semantic-role="boundary" data-graph-bounds="40,760,1460,1040">
+  <rect data-graph-role="container" x="40.0" y="760.0" width="1420.0" height="280.0" rx="16.0" fill="none" stroke="#d1d5db" stroke-width="1.4" stroke-dasharray="6 5" />
+  <text x="58.0" y="784.0" class="section">工程配套 · 独立测试工程、库内回归与历史证据</text>
+    <rect id="support-header" data-graph-role="reserved" data-reserved-kind="container-header" x="48" y="766" width="306.9" height="30" fill="none" stroke="none" />
   </g>
-  <g id="flow" data-graph-role="container" data-container-id="flow" data-semantic-role="boundary" data-graph-bounds="40,980,1460,1126">
-  <rect data-graph-role="container" x="40.0" y="980.0" width="1420.0" height="146.0" rx="16.0" fill="none" stroke="#d1d5db" stroke-width="1.4" stroke-dasharray="6 5" />
-  <text x="58.0" y="1004.0" class="section">主要提交链路 · 渲染可与翻页等待并行；收到完成确认后才复用旧页</text>
-    <rect id="flow-header" data-graph-role="reserved" data-reserved-kind="container-header" x="48" y="986" width="423.9" height="30" fill="none" stroke="none" />
+  <g id="flow" data-graph-role="container" data-container-id="flow" data-semantic-role="boundary" data-graph-bounds="40,1090,1460,1236">
+  <rect data-graph-role="container" x="40.0" y="1090.0" width="1420.0" height="146.0" rx="16.0" fill="none" stroke="#d1d5db" stroke-width="1.4" stroke-dasharray="6 5" />
+  <text x="58.0" y="1114.0" class="section">主要提交链路 · 渲染可与翻页等待并行；收到完成确认后才复用旧页</text>
+    <rect id="flow-header" data-graph-role="reserved" data-reserved-kind="container-header" x="48" y="1096" width="423.9" height="30" fill="none" stroke="none" />
   </g>
-  <path id="flow_rt_flow_fb" data-graph-role="edge" data-edge-id="flow_rt_flow_fb" data-source="flow_rt" data-target="flow_fb" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 280,1061 L 350,1061" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
-  <path id="flow_fb_flow_pr" data-graph-role="edge" data-edge-id="flow_fb_flow_pr" data-source="flow_fb" data-target="flow_pr" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 570,1061 L 640,1061" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
-  <path id="flow_pr_flow_nx" data-graph-role="edge" data-edge-id="flow_pr_flow_nx" data-source="flow_pr" data-target="flow_nx" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 860,1061 L 930,1061" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
-  <path id="flow_nx_flow_dev" data-graph-role="edge" data-edge-id="flow_nx_flow_dev" data-source="flow_nx" data-target="flow_dev" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 1150,1061 L 1220,1061" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="flow_rt_flow_fb" data-graph-role="edge" data-edge-id="flow_rt_flow_fb" data-source="flow_rt" data-target="flow_fb" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 280,1171 L 350,1171" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="flow_fb_flow_pr" data-graph-role="edge" data-edge-id="flow_fb_flow_pr" data-source="flow_fb" data-target="flow_pr" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 570,1171 L 640,1171" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="flow_pr_flow_nx" data-graph-role="edge" data-edge-id="flow_pr_flow_nx" data-source="flow_pr" data-target="flow_nx" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 860,1171 L 930,1171" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
+  <path id="flow_nx_flow_dev" data-graph-role="edge" data-edge-id="flow_nx_flow_dev" data-source="flow_nx" data-target="flow_dev" data-edge-kind="flow" data-topic-id="" data-flow="control" data-motion-role="" data-motion-stage="" data-motion-order="" data-protocol="" data-via="" data-critical-path-id="" data-critical-hop="" data-critical-hops="" data-critical="false" data-bends="0" data-route-stretch="1.0" data-bridges="" d="M 1150,1171 L 1220,1171" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowA)" />
   <g id="node-public" data-graph-role="node" data-node-id="public" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="500,114,1000,186">
   <rect x="500.0" y="114.0" width="500.0" height="72.0" rx="10.0" fill="#eff6ff" stroke="#2563eb" stroke-width="1.8" />
   <text data-text-role="title" data-full-text="src/lib.rs · 公共入口" data-text-max-width="476.0" x="750.0" y="150.0" text-anchor="middle" class="node-title" font-size="18">src/lib.rs · 公共入口</text>
@@ -165,73 +165,78 @@
   <text data-text-role="title" data-full-text="x9/mod.rs + uapi.rs" data-text-max-width="376.0" x="1240.0" y="535.0" text-anchor="middle" class="node-title" font-size="18">x9/mod.rs + uapi.rs</text>
   <text data-text-role="subtitle" data-full-text="CPU framebuffer · DRM 完成事件" data-text-max-width="376.0" x="1240.0" y="557.0" text-anchor="middle" class="node-sub" font-size="12">CPU framebuffer · DRM 完成事件</text>
   </g>
-  <g id="node-cargo" data-graph-role="node" data-node-id="cargo" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,704,370,774">
-  <rect x="60.0" y="704.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
-  <text data-text-role="title" data-full-text="Cargo.toml / Cargo.lock" data-text-max-width="286.0" x="215.0" y="739.0" text-anchor="middle" class="node-title" font-size="18">Cargo.toml / Cargo.lock</text>
-  <text data-text-role="subtitle" data-full-text="库 + test-app workspace · 统一版本" data-text-max-width="286.0" x="215.0" y="761.0" text-anchor="middle" class="node-sub" font-size="12">库 + test-app workspace · 统一版本</text>
+  <g id="node-f1" data-graph-role="node" data-node-id="f1" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1040,610,1440,680">
+  <rect x="1040.0" y="610.0" width="400.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fdba74" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="f1/ + g2d/" data-text-max-width="376.0" x="1240.0" y="645.0" text-anchor="middle" class="node-title" font-size="18">f1/ + g2d/</text>
+  <text data-text-role="subtitle" data-full-text="集成准备 · GE 画布 · 显示尚未准入" data-text-max-width="376.0" x="1240.0" y="667.0" text-anchor="middle" class="node-sub" font-size="12">集成准备 · GE 画布 · 显示尚未准入</text>
   </g>
-  <g id="node-build" data-graph-role="node" data-node-id="build" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="410,704,720,774">
-  <rect x="410.0" y="704.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
-  <text data-text-role="title" data-full-text=".cargo/ + build.rs" data-text-max-width="286.0" x="565.0" y="739.0" text-anchor="middle" class="node-title" font-size="18">.cargo/ + build.rs</text>
-  <text data-text-role="subtitle" data-full-text="ARM 工具链 · CPU 预设 · C 桥构建" data-text-max-width="286.0" x="565.0" y="761.0" text-anchor="middle" class="node-sub" font-size="12">ARM 工具链 · CPU 预设 · C 桥构建</text>
+  <g id="node-cargo" data-graph-role="node" data-node-id="cargo" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,814,370,884">
+  <rect x="60.0" y="814.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="Cargo.toml / Cargo.lock" data-text-max-width="286.0" x="215.0" y="849.0" text-anchor="middle" class="node-title" font-size="18">Cargo.toml / Cargo.lock</text>
+  <text data-text-role="subtitle" data-full-text="库 + test-app workspace · 统一版本" data-text-max-width="286.0" x="215.0" y="871.0" text-anchor="middle" class="node-sub" font-size="12">库 + test-app workspace · 统一版本</text>
   </g>
-  <g id="node-examples" data-graph-role="node" data-node-id="examples" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="760,704,1070,774">
-  <rect x="760.0" y="704.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
-  <text data-text-role="title" data-full-text="test-app/" data-text-max-width="286.0" x="915.0" y="739.0" text-anchor="middle" class="node-title" font-size="18">test-app/</text>
-  <text data-text-role="subtitle" data-full-text="独立 Cargo · .slint · 纵横向交互" data-text-max-width="286.0" x="915.0" y="761.0" text-anchor="middle" class="node-sub" font-size="12">独立 Cargo · .slint · 纵横向交互</text>
+  <g id="node-build" data-graph-role="node" data-node-id="build" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="410,814,720,884">
+  <rect x="410.0" y="814.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text=".cargo/ + build.rs" data-text-max-width="286.0" x="565.0" y="849.0" text-anchor="middle" class="node-title" font-size="18">.cargo/ + build.rs</text>
+  <text data-text-role="subtitle" data-full-text="ARM / RISC-V · C 桥与 UAPI 校验" data-text-max-width="286.0" x="565.0" y="871.0" text-anchor="middle" class="node-sub" font-size="12">ARM / RISC-V · C 桥与 UAPI 校验</text>
   </g>
-  <g id="node-tests" data-graph-role="node" data-node-id="tests" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1110,704,1420,774">
-  <rect x="1110.0" y="704.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
-  <text data-text-role="title" data-full-text="库内测试" data-text-max-width="286.0" x="1265.0" y="739.0" text-anchor="middle" class="node-title" font-size="18">库内测试</text>
-  <text data-text-role="subtitle" data-full-text="src/tests/ · NX5/TDE 私有回归" data-text-max-width="286.0" x="1265.0" y="761.0" text-anchor="middle" class="node-sub" font-size="12">src/tests/ · NX5/TDE 私有回归</text>
+  <g id="node-examples" data-graph-role="node" data-node-id="examples" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="760,814,1070,884">
+  <rect x="760.0" y="814.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="test-app/" data-text-max-width="286.0" x="915.0" y="849.0" text-anchor="middle" class="node-title" font-size="18">test-app/</text>
+  <text data-text-role="subtitle" data-full-text="独立 Cargo · .slint · 纵横向交互" data-text-max-width="286.0" x="915.0" y="871.0" text-anchor="middle" class="node-sub" font-size="12">独立 Cargo · .slint · 纵横向交互</text>
   </g>
-  <g id="node-docs" data-graph-role="node" data-node-id="docs" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,818,370,888">
-  <rect x="60.0" y="818.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
-  <text data-text-role="title" data-full-text="docs/ + README.md" data-text-max-width="286.0" x="215.0" y="853.0" text-anchor="middle" class="node-title" font-size="18">docs/ + README.md</text>
-  <text data-text-role="subtitle" data-full-text="接入说明 · 设计与实测报告" data-text-max-width="286.0" x="215.0" y="875.0" text-anchor="middle" class="node-sub" font-size="12">接入说明 · 设计与实测报告</text>
+  <g id="node-tests" data-graph-role="node" data-node-id="tests" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1110,814,1420,884">
+  <rect x="1110.0" y="814.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="库内测试" data-text-max-width="286.0" x="1265.0" y="849.0" text-anchor="middle" class="node-title" font-size="18">库内测试</text>
+  <text data-text-role="subtitle" data-full-text="src/tests/ · NX5/TDE 私有回归" data-text-max-width="286.0" x="1265.0" y="871.0" text-anchor="middle" class="node-sub" font-size="12">src/tests/ · NX5/TDE 私有回归</text>
   </g>
-  <g id="node-tools" data-graph-role="node" data-node-id="tools" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="410,818,720,888">
-  <rect x="410.0" y="818.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
-  <text data-text-role="title" data-full-text="test-app/tools/" data-text-max-width="286.0" x="565.0" y="853.0" text-anchor="middle" class="node-title" font-size="18">test-app/tools/</text>
-  <text data-text-role="subtitle" data-full-text="feature · 原生 MCP · 设备诊断" data-text-max-width="286.0" x="565.0" y="875.0" text-anchor="middle" class="node-sub" font-size="12">feature · 原生 MCP · 设备诊断</text>
+  <g id="node-docs" data-graph-role="node" data-node-id="docs" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,928,370,998">
+  <rect x="60.0" y="928.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="docs/ + README.md" data-text-max-width="286.0" x="215.0" y="963.0" text-anchor="middle" class="node-title" font-size="18">docs/ + README.md</text>
+  <text data-text-role="subtitle" data-full-text="接入说明 · 设计与实测报告" data-text-max-width="286.0" x="215.0" y="985.0" text-anchor="middle" class="node-sub" font-size="12">接入说明 · 设计与实测报告</text>
   </g>
-  <g id="node-evidence" data-graph-role="node" data-node-id="evidence" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="760,818,1070,888">
-  <rect x="760.0" y="818.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
-  <text data-text-role="title" data-full-text="evidence/" data-text-max-width="286.0" x="915.0" y="853.0" text-anchor="middle" class="node-title" font-size="18">evidence/</text>
-  <text data-text-role="subtitle" data-full-text="本地日志与图像 · 不纳入 Git" data-text-max-width="286.0" x="915.0" y="875.0" text-anchor="middle" class="node-sub" font-size="12">本地日志与图像 · 不纳入 Git</text>
+  <g id="node-tools" data-graph-role="node" data-node-id="tools" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="410,928,720,998">
+  <rect x="410.0" y="928.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="test-app/tools/" data-text-max-width="286.0" x="565.0" y="963.0" text-anchor="middle" class="node-title" font-size="18">test-app/tools/</text>
+  <text data-text-role="subtitle" data-full-text="feature · 原生 MCP · 设备诊断" data-text-max-width="286.0" x="565.0" y="985.0" text-anchor="middle" class="node-sub" font-size="12">feature · 原生 MCP · 设备诊断</text>
   </g>
-  <g id="node-environment" data-graph-role="node" data-node-id="environment" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1110,818,1420,888">
-  <rect x="1110.0" y="818.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
-  <text data-text-role="title" data-full-text="test-app/devices/" data-text-max-width="286.0" x="1265.0" y="853.0" text-anchor="middle" class="node-title" font-size="18">test-app/devices/</text>
-  <text data-text-role="subtitle" data-full-text="设备记录 · 构建与运行说明" data-text-max-width="286.0" x="1265.0" y="875.0" text-anchor="middle" class="node-sub" font-size="12">设备记录 · 构建与运行说明</text>
+  <g id="node-evidence" data-graph-role="node" data-node-id="evidence" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="760,928,1070,998">
+  <rect x="760.0" y="928.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="evidence/" data-text-max-width="286.0" x="915.0" y="963.0" text-anchor="middle" class="node-title" font-size="18">evidence/</text>
+  <text data-text-role="subtitle" data-full-text="本地日志与图像 · 不纳入 Git" data-text-max-width="286.0" x="915.0" y="985.0" text-anchor="middle" class="node-sub" font-size="12">本地日志与图像 · 不纳入 Git</text>
   </g>
-  <g id="node-flow_rt" data-graph-role="node" data-node-id="flow_rt" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,1026,280,1096">
-  <rect x="60.0" y="1026.0" width="220.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8" />
-  <text data-text-role="title" data-full-text="runtime.rs" data-text-max-width="196.0" x="170.0" y="1061.0" text-anchor="middle" class="node-title" font-size="18">runtime.rs</text>
-  <text data-text-role="subtitle" data-full-text="渲染 / 写段后处理输入" data-text-max-width="196.0" x="170.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">渲染 / 写段后处理输入</text>
+  <g id="node-environment" data-graph-role="node" data-node-id="environment" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1110,928,1420,998">
+  <rect x="1110.0" y="928.0" width="310.0" height="70.0" rx="10.0" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="test-app/devices/" data-text-max-width="286.0" x="1265.0" y="963.0" text-anchor="middle" class="node-title" font-size="18">test-app/devices/</text>
+  <text data-text-role="subtitle" data-full-text="设备记录 · 构建与运行说明" data-text-max-width="286.0" x="1265.0" y="985.0" text-anchor="middle" class="node-sub" font-size="12">设备记录 · 构建与运行说明</text>
   </g>
-  <g id="node-flow_fb" data-graph-role="node" data-node-id="flow_fb" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="350,1026,570,1096">
-  <rect x="350.0" y="1026.0" width="220.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8" />
-  <text data-text-role="title" data-full-text="framebuffer.rs" data-text-max-width="196.0" x="460.0" y="1061.0" text-anchor="middle" class="node-title" font-size="18">framebuffer.rs</text>
-  <text data-text-role="subtitle" data-full-text="约 1 ms 分段写后台页" data-text-max-width="196.0" x="460.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">约 1 ms 分段写后台页</text>
+  <g id="node-flow_rt" data-graph-role="node" data-node-id="flow_rt" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="60,1136,280,1206">
+  <rect x="60.0" y="1136.0" width="220.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="runtime.rs" data-text-max-width="196.0" x="170.0" y="1171.0" text-anchor="middle" class="node-title" font-size="18">runtime.rs</text>
+  <text data-text-role="subtitle" data-full-text="渲染 / 写段后处理输入" data-text-max-width="196.0" x="170.0" y="1193.0" text-anchor="middle" class="node-sub" font-size="12">渲染 / 写段后处理输入</text>
   </g>
-  <g id="node-flow_pr" data-graph-role="node" data-node-id="flow_pr" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="640,1026,860,1096">
-  <rect x="640.0" y="1026.0" width="220.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8" />
-  <text data-text-role="title" data-full-text="presentation.rs" data-text-max-width="196.0" x="750.0" y="1061.0" text-anchor="middle" class="node-title" font-size="18">presentation.rs</text>
-  <text data-text-role="subtitle" data-full-text="执行板级阻塞回调" data-text-max-width="196.0" x="750.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">执行板级阻塞回调</text>
+  <g id="node-flow_fb" data-graph-role="node" data-node-id="flow_fb" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="350,1136,570,1206">
+  <rect x="350.0" y="1136.0" width="220.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="framebuffer.rs" data-text-max-width="196.0" x="460.0" y="1171.0" text-anchor="middle" class="node-title" font-size="18">framebuffer.rs</text>
+  <text data-text-role="subtitle" data-full-text="约 1 ms 分段写后台页" data-text-max-width="196.0" x="460.0" y="1193.0" text-anchor="middle" class="node-sub" font-size="12">约 1 ms 分段写后台页</text>
   </g>
-  <g id="node-flow_nx" data-graph-role="node" data-node-id="flow_nx" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="930,1026,1150,1096">
-  <rect x="930.0" y="1026.0" width="220.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fdba74" stroke-width="1.8" />
-  <text data-text-role="title" data-full-text="板级适配" data-text-max-width="196.0" x="1040.0" y="1061.0" text-anchor="middle" class="node-title" font-size="18">板级适配</text>
-  <text data-text-role="subtitle" data-full-text="backends/nx5/ 或 x9/" data-text-max-width="196.0" x="1040.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">backends/nx5/ 或 x9/</text>
+  <g id="node-flow_pr" data-graph-role="node" data-node-id="flow_pr" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="640,1136,860,1206">
+  <rect x="640.0" y="1136.0" width="220.0" height="70.0" rx="10.0" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="presentation.rs" data-text-max-width="196.0" x="750.0" y="1171.0" text-anchor="middle" class="node-title" font-size="18">presentation.rs</text>
+  <text data-text-role="subtitle" data-full-text="执行板级阻塞回调" data-text-max-width="196.0" x="750.0" y="1193.0" text-anchor="middle" class="node-sub" font-size="12">执行板级阻塞回调</text>
   </g>
-  <g id="node-flow_dev" data-graph-role="node" data-node-id="flow_dev" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1220,1026,1440,1096">
-  <rect x="1220.0" y="1026.0" width="220.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fdba74" stroke-width="1.8" />
-  <text data-text-role="title" data-full-text="framebuffer 设备" data-text-max-width="196.0" x="1330.0" y="1061.0" text-anchor="middle" class="node-title" font-size="18">framebuffer 设备</text>
-  <text data-text-role="subtitle" data-full-text="两页 · 完成后释放旧页" data-text-max-width="196.0" x="1330.0" y="1083.0" text-anchor="middle" class="node-sub" font-size="12">两页 · 完成后释放旧页</text>
+  <g id="node-flow_nx" data-graph-role="node" data-node-id="flow_nx" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="930,1136,1150,1206">
+  <rect x="930.0" y="1136.0" width="220.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fdba74" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="板级适配" data-text-max-width="196.0" x="1040.0" y="1171.0" text-anchor="middle" class="node-title" font-size="18">板级适配</text>
+  <text data-text-role="subtitle" data-full-text="backends/nx5/ 或 x9/" data-text-max-width="196.0" x="1040.0" y="1193.0" text-anchor="middle" class="node-sub" font-size="12">backends/nx5/ 或 x9/</text>
   </g>
-  <g id="footer" data-graph-role="reserved" data-graph-bounds="48,1174,461,1190">
-  <text x="48.0" y="1186.0" class="footnote">特性：fbdev 与 nx5 互斥；nx5-tde 包含 nx5。外部依赖：Slint 1.18.1、NX5 SDK。</text>
+  <g id="node-flow_dev" data-graph-role="node" data-node-id="flow_dev" data-semantic-role="rect" data-motion-role="" data-motion-stage="" data-motion-order="" data-parent="" data-deployment-id="" data-topic-id="" data-span-id="" data-station-order="" data-status="" data-start-ms="" data-duration-ms="" data-parent-span="" data-graph-bounds="1220,1136,1440,1206">
+  <rect x="1220.0" y="1136.0" width="220.0" height="70.0" rx="10.0" fill="#fff7ed" stroke="#fdba74" stroke-width="1.8" />
+  <text data-text-role="title" data-full-text="framebuffer 设备" data-text-max-width="196.0" x="1330.0" y="1171.0" text-anchor="middle" class="node-title" font-size="18">framebuffer 设备</text>
+  <text data-text-role="subtitle" data-full-text="两页 · 完成后释放旧页" data-text-max-width="196.0" x="1330.0" y="1193.0" text-anchor="middle" class="node-sub" font-size="12">两页 · 完成后释放旧页</text>
+  </g>
+  <g id="footer" data-graph-role="reserved" data-graph-bounds="48,1284,475,1300">
+  <text x="48.0" y="1296.0" class="footnote">板级特性互斥：fbdev / nx5 / f1；f1-g2d 包含 f1，F1 尚未准入。Slint 1.18.1 同源。</text>
   </g>
 </svg></div>
     <p class="sr-only">Keyboard shortcuts: plus and minus zoom, zero resets, T toggles theme, S exports.</p>

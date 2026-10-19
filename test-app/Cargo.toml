@@ -10,6 +10,8 @@ description = "Standalone usage examples and device validation for slint-bridge"
 [features]
 default = []
 fbdev = ["slint-bridge/fbdev"]
+f1 = ["slint-bridge/f1"]
+f1-g2d = ["f1", "slint-bridge/f1-g2d"]
 nx5 = ["slint-bridge/nx5", "dep:libloading"]
 nx5-mma-background = ["nx5-tde", "slint-bridge/nx5-mma-background"]
 nx5-test-hooks = ["nx5-mma-background", "slint-bridge/nx5-test-hooks"]

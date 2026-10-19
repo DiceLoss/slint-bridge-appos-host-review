@@ -1,3 +1,5 @@
+#[cfg(feature = "f1")]
+pub(crate) mod f1;
 #[cfg(feature = "nx5")]
 pub(crate) mod nx5;
 #[cfg(feature = "fbdev")]
@@ -51,6 +53,10 @@ pub(crate) struct Admission {
 }
 
 pub(crate) fn require(backend: Backend) -> Result<Admission, Error> {
+    #[cfg(feature = "f1")]
+    if backend == Backend::F1 {
+        return f1::open();
+    }
     #[cfg(feature = "nx5")]
     if backend == Backend::Nx5 {
         return Ok(Admission {
@@ -70,6 +76,7 @@ pub(crate) fn require(backend: Backend) -> Result<Admission, Error> {
         reason: match backend {
             Backend::Nx5 => "this build does not include the NX5 display implementation",
             Backend::Fbdev => "no framebuffer driver has a reviewed tear-free completion contract",
+            Backend::F1 => "this build does not include the F1 integration target",
         },
     })
 }

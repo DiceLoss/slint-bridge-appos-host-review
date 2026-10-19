@@ -4,6 +4,22 @@ use slint_bridge::{InputDevice, selected_backend};
 use std::time::Duration;
 
 #[test]
+#[cfg(feature = "f1")]
+fn f1_selection_does_not_claim_display_admission() {
+    assert_eq!(slint_bridge::selected_backend(), slint_bridge::Backend::F1);
+    assert!(matches!(
+        init(Config {
+            framebuffer: "/does/not/exist".into(),
+            ..Config::default()
+        }),
+        Err(Error::DisplayNotAdmitted {
+            backend: slint_bridge::Backend::F1,
+            ..
+        })
+    ));
+}
+
+#[test]
 #[cfg(not(all(feature = "nx5", target_arch = "arm", target_pointer_width = "32")))]
 fn unsupported_backend_is_rejected_before_device_access() {
     let error = init(Config {

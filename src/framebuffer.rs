@@ -122,6 +122,8 @@ pub(crate) struct Layout {
 }
 
 impl Layout {
+    // F1 admission remains closed, so no production F1 path constructs a layout.
+    #[cfg(any(test, feature = "nx5", feature = "fbdev"))]
     pub(crate) fn new(f: &FixedInfo, v: &VariableInfo) -> Result<Self, Error> {
         let unsupported = Error::UnsupportedFramebuffer;
         if f.kind != 0 || f.visual != 2 || v.grayscale != 0 || v.nonstd != 0 {
@@ -583,10 +585,12 @@ fn row_spans(rectangles: &[Rect], y: usize, spans: &mut Vec<(usize, usize)>) {
 pub(crate) struct Framebuffer {
     #[cfg(feature = "fbdev")]
     background_cache: crate::software_background::BackgroundCache,
-    #[cfg(not(feature = "nx5-tde"))]
+    #[cfg(not(any(feature = "nx5-tde", feature = "f1-g2d")))]
     retained: Vec<PremultipliedRgbaColor>,
     #[cfg(feature = "nx5-tde")]
     retained: crate::backends::nx5::tde::Buffer,
+    #[cfg(all(feature = "f1-g2d", not(feature = "nx5-tde")))]
+    retained: crate::backends::f1::g2d::Buffer,
     // Retire TDE resources before closing the parent SDK/VO session.
     presentation: Presentation,
     mapping: Mapping,
@@ -654,7 +658,10 @@ impl Framebuffer {
         #[cfg(feature = "nx5-tde")]
         let retained =
             crate::backends::nx5::tde::Buffer::new(layout.size.width, layout.size.height)?;
-        #[cfg(not(feature = "nx5-tde"))]
+        #[cfg(all(feature = "f1-g2d", not(feature = "nx5-tde")))]
+        let retained =
+            crate::backends::f1::g2d::Buffer::new(layout.size.width, layout.size.height)?;
+        #[cfg(not(any(feature = "nx5-tde", feature = "f1-g2d")))]
         let retained = {
             let count = layout.size.width as usize * layout.size.height as usize;
             let mut retained = Vec::new();
@@ -688,7 +695,7 @@ impl Framebuffer {
             self.can_render(),
             "at most one rendered frame may wait for submission"
         );
-        #[cfg(all(not(feature = "nx5-tde"), not(feature = "fbdev")))]
+        #[cfg(not(any(feature = "nx5-tde", feature = "f1-g2d", feature = "fbdev")))]
         let damage = renderer.render(&mut self.retained, self.layout.size.width as usize);
         #[cfg(feature = "fbdev")]
         let damage = self.background_cache.render(
@@ -697,6 +704,8 @@ impl Framebuffer {
             self.layout.size.width as usize,
         );
         #[cfg(feature = "nx5-tde")]
+        let damage = self.retained.render(renderer)?;
+        #[cfg(all(feature = "f1-g2d", not(feature = "nx5-tde")))]
         let damage = self.retained.render(renderer)?;
         let mut current = std::mem::take(&mut self.unsubmitted_damage);
         current.extend(damage.iter().filter_map(|(origin, size)| {
@@ -799,9 +808,9 @@ impl Framebuffer {
             });
         }
         let layout = self.layout;
-        #[cfg(not(feature = "nx5-tde"))]
+        #[cfg(not(any(feature = "nx5-tde", feature = "f1-g2d")))]
         let pixels = &self.retained;
-        #[cfg(feature = "nx5-tde")]
+        #[cfg(any(feature = "nx5-tde", feature = "f1-g2d"))]
         let pixels = self.retained.pixels();
         let mapped = self.mapping.bytes_mut();
         let writeback = self.writeback.as_mut().unwrap();

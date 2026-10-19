@@ -1,0 +1,9 @@
+# F1 / ArtInChip D211: T-HEAD RISC-V 64-bit, LP64D ABI.
+# Use the matching vendor sysroot and loader; do not link against host libraries.
+[target.riscv64gc-unknown-linux-gnu]
+linker = "/opt/F1/bin/riscv64-unknown-linux-gnu-gcc"
+
+[env]
+CC_riscv64gc_unknown_linux_gnu = "/opt/F1/bin/riscv64-unknown-linux-gnu-gcc"
+CXX_riscv64gc_unknown_linux_gnu = "/opt/F1/bin/riscv64-unknown-linux-gnu-g++"
+AR_riscv64gc_unknown_linux_gnu = "/opt/F1/bin/riscv64-unknown-linux-gnu-ar"

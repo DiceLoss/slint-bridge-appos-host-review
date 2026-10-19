@@ -1,18 +1,24 @@
 //! A single fullscreen Slint platform for embedded Linux.
 //!
-//! Select exactly one board feature (`fbdev` or `nx5`). `nx5-tde` implies `nx5`.
+//! Select exactly one board feature (`fbdev`, `nx5` or `f1`). `nx5-tde` implies `nx5`.
 //! NX5 supports the current firmware's blocking double-buffered presentation.
+//! F1 is reserved for integration; initialization rejects until its display
+//! completion contract has been established.
 //! Other framebuffer drivers need their own presentation implementation.
 
 #[cfg(not(target_os = "linux"))]
 compile_error!("slint-bridge currently supports Linux only");
-#[cfg(not(any(feature = "fbdev", feature = "nx5")))]
+#[cfg(not(any(feature = "fbdev", feature = "nx5", feature = "f1")))]
 compile_error!(
-    "select one board feature: fbdev or nx5 (nx5-tde implies nx5). \
+    "select one board feature: fbdev, nx5 or f1 (nx5-tde implies nx5). \
      Enable it in the slint-bridge dependency's features, or select an application feature that forwards to it."
 );
-#[cfg(all(feature = "fbdev", feature = "nx5"))]
-compile_error!("fbdev and nx5 are mutually exclusive board features");
+#[cfg(any(
+    all(feature = "fbdev", feature = "nx5"),
+    all(feature = "f1", feature = "nx5"),
+    all(feature = "f1", feature = "fbdev")
+))]
+compile_error!("fbdev, nx5 and f1 are mutually exclusive board features");
 
 mod backends;
 mod event_wait;
@@ -37,12 +43,16 @@ use std::{fmt, io, path::PathBuf, time::Duration};
 pub enum Backend {
     Fbdev,
     Nx5,
+    /// F1 integration target; currently rejected before device access.
+    F1,
 }
 
 /// The board selected by Cargo features.
 pub const fn selected_backend() -> Backend {
     if cfg!(feature = "nx5") {
         Backend::Nx5
+    } else if cfg!(feature = "f1") {
+        Backend::F1
     } else {
         Backend::Fbdev
     }
@@ -198,8 +208,10 @@ impl std::error::Error for Error {
 /// NX5 requires ARM32, exclusive display ownership and a compatible
 /// SDK/driver ABI. It does not check kernel versions, driver names or file hashes.
 /// Target/ownership mismatches and generic fbdev return [`Error::DisplayNotAdmitted`];
-/// SDK loading and device I/O failures return [`Error::Io`]. Frame timing and input
-/// counts are validated before board initialization. Errors during the later
+/// SDK loading and device I/O failures return [`Error::Io`].
+/// F1 currently returns [`Error::DisplayNotAdmitted`] before device access:
+/// a board-specific display completion contract is still required.
+/// Frame timing and input counts are validated before board initialization. Errors during the later
 /// component event loop are returned through Slint's `PlatformError`.
 pub fn init(config: Config) -> Result<(), Error> {
     config.validate_background_storage()?;

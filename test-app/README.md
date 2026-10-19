@@ -63,6 +63,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 选择设备由编译期 feature 决定；运行时路径由参数决定：
 
+F1 集成构建选择 `--features f1` 或 `--features f1-g2d`，二者均通过
+`slint-bridge` 公开接口使用库；`f1-g2d` 包含 `f1`。
+目前 F1 的 `init()` 在设备访问前返回 `DisplayNotAdmitted`，测试程序不能
+上屏；不要把交叉编译成功作为完成准入。构建与未验证范围见
+[F1 集成说明](devices/f1/README.md)。
+
 | 项目 | 选择方式 |
 | --- | --- |
 | 通用 framebuffer 软件组合 | `--features fbdev` |

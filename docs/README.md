@@ -12,6 +12,7 @@
 | [测试应用](../test-app/README.md) | 页面、参数、素材、测试及业务使用方式 |
 | [NX5 设备与工具](../test-app/devices/nx5/README.md) | [部署归档与诊断工具](../test-app/tools/nx5/README.md)、SDK/字体、回归运行前提 |
 | [X9 设备与工具](../test-app/devices/x9/README.md) | [DRM/evdev 与性能工具](../test-app/tools/x9/README.md)、旋转及控制台恢复 |
+| [F1 集成状态](../test-app/devices/f1/README.md) | RISC-V 构建、候选 G2D 路径、[只读查询与 ABI 校验](../test-app/tools/f1/README.md)；显示尚未准入 |
 | [随仓库资源](../third-party/README.md) | SDK 头文件、动态库、字体、版权及 SHA256 |
 
 [项目结构图](diagrams/project-structure.html) · [双页时序图](diagrams/runtime-sequence.html)。`diagrams/` 同时保留图源及 SVG/PNG/HTML 导出。

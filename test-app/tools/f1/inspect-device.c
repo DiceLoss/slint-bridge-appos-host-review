@@ -77,9 +77,30 @@ static int inspect_input(void)
     return close(fd) < 0;
 }
 
+static int inspect_ge(void)
+{
+    /* ArtInChip UAPI: enum ge_mode is a native 32-bit C enum. */
+    int fd = open("/dev/ge", O_RDONLY | O_CLOEXEC);
+    unsigned int version = 0;
+    int mode = -1;
+    if (fd < 0) {
+        perror("open ge");
+        return 1;
+    }
+    if (ioctl(fd, _IOR('G', 0, unsigned int), &version) < 0 ||
+        ioctl(fd, _IOR('G', 1, int), &mode) < 0) {
+        perror("IOC_GE_VERSION/IOC_GE_MODE");
+        close(fd);
+        return 1;
+    }
+    printf("ge version=%#x mode=%d (0=normal,1=command_queue)\n", version, mode);
+    return close(fd) < 0;
+}
+
 int main(void)
 {
     int fb_result = inspect_fb();
     int input_result = inspect_input();
-    return fb_result || input_result;
+    int ge_result = inspect_ge();
+    return fb_result || input_result || ge_result;
 }

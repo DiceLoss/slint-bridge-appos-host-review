@@ -14,6 +14,8 @@ description = "Slint platform support for embedded Linux with explicit display a
 [features]
 default = []
 fbdev = ["dep:i-slint-renderer-software"]
+f1 = []
+f1-g2d = ["f1", "dep:i-slint-renderer-software"]
 nx5 = ["dep:libloading"]
 nx5-mma-background = ["nx5-tde", "slint/external-pixel-buffer"]
 nx5-test-hooks = ["nx5-mma-background"]

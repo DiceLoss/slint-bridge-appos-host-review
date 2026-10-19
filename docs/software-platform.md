@@ -2,6 +2,11 @@
 
 本文描述当前源码的接口与运行行为。NX5 使用板级阻塞翻页双页实现，不按固定固件版本或文件摘要准入；`fbdev` 目前仅接入 X9 Lombo #452 的纯 CPU 双页路径。目标或显示所有权不符合要求返回 `DisplayNotAdmitted`，SDK 加载和设备 I/O 失败返回 `Io`。约 29 FPS、有限 WBC 样本等实机结果属于对应阶段的观测，不代表所有物理帧的无撕裂认证。
 
+`f1` / `f1-g2d` 是 RISC-V F1 的集成目标，目前显示完成契约尚未建立，
+`init()` 在打开 framebuffer、GE 或输入设备前返回 `DisplayNotAdmitted`。
+`f1-g2d` 包含候选 GE normal-mode 画布路径，尚未做硬件绘制作业验证；
+不能将编译通过或 `Backend::F1` 解释为已支持上屏。状态见 [F1](../test-app/devices/f1/README.md)。
+
 日常构建和运行见 [测试工程](../test-app/README.md) 、[NX5 设备说明](../test-app/devices/nx5/README.md) 与 [X9 设备说明](../test-app/devices/x9/README.md)。各轮硬件测量由 [文档索引](README.md) 导航；历史报告中的测试数量、PID 和性能数据不定义当前接口。
 
 ## 统一 API
@@ -129,6 +134,11 @@ CPU fence 不等于 DMA 缓存一致性。设备专有实现仍须负责缓存�
 
 ## 准入边界
 
+`f1` 分派到 `src/backends/f1/`，当前所有目标均拒绝显示准入。
+没有跳过准入的环境变量、测试 feature 或公共回调。F1 参考工程的
+`PAN → WAITFORVSYNC` 没有成为本库的 `PresentationContract`；新增板级实现
+必须先补足目标更新与旧页退休的关联，见 [F1 调查](f1-display.md)。
+
 [src/backends/mod.rs](../src/backends/mod.rs) 将 NX5 分派给 [src/backends/nx5/mod.rs](../src/backends/nx5/mod.rs)。检查 ARM32，再获取进程锁、检查 VO 未被占用并加载厂商库。不读取内核版本、构建时间或 framebuffer 驱动名称，也不计算 SDK、fyfb、vou 文件的 SHA256；兼容重编译不再因这些元数据变化被拒绝。库加载本身具有 SYS/VO 初始化副作用，不能与其他 SDK 进程并用。[current-target.json](../test-app/devices/nx5/current-target.json) 仅保存带时间戳的环境观测，不控制代码准入，也不实时更新设备状态。
 
 SDK 按无版本库名 `libVideoDec.so` 交给系统动态加载器查找，可在启动进程时用 `LD_LIBRARY_PATH=/任意/SDK目录` 指定位置；代码不再要求 `/system/app/clib`。若 SDK 文件自带版本后缀，在该目录提供 `libVideoDec.so` 链接即可，后端不限制实际文件的版本名称。首次加载后若 SDK 构造函数已启用 VO，就接管该次引用；若库已驻留且 VO 未启用，或构造函数不自动启用，则调用一次 `VO_Enable()`。初始化后续失败和正常析构均只配对调用一次 `VO_Disable()`；库映像通过 `RTLD_NODELETE` 保持驻留，使 SDK 的 SYS/VB/MMZ 描述符缓存可被后续会话复用，避免重复加载后遗失缓存并累积描述符。这不保留正常会话的 VO 引用或独占锁；锁竞争返回 `DisplayNotAdmitted`，其他锁调用错误仍为 `Io`。VO 检查必需符号与调用结果，TDE 以同一库名及 `RTLD_NOLOAD` 复用会话，不会另行初始化 SDK。调用者仍需提供兼容 `codec/vd/VoApi.h`、TDE 头文件和阻塞 PAN 完成语义的 SDK/驱动；符号存在和布局通过并不能自动证明 ABI 或完成语义兼容。
@@ -174,6 +184,29 @@ flowchart LR
 已知 DMA 完成后的 MMZ 释放失败会永久关闭进程内 TDE 创建门闩，后续使用软件路径；同一地址不重复释放，避免部分释放后重复分配累积资源。未知 DMA 仍保持原有整帧失败与会话隔离。
 
 ## 构建依赖
+
+F1 构建使用 `.cargo/f1.toml` 和 `riscv64gc-unknown-linux-gnu`，链接到
+`/opt/F1` T-HEAD 工具链与 LP64D sysroot。`f1`、`fbdev`、`nx5` 两两互斥，
+`f1-g2d` 包含 `f1` 并启用同源 renderer 的 `experimental` 接口。
+F1 不切换 Slint 源码、不链接 NX5 SDK，也不加载参考工程中的视频解码库。
+
+`f1-g2d` 的候选实现用 `/dev/dma_heap/reserved` 分配一份预乘 RGBA 保留画布，
+替代堆画布；另保留一行隔离缓冲。仅接受 GE normal mode=0、version=0x100。
+通过 `IOC_GE_FILLRECT` 在该画布上执行不透明纯色填充，使用
+`MPP_FMT_ABGR_8888`（小端 RGBA 字节）及预乘标记；至少 32768 像素、至多
+16 个裁剪片段时走该路径。边框、圆角、渐变、整体透明度、纹理及较小区域
+沿用软件 renderer，未实现 GE 纹理/混合/缩放。
+
+normal 模式的绘制 ioctl 本身等待作业完成，不调用只属于命令队列模式的
+`IOC_GE_SYNC`。作业前使用参考 SDK 同样的 DMA-BUF cache flush（flags=7），
+成功后 invalidate（flags=1），所有返回值均检查。构造期间未提交作业，资源
+不可用时可以退回堆画布；运行中的任何 GE/缓存同步错误都使该帧失败，后续
+回调只访问隔离行，不重试或提交残缺画布。作业开始后结果不确定时保留 GE fd、
+DMA-BUF fd 和映射，禁止 CPU 访问。它不读写物理显示页，不改变通用双页调度。
+
+以上是实现边界，尚未完成实机绘图、缓存一致性及故障验证。当前 F1 准入在
+画布构造之前拒绝，因此普通应用不会触发上述硬件路径。主机像素对照使用
+软件模拟填充器，不能证明硬件输出或驱动版本对应；详见 [F1 集成状态](../test-app/devices/f1/README.md)。
 
 两个 package 均要求 Linux、Rust 1.92 或更新版本，默认 features 为空，必须显式选择 `fbdev` 或 `nx5`；`nx5-tde` 包含 `nx5`，`nx5-mma-background` 包含 `nx5-tde` 并自动启用 Slint 外部像素 feature。`fbdev` 与上述任一 NX5 feature 组合均编译失败。`nx5-test-hooks` 只用于诊断，不用于正式常驻构建。根 workspace 的默认成员只有库；检查测试工程使用 `-p slint-bridge-test-app`，检查两者使用 `--workspace`。
 
