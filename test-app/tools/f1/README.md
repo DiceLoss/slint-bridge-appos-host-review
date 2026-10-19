@@ -1,4 +1,4 @@
-# F1 查询与离屏验证
+# F1 查询、显示与离屏验证
 
 `inspect-device.c` 用于 [F1 显示调查](../../../docs/f1-display.md) 中的参数采集，
 不是后端准入或翻页测试。当前验证对象为
@@ -110,3 +110,46 @@ python3 test-app/tools/f1/analyze-kernel.py
 它先核验两个固定 SHA256，再提取操作表、ioctl 分派表并用 `/opt/F1` objdump
 生成六段反汇编。其他镜像会被拒绝，不能把这些固定地址套用于新固件；
 成功重放也不是新的实机翻页或设备准入验证。
+
+## Showcase 性能采样
+
+`profile-local.sh` 控制已启动的 showcase，不启停显示所有者。所有请求走
+设备 localhost 的 Slint 原生 MCP，ADB/串口仅用于启动和取回证据。
+构建并上传到同一 SD 目录：
+
+```sh
+for tool in run-detached observe-resources mcp-scroll read-front; do
+  /opt/F1/bin/riscv64-unknown-linux-gnu-gcc -O2 -Wall -Wextra -Werror \
+    "test-app/tools/f1/$tool.c" -o "target/f1-showcase/$tool"
+done
+```
+
+- `run-detached LOG PROGRAM [ARGS...]`：确认 exec 成功后返回 PID，独立会话、
+  日志独占创建；仍须检查应用启动日志与存活状态，不自动核验 SD 挂载。
+- `observe-resources PID MAX_SECONDS PHASE_FILE`：核对 starttime，每秒读取
+  CPU ticks、RSS/HWM、MemAvailable、缺页和 DE/GE 中断计数；不访问显示。
+- `mcp-scroll NEGATIVE_JSON POSITIVE_JSON SECONDS`：重复本次 MCP 查询得到的
+  句柄请求，三秒换方向，每次成功应答后等 20 ms；验证 HTTP/RPC 错误。
+- `read-front NEW_OUTPUT.bgra`：只读 `/dev/fb0`，每次 4 KiB 写到 SD。
+  用于有限运行退出后的静止页，或已确认无动画/输入的静态页面；读前后页号
+  一致不能排除中间翻页，不能用它对动态扫描做原子截图或完成认证。
+
+先启动一个具有原生 MCP 和 trace 的 180 秒 showcase，再执行：
+
+```sh
+"$F1_RUN_DIR/run-detached" "$F1_RUN_DIR/cpu-run-controller.log" \
+  /bin/sh "$F1_RUN_DIR/profile-local.sh" showcase-cpu cpu-run
+# G2D 对照：程序名改 showcase-g2d，输出 tag 改为新的 g2d-run。
+```
+
+脚本从本次进程查询窗口/元素句柄，依次测 Controls 静态、Overview、Motion、
+Rich list 滚动，各预热 3 秒、采样 20 秒。截图只在性能采样前进行，
+MemAvailable 不足 16 MiB 时跳过；富列表前不足 8 MiB 时结束并记录非零状态。
+最后检查其他页面导航。需要 `PROFILE_DONE`、`*-exit-code.txt` 为 0，
+以及有限显示程序 `APP_EXIT=0`（由启动 shell 包装记录）。每次使用新 tag，
+不得覆盖历史证据。采样器 metadata/CSV、应用 trace 和 scroll 日志一起归档。
+
+帧率用完整落在同一 phase 内的 trace 首末累计提交差除以单调时间差；
+CPU 用该 phase 首末 ticks 差 / CLK_TCK / 秒数。没有周期 trace 的静态页面
+标记按需绘制，不把面板 IRQ 率当作应用 FPS。实测及已知干扰见
+[F1 showcase 报告](../../../docs/f1-showcase.md)。

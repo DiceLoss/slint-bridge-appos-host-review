@@ -1,51 +1,75 @@
-# F1 集成状态
+# F1 设备与运行
 
-目标为 `fd_f1_r88r30_spinor-20c31b4578`（ArtInChip D211，RISC-V 64 位）。
-设备参数和翻页机制依据见 [调查报告](../../../docs/f1-display.md)。
+目标为 `fd_f1_r88r30_spinor-20c31b4578`（ArtInChip D211，RISC-V64）。
+`f1` / `f1-g2d` 已支持本次检查的固件，按用户指定的参考项目采用
+`PAN → WAITFORVSYNC`。固件、布局、独占检查及失败行为集中维护在
+[平台说明](../../../docs/software-platform.md#准入边界)。
+这是参考使用约定，不代表已证明旧页硬件退休或所有帧无撕裂；
+[镜像分析](../../../docs/f1-kernel-analysis.md) 的限制仍成立。
 
-当前提供 `f1` / `f1-g2d` 构建目标、板级模块和候选 GE normal-mode 画布。
-**显示完成契约尚未验证，`init()` 在任何设备访问前拒绝；还不能运行 Slint 界面。**
-没有对应固件源码时，不能通过改用一次 VSYNC、固定等待或页号读回绕过此限制。
-
-运行行为集中维护于 [平台说明](../../../docs/software-platform.md#构建依赖)。
-本目录不提供停止原应用或接管显示的命令，当前任务要求原应用继续运行。
-最新只读查询得到 GE version=0x100、mode=0；离屏填充和 CPU/GE 缓存交替
-访问已在该设备上完成正向验证，范围见 [实测记录](../../../docs/f1-display.md#f1-offscreen-ge)。
+[设备调查](../../../docs/f1-display.md) 保存初始查询与离屏 GE 结果；
+[showcase 实测](../../../docs/f1-showcase.md) 保存本轮显示、性能和内存结果。
 
 ## 构建
 
-需要已安装 `riscv64gc-unknown-linux-gnu` Rust target 和 `/opt/F1` T-HEAD
-GCC 10.2.0 工具链。编译器、自带 sysroot、动态加载器必须配套。
-从仓库根执行：
+需要 `riscv64gc-unknown-linux-gnu` Rust target 和 `/opt/F1` T-HEAD GCC 10.2.0。
+从仓库根执行，CPU 对照将 `f1-g2d` 改为 `f1`，并另存输出：
 
 ```sh
-cargo --config .cargo/f1.toml build --locked --offline --release \
-  -p slint-bridge-test-app --features f1-g2d \
-  --target riscv64gc-unknown-linux-gnu --bin basic
+SLINT_EMIT_DEBUG_INFO=1 cargo --config .cargo/f1.toml build --locked --offline \
+  --release -p slint-bridge-test-app --features f1-g2d,slint/mcp \
+  --target riscv64gc-unknown-linux-gnu --bin showcase
+mkdir -p target/f1-showcase
+/opt/F1/bin/riscv64-unknown-linux-gnu-strip \
+  -o target/f1-showcase/showcase-g2d target/riscv64gc-unknown-linux-gnu/release/showcase
 ```
 
-生成文件在 `target/riscv64gc-unknown-linux-gnu/release/basic`，解释器应为
-`/lib/ld-linux-riscv64xthead-lp64d.so.1`。只要准入未开放，运行它仍应返回
-`DisplayNotAdmitted`；最小程序可用于独立验证 ELF/加载器与预期准入拒绝，
-不能作为显示测试。仅 CPU 的集成构建将 feature 改为
-`f1`。其他业务 workspace 也须自行配置 RISC-V 链接器；Cargo feature 不能
-替代 target/ABI 选择。
+ELF 解释器为 `/lib/ld-linux-riscv64xthead-lp64d.so.1`；工具链与 sysroot 必须配套。
+独立业务工程须配置相同 target/linker，feature 本身不选择 ABI。
 
-## 验证与下一步
+## SD 卡部署与所有权
 
-设备内存较小，所有测试固件及较大测试产物放到 SD 卡 `/tmp/sdcard`，
-不放在 RAM 文件系统 `/tmp` 或 `/run`。部署前重新读取 `/proc/mounts`、
-`df -h /tmp/sdcard` 和 `/proc/meminfo`，确认 SD 卡已挂载及空间/内存足够；
-未挂载时停止部署，不在 RAM 上创建同名目录。使用独立版本目录，
-保留原应用；移除测试文件前先取回日志并核对摘要。
+设备可用物理内存约 57 MiB，无 swap。固件、字体、日志及截图均放在
+SD 卡 `/tmp/sdcard` 的独立版本目录，不放在 RAM `/tmp` 或 `/run`。
+部署前重新核对序列号、boot ID、`/proc/mounts`、`df -h /tmp/sdcard`、
+`/proc/meminfo`；确认 `/tmp/sdcard` 是 `/dev/mmcblk0` 的真实挂载点。
+未挂载时停止，不创建同名 RAM 目录。上传后回读核对 SHA256。
 
-- 主机 feature 矩阵包含 F1 的公共 API、软件像素回归、G2D 回调模拟和
-  失败后画布隔离；错误的板级 feature 组合必须拒绝。
-- [工具说明](../../tools/f1/README.md) 区分只读查询与显式选择的 ignored 离屏测试，原应用保持运行。
-  UAPI 校验工具对照随仓库头文件检查 ioctl 编码、结构大小与字段偏移。
-- 已验证原生 GE 不透明填充、CPU 写入/GE 修改/CPU 读回的缓存同步序列，
-  未执行硬件故障注入、显示接管或物理页验证。离屏通过不等于显示准入。
-- 下一阶段仍需核验 GE 故障及异常资源释放行为；显示部分仍需证明
-  提交归属、配置锁存、旧页读取终止和超时后的恢复。
-  [当前镜像分析](../../../docs/f1-kernel-analysis.md) 已核验 PAN/VSYNC/IRQ 实际
-  调用链，确认这条接口链尚未提供所需的旧页退休确认。
+同时检查当前 `/dev/fb0` 描述符/映射、进程 exe、cmdline 和 starttime；
+旧报告 PID 不能用于 kill。原显示程序为 `/system/app0`，配套程序为
+`/system/control_service`。本轮仅停止 app0，保留 control_service，
+未替换 `/system/app0` 或改动启动脚本。后端发现其他显示所有者会拒绝。
+
+先记录原应用的 cwd、环境和恢复命令，再释放经过实时核对的显示所有者。
+不要执行系统服务的 `stop/restart`：本固件脚本会同时强杀配套服务。
+有限验证优先使用 `--seconds=180`，由事件循环正常退出并等待提交线程。
+
+已确认无人占用显示后，在设备 shell 执行（`F1_RUN_DIR` 为本轮已上传目录）：
+
+```sh
+SLINT_DEFAULT_FONT="$F1_RUN_DIR/DejaVuSans.ttf" SLINT_MCP_PORT=9315 \
+  SLINT_BRIDGE_TRACE=1 "$F1_RUN_DIR/showcase-g2d" \
+  --touch=/dev/input/event0 --seconds=180
+```
+
+不旋转，逻辑/物理尺寸均为 1024×600。字体与版权随程序部署，来源见
+[第三方资源](../../../third-party/README.md)。旧版 adbd 不支持 `exec-out`，
+普通后台 `&` 可能被断连终止；使用 [工具说明](../../tools/f1/README.md) 的
+`run-detached`，它会创建独立会话并将标准流转到 SD 卡。日志名须未被使用。
+持续展示可省略 `--seconds`；本轮交付保留 G2D showcase 在 Overview 页面运行。
+
+## 恢复与验证边界
+
+有限测试正常退出后，确认无测试进程及 framebuffer/GE 占用，再按采集的
+原 cwd/环境通过 `run-detached` 启动 `/system/app0`。本次原环境的
+`LD_LIBRARY_PATH` 为 `/system/clib:/lib:/usr/lib:/system/usr/lib`。
+保留现有 control_service，不启动第二份。确认 app0 重新取得 fb/GE/input。
+
+常驻 showcase 没有专门的远程正常退出命令；恢复原固件启动状态可安排设备
+正常重启（本轮未重启）。未知 GE/DMA 状态时不能用强杀代替资源完成确认，
+也不能立即启动第二个显示应用。原应用和启动配置始终保留。
+
+主机回归、ABI 检查、离屏硬件验证、MCP 与物理像素读回分别计证。
+MCP 点击/滚动不验证真实触摸方向；静止页读回不证明连续扫描无撕裂。
+真实 GE 故障恢复和逐帧退休仍未验证。截图前检查 MemAvailable，至少保留
+16 MiB，低于阈值跳过；采样窗口内不截图。

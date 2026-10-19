@@ -36,16 +36,17 @@ type ValidateLayout =
 
 type CompletePresentation = dyn FnMut(BorrowedFd<'_>, u32, &Layout) -> io::Result<()> + Send;
 
-/// Private seam for a board's blocking presentation implementation. Success
-/// transfers the previous scanout page back to the renderer. NX5 uses the
-/// board's blocking PAN completion contract.
+/// Private seam for a board's blocking presentation implementation. The board's
+/// success convention transfers the previous page back to the renderer. NX5 uses
+/// blocking PAN; F1 explicitly follows its reference PAN + VSYNC convention,
+/// whose hardware retirement limitations are recorded in the F1 report.
 /// No public API can create this value or supply a callback.
 pub(crate) struct PresentationContract {
     pub(crate) complete: Box<CompletePresentation>,
     pub(crate) validate_layout: Box<ValidateLayout>,
 }
 
-/// Verified board resources and OS timing information. Timer precision affects
+/// Checked board resources and OS timing information. Timer precision affects
 /// event scheduling only; it cannot establish display-page ownership.
 pub(crate) struct Admission {
     pub(crate) presentation: PresentationContract,

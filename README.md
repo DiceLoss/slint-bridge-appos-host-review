@@ -26,7 +26,7 @@ slint_bridge/
 │   │   ├── mod.rs            # 私有板级契约与准入分派
 │   │   ├── nx5/              # NX5 翻页、SDK 会话及 tde/
 │   │   ├── x9/               # X9 纯 CPU framebuffer 与 DRM 完成事件
-│   │   └── f1/               # F1 集成准备、可选 GE 画布；显示尚未准入
+│   │   └── f1/               # F1 参考 PAN/VSYNC、可选 GE 画布
 │   └── tests/                # 按职责拆分的库内回归
 ├── third-party/              # NX5 SDK 头文件/动态库、部署字体及版权说明
 ├── test-app/                 # 独立测试程序、.slint 界面、设备工具
@@ -64,12 +64,12 @@ slint_bridge::init(Config {
 | Feature | 行为 |
 | --- | --- |
 | `fbdev` | 纯 CPU framebuffer；当前接入 X9 Lombo #452 板级完成契约 |
-| `f1` / `f1-g2d` | F1 RISC-V 集成目标；后者包含 GE normal-mode 画布实现。完成契约未验证，`init()` 在设备访问前拒绝 |
+| `f1` / `f1-g2d` | F1 RISC-V；使用参考 PAN + WAITFORVSYNC，后者包含 GE normal-mode 画布 |
 | `nx5` | NX5 VO 初始化、软件渲染与双页显示 |
 | `nx5-mma-background` | 包含 `nx5-tde` 与同源 Slint 外部像素支持；运行时由 Config 选择背景存储 |
 | `nx5-tde` | 包含 `nx5`，加速大块 RGBA 复制和透明混合；另有 QuickFill 诊断开关 |
 
-必须选择一个板级 feature；`fbdev`、`nx5` 与 `f1` 两两互斥。NX5 按 SDK/驱动接口和双页布局运行，不比对内核版本、驱动名称或文件摘要；`fbdev` 仅准入已验证的 X9 Lombo 固件与布局，其他 framebuffer 仍拒绝。F1 当前仅完成构建与 G2D 基础路径，不代表已可上屏，见 [F1 集成状态](test-app/devices/f1/README.md)。SDK 目录由系统动态库搜索路径决定，见 [平台说明](docs/software-platform.md#准入边界)。
+必须选择一个板级 feature；`fbdev`、`nx5` 与 `f1` 两两互斥。NX5 按 SDK/驱动接口和双页布局运行，不比对内核版本、驱动名称或文件摘要；`fbdev` 仅准入已验证的 X9 Lombo 固件与布局，其他 framebuffer 仍拒绝。F1 按用户选定的参考翻页约定运行，适用固件及验证限制见 [F1 设备说明](test-app/devices/f1/README.md)。SDK 目录由系统动态库搜索路径决定，见 [平台说明](docs/software-platform.md#准入边界)。
 
 `Config::background_storage` 默认为 `BackgroundStorage::Heap`。需要 MMA 时设为 `Mma`，在 `init(config.clone())` 后、首次绘制前通过 `config.prepare_background(image)` 准备图像；其他设备显式选择 MMA 会被拒绝。见 [背景接入与限制](test-app/devices/nx5/mma-background/README.md)。
 

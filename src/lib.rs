@@ -2,8 +2,8 @@
 //!
 //! Select exactly one board feature (`fbdev`, `nx5` or `f1`). `nx5-tde` implies `nx5`.
 //! NX5 supports the current firmware's blocking double-buffered presentation.
-//! F1 is reserved for integration; initialization rejects until its display
-//! completion contract has been established.
+//! F1 uses its reference-example PAN followed by WAITFORVSYNC convention on the
+//! inspected firmware. It is not a submission-ID completion fence.
 //! Other framebuffer drivers need their own presentation implementation.
 
 #[cfg(not(target_os = "linux"))]
@@ -43,7 +43,7 @@ use std::{fmt, io, path::PathBuf, time::Duration};
 pub enum Backend {
     Fbdev,
     Nx5,
-    /// F1 integration target; currently rejected before device access.
+    /// F1 / ArtInChip D211, using the reference PAN + WAITFORVSYNC sequence.
     F1,
 }
 
@@ -209,8 +209,8 @@ impl std::error::Error for Error {
 /// SDK/driver ABI. It does not check kernel versions, driver names or file hashes.
 /// Target/ownership mismatches and generic fbdev return [`Error::DisplayNotAdmitted`];
 /// SDK loading and device I/O failures return [`Error::Io`].
-/// F1 currently returns [`Error::DisplayNotAdmitted`] before device access:
-/// a board-specific display completion contract is still required.
+/// F1 requires the inspected RISC-V firmware, double-page layout and exclusive
+/// ownership, and uses the reference PAN + WAITFORVSYNC sequence.
 /// Frame timing and input counts are validated before board initialization. Errors during the later
 /// component event loop are returned through Slint's `PlatformError`.
 pub fn init(config: Config) -> Result<(), Error> {

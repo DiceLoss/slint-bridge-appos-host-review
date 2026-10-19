@@ -2,10 +2,11 @@
 
 本文描述当前源码的接口与运行行为。NX5 使用板级阻塞翻页双页实现，不按固定固件版本或文件摘要准入；`fbdev` 目前仅接入 X9 Lombo #452 的纯 CPU 双页路径。目标或显示所有权不符合要求返回 `DisplayNotAdmitted`，SDK 加载和设备 I/O 失败返回 `Io`。约 29 FPS、有限 WBC 样本等实机结果属于对应阶段的观测，不代表所有物理帧的无撕裂认证。
 
-`f1` / `f1-g2d` 是 RISC-V F1 的集成目标，目前显示完成契约尚未建立，
-`init()` 在打开 framebuffer、GE 或输入设备前返回 `DisplayNotAdmitted`。
-`f1-g2d` 包含 GE normal-mode 画布路径，已完成限定范围的离屏填充和缓存同步实测；
-不能将编译通过或 `Backend::F1` 解释为已支持上屏。状态见 [F1](../test-app/devices/f1/README.md)。
+`f1` / `f1-g2d` 支持已检查的 RISC-V F1。按用户选定的参考示例方式，
+采用 `PAN → WAITFORVSYNC`，不再以缺少提交 ID 完成事件阻止本板运行。
+这是一项明确的板级使用约定，不代表旧页硬件退休或无撕裂已被独立证明。
+`f1-g2d` 额外使用已做离屏正向验证的 GE normal-mode 画布；构建、部署及
+实测范围见 [F1 设备说明](../test-app/devices/f1/README.md)。
 
 日常构建和运行见 [测试工程](../test-app/README.md) 、[NX5 设备说明](../test-app/devices/nx5/README.md) 与 [X9 设备说明](../test-app/devices/x9/README.md)。各轮硬件测量由 [文档索引](README.md) 导航；历史报告中的测试数量、PID 和性能数据不定义当前接口。
 
@@ -134,13 +135,21 @@ CPU fence 不等于 DMA 缓存一致性。设备专有实现仍须负责缓存�
 
 ## 准入边界
 
-`f1` 分派到 `src/backends/f1/`，当前所有目标均拒绝显示准入。
-没有跳过准入的环境变量、测试 feature 或公共回调。F1 参考工程的
-`PAN → WAITFORVSYNC` 没有成为本库的 `PresentationContract`；新增板级实现
-必须先补足目标更新与旧页退休的关联，见 [F1 调查](f1-display.md)。
-后续 [当前镜像二进制核验](f1-kernel-analysis.md) 已确认普通 PAN 更新后直接
-返回且丢弃更新错误，VSYNC 等共享标志，所审计 DE IRQ 未处理 CFG_DONE。
-这不是显示完成契约，离屏 GE 通过也不改变该准入决定。
+`f1` 分派到 `src/backends/f1/`，核验 RISC-V64、D211 compatible、
+已检查内核标识及 1024×600 BGRA8888 双页布局（stride 4096、物理基址
+0x42440000、长度 4915200）。获取会话锁，并检查其他进程的 framebuffer
+描述符/映射及 framebuffer console；已有显示所有者时拒绝，不自动停止它。
+打开配置的 framebuffer 后再次核对真实设备和布局，在任何写页之前对当前页
+执行一次参考 PAN/VSYNC 序列。之后严格交替两页，每次先复核当前页和布局，
+PAN 成功后等待 VSYNC，再读回复核；任一步失败都会使通用提交器停止后续写页。
+初始同步及读回只是该参考约定的步骤，不能补足硬件提交归属证明。
+
+采用该约定是本轮用户明确选择，适用于本次已检查的 F1，不放宽 NX5/X9 的
+完成契约。最多一笔在途提交、一帧预渲染及失败后停止写页的通用约束不变。
+[当前镜像分析](f1-kernel-analysis.md) 中的限制仍成立：普通 PAN 丢弃更新错误，
+VSYNC 等待共享标志，所审计 DE IRQ 不处理 CFG_DONE。不能把运行成功宣称为
+针对所有扫描帧的无撕裂认证。`SLINT_BRIDGE_TRACE=1` 每约一秒输出成功提交
+累计数、单调时钟、提交 FPS 及 PAN/VSYNC 平均耗时；它不是面板刷新率。
 
 [src/backends/mod.rs](../src/backends/mod.rs) 将 NX5 分派给 [src/backends/nx5/mod.rs](../src/backends/nx5/mod.rs)。检查 ARM32，再获取进程锁、检查 VO 未被占用并加载厂商库。不读取内核版本、构建时间或 framebuffer 驱动名称，也不计算 SDK、fyfb、vou 文件的 SHA256；兼容重编译不再因这些元数据变化被拒绝。库加载本身具有 SYS/VO 初始化副作用，不能与其他 SDK 进程并用。[current-target.json](../test-app/devices/nx5/current-target.json) 仅保存带时间戳的环境观测，不控制代码准入，也不实时更新设备状态。
 
@@ -193,7 +202,7 @@ F1 构建使用 `.cargo/f1.toml` 和 `riscv64gc-unknown-linux-gnu`，链接到
 `f1-g2d` 包含 `f1` 并启用同源 renderer 的 `experimental` 接口。
 F1 不切换 Slint 源码、不链接 NX5 SDK，也不加载参考工程中的视频解码库。
 
-`f1-g2d` 的候选实现用 `/dev/dma_heap/reserved` 分配一份预乘 RGBA 保留画布，
+`f1-g2d` 用 `/dev/dma_heap/reserved` 分配一份预乘 RGBA 保留画布，
 替代堆画布；另保留一行隔离缓冲。仅接受 GE normal mode=0、version=0x100。
 通过 `IOC_GE_FILLRECT` 在该画布上执行不透明纯色填充，使用
 `MPP_FMT_ABGR_8888`（小端 RGBA 字节）及预乘标记；至少 32768 像素、至多
@@ -209,12 +218,12 @@ DMA-BUF fd 和映射，禁止 CPU 访问。它不读写物理显示页，不改�
 
 该路径已通过 [F1 离屏正向验证](f1-display.md#f1-offscreen-ge)：三个尺寸、
 每个尺寸 16 轮，检查不透明填充与 CPU/GE 交替访问后的全缓冲像素。
-尚未验证真实硬件故障、显示页复用或物理输出。当前 F1 准入在画布构造之前
-拒绝，因此普通应用不会触发该硬件路径；实机用例是仅在 RISC-V 构建中存在、
-须显式选择的库内 ignored 测试，不扩大公共 API。主机模拟与实机证据分别记录，
+本轮另有 [showcase 及静止前台页验证](f1-showcase.md)，尚未验证真实硬件故障或所有帧无撕裂。
+普通 F1-G2D 应用在板级检查后构造该画布；离屏实机用例仍是仅在
+RISC-V 构建中存在、须显式选择的库内 ignored 测试，不扩大公共 API。主机模拟与实机证据分别记录，
 详见 [F1 集成状态](../test-app/devices/f1/README.md)。
 
-两个 package 均要求 Linux、Rust 1.92 或更新版本，默认 features 为空，必须显式选择 `fbdev` 或 `nx5`；`nx5-tde` 包含 `nx5`，`nx5-mma-background` 包含 `nx5-tde` 并自动启用 Slint 外部像素 feature。`fbdev` 与上述任一 NX5 feature 组合均编译失败。`nx5-test-hooks` 只用于诊断，不用于正式常驻构建。根 workspace 的默认成员只有库；检查测试工程使用 `-p slint-bridge-test-app`，检查两者使用 `--workspace`。
+两个 package 均要求 Linux、Rust 1.92 或更新版本，默认 features 为空，必须显式选择 `fbdev`、`nx5` 或 `f1`；`nx5-tde` 包含 `nx5`，`nx5-mma-background` 包含 `nx5-tde` 并自动启用 Slint 外部像素 feature。`fbdev` 与上述任一 NX5 feature 组合均编译失败。`nx5-test-hooks` 只用于诊断，不用于正式常驻构建。根 workspace 的默认成员只有库；检查测试工程使用 `-p slint-bridge-test-app`，检查两者使用 `--workspace`。
 
 设备选择由消费应用负责，按以下范围解释默认值：
 

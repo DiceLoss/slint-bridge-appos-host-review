@@ -150,7 +150,7 @@
       "width": 400,
       "height": 70,
       "label": "f1/ + g2d/",
-      "sublabel": "集成准备 · GE 画布 · 显示尚未准入",
+      "sublabel": "PAN + VSYNC · GE 画布",
       "fill": "#fff7ed",
       "stroke": "#fdba74",
       "flat": true
@@ -306,7 +306,7 @@
       "width": 220,
       "height": 70,
       "label": "板级适配",
-      "sublabel": "backends/nx5/ 或 x9/",
+      "sublabel": "nx5/ · x9/ · f1/",
       "fill": "#fff7ed",
       "stroke": "#fdba74",
       "flat": true
@@ -411,7 +411,7 @@
       "flow": "control"
     }
   ],
-  "footer": "板级特性互斥：fbdev / nx5 / f1；f1-g2d 包含 f1，F1 尚未准入。Slint 1.18.1 同源。",
+  "footer": "板级特性互斥：fbdev / nx5 / f1；f1-g2d 包含 f1，F1 使用参考 PAN/VSYNC 约定。Slint 1.18.1 同源。",
   "footer_x": 48,
   "footer_y": 1296
 }

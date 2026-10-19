@@ -122,8 +122,6 @@ pub(crate) struct Layout {
 }
 
 impl Layout {
-    // F1 admission remains closed, so no production F1 path constructs a layout.
-    #[cfg(any(test, feature = "nx5", feature = "fbdev"))]
     pub(crate) fn new(f: &FixedInfo, v: &VariableInfo) -> Result<Self, Error> {
         let unsupported = Error::UnsupportedFramebuffer;
         if f.kind != 0 || f.visual != 2 || v.grayscale != 0 || v.nonstd != 0 {
@@ -199,7 +197,7 @@ impl Layout {
         })
     }
 
-    #[cfg(any(feature = "nx5", feature = "fbdev"))]
+    #[cfg(any(feature = "nx5", feature = "fbdev", feature = "f1"))]
     pub(crate) fn same_mode(self, other: Self) -> bool {
         self.size == other.size
             && self.stride == other.stride
