@@ -69,6 +69,11 @@ F1 集成构建选择 `--features f1` 或 `--features f1-g2d`，二者均通过
 F1 使用已检查固件上的参考 PAN/VSYNC 方式，需先释放原显示所有者；
 构建、SD 卡部署和实测范围见 [F1 设备说明](devices/f1/README.md)。
 
+NX1 构建选择 `--features nx1`，使用 `.cargo/nx1.toml` 和
+`arm-unknown-linux-gnueabi`。程序部署到设备 `/mnt`，触摸为
+`/dev/input/event2`，无需 SDK。参考 PAN 约定、显示所有权及内存检查见
+[NX1 设备说明](devices/nx1/README.md)。
+
 F1 showcase 在 `init()` 前通过 `slint_bridge::try_decode_png` 尝试加载大背景，以降低与显示画布重叠的内存峰值；`Ok(None)` 才使用 Slint 软件加载。缩放页和富列表的小 PNG 保留软件解码，因为完整加载实测更快；SVG 保留 Slint 路径。`--preview` 始终使用软件图片加载。未知硬件完成错误会打印 `F1_PNG_QUARANTINED` 并保留进程，不自动退出或重新提交。
 
 `--bin image-decode` 使用同一个公开接口进行 CPU/VE 校验和计时，需 `f1` 或 `f1-g2d`，运行前提与命令见 [F1 图片解码验证](tools/f1/README.md#png-解码验证)。
@@ -76,6 +81,7 @@ F1 showcase 在 `init()` 前通过 `slint_bridge::try_decode_png` 尝试加载�
 | 项目 | 选择方式 |
 | --- | --- |
 | 通用 framebuffer 软件组合 | `--features fbdev` |
+| NX1 软件渲染与参考 PAN | `--features nx1` |
 | NX5 软件渲染 | `--features nx5` |
 | NX5 TDE 和软件回退 | `--features nx5-tde` |
 | NX5 MMA 背景能力 | `--features nx5-mma-background`，运行时 `--background=mma` |
@@ -84,7 +90,7 @@ F1 showcase 在 `init()` 前通过 `slint_bridge::try_decode_png` 尝试加载�
 | 触摸设备 | `--touch=/dev/input/event0`，默认不开启输入设备 |
 | Slint MCP | 构建加 `slint/mcp`，并按 [MCP 指南](../docs/slint-mcp.md) 设置环境变量 |
 
-本库和测试工程的 `default = []`，必须在构建命令中选择一个板级 feature；`fbdev` 和 `nx5` 互斥。业务模板中的默认 NX5 TDE 仅属于该业务应用，不会改变本测试工程。NX5 使用板级阻塞翻页契约，不比对固定内核版本、驱动名称或文件摘要；`fbdev` 在真实设备运行时仍会拒绝未验证的提交契约。测试工程不绕过这个检查。
+本库和测试工程的 `default = []`，必须在构建命令中选择一个板级 feature；`fbdev`、`nx1`、`nx5`、`f1` 两两互斥。业务模板中的默认 NX5 TDE 仅属于该业务应用，不会改变本测试工程。NX5 使用板级阻塞翻页契约，不比对固定内核版本、驱动名称或文件摘要；`fbdev` 在真实设备运行时仍会拒绝未验证的提交契约。NX1/F1 的明确参考约定不放宽其他设备的检查。
 
 ## 用例与预期
 

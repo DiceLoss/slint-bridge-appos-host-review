@@ -8,6 +8,11 @@
 `f1-g2d` 额外使用已做离屏正向验证的 GE normal-mode 画布；构建、部署及
 实测范围见 [F1 设备说明](../test-app/devices/f1/README.md)。
 
+`nx1` 支持已检查的 ARM32 sun8i NX1，纯 CPU 渲染，按本轮用户明确选择的
+参考 `PAN` 双页约定运行。该固件 PAN 内部等待但丢弃等待错误，标准
+WAITFORVSYNC 是空操作；本后端不调用它或有缺陷的 HWC 接口。
+运行成功不代表硬件退休或无撕裂证明。见 [NX1 调查与验证](nx1-framebuffer.md)。
+
 日常构建和运行见 [测试工程](../test-app/README.md) 、[NX5 设备说明](../test-app/devices/nx5/README.md) 与 [X9 设备说明](../test-app/devices/x9/README.md)。各轮硬件测量由 [文档索引](README.md) 导航；历史报告中的测试数量、PID 和性能数据不定义当前接口。
 
 ## 统一 API
@@ -189,6 +194,24 @@ CPU fence 不等于 DMA 缓存一致性。设备专有实现仍须负责缓存�
 
 ## 准入边界
 
+`nx1` 分派到 [NX1 后端](../src/backends/nx1/mod.rs)，要求 ARM32、
+`3.4.39 #1 Fri Mar 25 14:53:50 CST 2022`、`Hardware: sun8i`，
+以及本次检查的 1024×600 BGRA8888 双页布局（虚拟高度 1200、
+stride 4096、物理基址 `0x43100000`、长度 4915200）。
+获取会话锁，检查其他进程的 framebuffer/disp 描述符、映射及 framebuffer console，
+并核验实际打开的 framebuffer 设备。已有所有者时拒绝，不自动停止它。
+在任何像素写入前，对当前页执行一次参考 PAN；此后交替两页，
+每次 PAN 前后核对布局与偏移。可见的 ioctl 错误、模式变化或非交替提交
+均停止后续写页，不重试失败的提交。
+
+NX1 使用通用保留 RGBA 画布、CPU 纹理绘制和脏区写页，不加载 SDK、
+使用 HWC、分配加速器 DMA 或改变其他板的准入。内部等待错误被固件吞掉，
+所以 PAN 返回和页号读回仍不足以证明硬件退休；这是本轮明确选择的
+参考约定，不是可靠完成接口。`SLINT_BRIDGE_TRACE=1` 输出成功返回的
+PAN 提交数、提交 FPS 与平均调用耗时，不代表面板无撕裂帧率。
+构建和操作前提见 [NX1 设备说明](../test-app/devices/nx1/README.md)，
+固件缺陷和实测边界见 [NX1 报告](nx1-framebuffer.md)。
+
 `f1` 分派到 `src/backends/f1/`，核验 RISC-V64、D211 compatible、
 已检查内核标识及 1024×600 BGRA8888 双页布局（stride 4096、物理基址
 0x42440000、长度 4915200）。获取会话锁，并检查其他进程的 framebuffer
@@ -295,7 +318,7 @@ DMA 槽容量保留到画布销毁。新源先按软件相同顺序准备预乘�
 不接触硬件。基线与优化结果分别见 [初始 showcase](f1-showcase.md) 和
 [F1 性能优化](f1-optimization.md)，构建及设备操作见 [设备说明](../test-app/devices/f1/README.md)。
 
-两个 package 均要求 Linux、Rust 1.92 或更新版本，默认 features 为空，必须显式选择 `fbdev`、`nx5` 或 `f1`；`nx5-tde` 包含 `nx5`，`nx5-mma-background` 包含 `nx5-tde` 并自动启用 Slint 外部像素 feature。`fbdev` 与上述任一 NX5 feature 组合均编译失败。`nx5-test-hooks` 只用于诊断，不用于正式常驻构建。根 workspace 的默认成员只有库；检查测试工程使用 `-p slint-bridge-test-app`，检查两者使用 `--workspace`。
+两个 package 均要求 Linux、Rust 1.92 或更新版本，默认 features 为空，必须显式选择 `fbdev`、`nx1`、`nx5` 或 `f1`，四种板级 feature 两两互斥；`nx5-tde` 包含 `nx5`，`nx5-mma-background` 包含 `nx5-tde` 并自动启用 Slint 外部像素 feature。`nx5-test-hooks` 只用于诊断，不用于正式常驻构建。根 workspace 的默认成员只有库；检查测试工程使用 `-p slint-bridge-test-app`，检查两者使用 `--workspace`。
 
 设备选择由消费应用负责，按以下范围解释默认值：
 

@@ -1,0 +1,10 @@
+# NX1 / sun8i: Cortex-A7, soft-float ABI, CPU rendering into fbdev.
+[target.arm-unknown-linux-gnueabi]
+linker = "/opt/NX1/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-gcc"
+rustflags = ["-C", "target-cpu=cortex-a7"]
+
+[env]
+CC_arm_unknown_linux_gnueabi = "/opt/NX1/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-gcc"
+CXX_arm_unknown_linux_gnueabi = "/opt/NX1/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-g++"
+AR_arm_unknown_linux_gnueabi = "/opt/NX1/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-ar"
+CFLAGS_arm_unknown_linux_gnueabi = "-march=armv7-a -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=softfp"

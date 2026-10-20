@@ -25,6 +25,7 @@ slint_bridge/
 │   ├── wake.rs / event_wait.rs
 │   ├── backends/
 │   │   ├── mod.rs            # 私有板级契约与准入分派
+│   │   ├── nx1/              # sun8i 纯 CPU framebuffer、参考 PAN 约定
 │   │   ├── nx5/              # NX5 翻页、SDK 会话及 tde/
 │   │   ├── x9/               # X9 纯 CPU framebuffer 与 DRM 完成事件
 │   │   └── f1/               # PAN/VSYNC、64 位写页、GE 画布及 PNG VE
@@ -65,12 +66,13 @@ slint_bridge::init(Config {
 | Feature | 行为 |
 | --- | --- |
 | `fbdev` | 纯 CPU framebuffer；当前接入 X9 Lombo #452 板级完成契约 |
+| `nx1` | NX1 ARM32；纯 CPU 渲染，采用已明确选择的参考 PAN 双页约定 |
 | `f1` / `f1-g2d` | F1 RISC-V；使用参考 PAN + WAITFORVSYNC，后者包含 GE 填充与受限图片混合 |
 | `nx5` | NX5 VO 初始化、软件渲染与双页显示 |
 | `nx5-mma-background` | 包含 `nx5-tde` 与同源 Slint 外部像素支持；运行时由 Config 选择背景存储 |
 | `nx5-tde` | 包含 `nx5`，加速大块 RGBA 复制和透明混合；另有 QuickFill 诊断开关 |
 
-必须选择一个板级 feature；`fbdev`、`nx5` 与 `f1` 两两互斥。NX5 按 SDK/驱动接口和双页布局运行，不比对内核版本、驱动名称或文件摘要；`fbdev` 仅准入已验证的 X9 Lombo 固件与布局，其他 framebuffer 仍拒绝。F1 按用户选定的参考翻页约定运行，适用固件及验证限制见 [F1 设备说明](test-app/devices/f1/README.md)。SDK 目录由系统动态库搜索路径决定，见 [平台说明](docs/software-platform.md#准入边界)。
+必须选择一个板级 feature；`fbdev`、`nx1`、`nx5` 与 `f1` 两两互斥。NX5 按 SDK/驱动接口和双页布局运行，不比对内核版本、驱动名称或文件摘要；`fbdev` 仅准入已验证的 X9 Lombo 固件与布局，其他 framebuffer 仍拒绝。NX1 和 F1 按用户明确选定的参考翻页约定运行，适用固件及验证限制分别见 [NX1 设备说明](test-app/devices/nx1/README.md) 和 [F1 设备说明](test-app/devices/f1/README.md)。SDK 目录由系统动态库搜索路径决定，见 [平台说明](docs/software-platform.md#准入边界)。
 
 `Config::background_storage` 默认为 `BackgroundStorage::Heap`。需要 MMA 时设为 `Mma`，在 `init(config.clone())` 后、首次绘制前通过 `config.prepare_background(image)` 准备图像；其他设备显式选择 MMA 会被拒绝。见 [背景接入与限制](test-app/devices/nx5/mma-background/README.md)。
 

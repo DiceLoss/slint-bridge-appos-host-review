@@ -38,6 +38,7 @@ Rust target 提供 Rust 标准库，不能替代板级 C/C++ 交叉工具链及 
 | 设备 | Rust target | ABI | 当前工具链安装目录 |
 | --- | --- | --- | --- |
 | NX5 | `arm-unknown-linux-gnueabi` | soft-float ABI，Cortex-A7 | `/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi` |
+| NX1 | `arm-unknown-linux-gnueabi` | soft-float ABI，Cortex-A7 | `/opt/NX1/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi` |
 | X9 | `arm-unknown-linux-gnueabihf` | hard-float ABI，Cortex-A7 | `/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf` |
 
 安装匹配的厂商工具链及 sysroot。不要把 NX5 的 `gnueabi` 和 X9 的 `gnueabihf` 混用，也不要只把一个不同版本的编译器改成相同文件名。
@@ -80,6 +81,7 @@ CARGO_NET_GIT_FETCH_WITH_CLI=true cargo fetch --locked
 | --- | --- |
 | [.cargo/config.toml](../.cargo/config.toml) | NX5 的 linker、CC、CXX、AR 路径 |
 | [.cargo/nx5.toml](../.cargo/nx5.toml) | NX5 Cortex-A7、NEON 和 softfp 编译参数 |
+| [.cargo/nx1.toml](../.cargo/nx1.toml) | NX1 工具链路径、Cortex-A7、NEON 和 softfp 参数 |
 | [.cargo/x9.toml](../.cargo/x9.toml) | X9 工具链路径、Cortex-A7、NEON 和 hard-float 参数 |
 
 如果工具链安装在其他目录，修改对应配置文件中的 `linker`、`CC_*`、`CXX_*`、`AR_*` 四类路径，保持 CPU 和 ABI 参数不变。NX5 的路径位于 `config.toml`，X9 的路径位于 `x9.toml`。可以先直接执行配置中 gcc 的 `--version`，确认程序能在开发机运行。
@@ -93,10 +95,13 @@ ARM `nx5-tde` 默认使用仓库内头文件，不需要设置 `NX5_SDK_INCLUDE`
 | feature | 用途 |
 | --- | --- |
 | `fbdev` | X9 当前已验证的纯 CPU framebuffer 路径 |
+| `nx1` | NX1 纯 CPU framebuffer 与明确选择的参考 PAN 约定 |
 | `nx5` | NX5 显示会话及软件渲染 |
 | `nx5-tde` | NX5 TDE 加速和软件回退，包含 `nx5` |
 
-`fbdev` 与 `nx5` 互斥，不使用 `--all-features`。先运行主机检查：
+`fbdev`、`nx1`、`nx5`、`f1` 两两互斥，不使用 `--all-features`。
+NX1 的完整构建和 `/mnt` 部署命令见 [设备说明](../test-app/devices/nx1/README.md)；
+其参考 PAN 约定不代表通用 framebuffer 都已获得可靠完成接口。先运行主机检查：
 
 ```sh
 python3 test-app/tools/check-feature-matrix.py

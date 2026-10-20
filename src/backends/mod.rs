@@ -1,5 +1,7 @@
 #[cfg(feature = "f1")]
 pub(crate) mod f1;
+#[cfg(feature = "nx1")]
+mod nx1;
 #[cfg(feature = "nx5")]
 pub(crate) mod nx5;
 #[cfg(feature = "fbdev")]
@@ -38,8 +40,8 @@ type CompletePresentation = dyn FnMut(BorrowedFd<'_>, u32, &Layout) -> io::Resul
 
 /// Private seam for a board's blocking presentation implementation. The board's
 /// success convention transfers the previous page back to the renderer. NX5 uses
-/// blocking PAN; F1 explicitly follows its reference PAN + VSYNC convention,
-/// whose hardware retirement limitations are recorded in the F1 report.
+/// blocking PAN; F1 and NX1 follow explicitly selected reference conventions,
+/// whose hardware retirement limitations are recorded in their board reports.
 /// No public API can create this value or supply a callback.
 pub(crate) struct PresentationContract {
     pub(crate) complete: Box<CompletePresentation>,
@@ -54,6 +56,10 @@ pub(crate) struct Admission {
 }
 
 pub(crate) fn require(backend: Backend) -> Result<Admission, Error> {
+    #[cfg(feature = "nx1")]
+    if backend == Backend::Nx1 {
+        return nx1::open();
+    }
     #[cfg(feature = "f1")]
     if backend == Backend::F1 {
         return f1::open();
@@ -75,6 +81,7 @@ pub(crate) fn require(backend: Backend) -> Result<Admission, Error> {
     Err(Error::DisplayNotAdmitted {
         backend,
         reason: match backend {
+            Backend::Nx1 => "this build does not include the NX1 integration target",
             Backend::Nx5 => "this build does not include the NX5 display implementation",
             Backend::Fbdev => "no framebuffer driver has a reviewed tear-free completion contract",
             Backend::F1 => "this build does not include the F1 integration target",

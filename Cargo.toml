@@ -14,6 +14,7 @@ description = "Slint platform support for embedded Linux with explicit display a
 [features]
 default = []
 fbdev = []
+nx1 = []
 f1 = ["dep:crc32fast"]
 f1-g2d = ["f1"]
 nx5 = ["dep:libloading"]

@@ -40,7 +40,7 @@
   <main id="stage" tabindex="0" aria-label="Interactive diagram. Drag to pan; use plus and minus to zoom.">
     <div id="canvas"><svg xmlns="http://www.w3.org/2000/svg" width="1840" height="1840" viewBox="0 0 1840 1840" data-generator="fireworks-tech-graph" data-style-id="1" data-diagram-type="sequence" data-quality-profile="showcase" role="img" focusable="false">
 <title>Slint Bridge · 双 framebuffer 并行运行时序</title>
-<desc>依据 src/runtime.rs、framebuffer.rs、presentation.rs、backends/mod.rs、backends/nx5/mod.rs、backends/x9/mod.rs、backends/f1/mod.rs。仅展示有脏区的成功提交路径；初始 A 为前台、B 为后台。渲染后及写页分段之间处理输入，写页期间冻结保留画布，整页完成后才提交。UI 预渲染 N+1 可与后台提交 N 的板级完成等待并行。完成成功后才允许复用旧前台页。板级回调与通用提交器属于同一个后台线程。</desc>
+<desc>依据 src/runtime.rs、framebuffer.rs、presentation.rs、backends/mod.rs、backends/nx5/mod.rs、backends/x9/mod.rs、backends/f1/mod.rs、backends/nx1/mod.rs。仅展示有脏区的成功提交路径；初始 A 为前台、B 为后台。渲染后及写页分段之间处理输入，写页期间冻结保留画布，整页完成后才提交。UI 预渲染 N+1 可与后台提交 N 的板级完成等待并行。完成成功后才允许复用旧前台页。板级回调与通用提交器属于同一个后台线程。</desc>
 <style>text {font-family:'Noto Sans CJK SC','PingFang SC','Microsoft YaHei',sans-serif;}</style>
 <defs>
 <marker id="arrow-call" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="#2563eb" /></marker>
@@ -77,11 +77,11 @@
 <line data-graph-role="decoration" x1="1080" y1="367" x2="1080" y2="1460" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
 <rect id="nx5" data-graph-bounds="1250,230,1490,302" data-node-id="nx5" data-graph-role="node" x="1250" y="230" width="240" height="72" rx="9" fill="#fff7ed" stroke="#c2410c" stroke-width="1.6" />
 <text id="text-15" data-graph-role="content" x="1370" y="259" text-anchor="middle" font-size="20" font-weight="600" fill="#c2410c">板级完成回调</text>
-<text id="text-16" data-graph-role="content" x="1370" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">backends/{nx5,x9,f1}/</text>
+<text id="text-16" data-graph-role="content" x="1370" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">backends/ 各板实现</text>
 <line data-graph-role="decoration" x1="1370" y1="367" x2="1370" y2="1460" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
 <rect id="driver" data-graph-bounds="1540,230,1780,302" data-node-id="driver" data-graph-role="node" x="1540" y="230" width="240" height="72" rx="9" fill="#fff7ed" stroke="#c2410c" stroke-width="1.6" />
 <text id="text-17" data-graph-role="content" x="1660" y="259" text-anchor="middle" font-size="20" font-weight="600" fill="#c2410c">设备显示驱动</text>
-<text id="text-18" data-graph-role="content" x="1660" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">NX5 / X9 / F1 板级约定</text>
+<text id="text-18" data-graph-role="content" x="1660" y="284" text-anchor="middle" font-size="15" font-weight="400" fill="#475569">NX1 / NX5 / X9 / F1</text>
 <line data-graph-role="decoration" x1="1660" y1="367" x2="1660" y2="1460" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5 7" />
 <line data-graph-role="decoration" x1="1228" y1="215" x2="1228" y2="1475" stroke="#fdba74" stroke-width="1.5" stroke-dasharray="6 7" />
 <rect data-graph-role="decoration" x="60" y="320" width="1720" height="43" rx="9" fill="#f8fafc" stroke="none" stroke-width="1.6" />
@@ -170,9 +170,9 @@
 <text id="text-56" data-graph-role="content" x="910.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">通过私有 PresentationContract 调用板级实现</text>
 <rect id="board-contract" data-graph-bounds="1220,1565,1780,1708" data-graph-role="reserved" x="1220" y="1565" width="560" height="143" rx="9" fill="#fff7ed" stroke="#c2410c" stroke-width="1.6" />
 <text id="text-57" data-graph-role="content" x="1500.0" y="1593" text-anchor="middle" font-size="19" font-weight="600" fill="#c2410c">板级适配负责</text>
-<text id="text-58" data-graph-role="content" x="1500.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">NX5：阻塞 PAN 成功返回</text>
-<text id="text-59" data-graph-role="content" x="1500.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">X9：PAN 后等待匹配 flip 事件</text>
-<text id="text-60" data-graph-role="content" x="1500.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">F1：参考 PAN + VSYNC；退休未独立证明</text>
+<text id="text-58" data-graph-role="content" x="1500.0" y="1622" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">NX5 阻塞 PAN；X9 匹配 flip 事件</text>
+<text id="text-59" data-graph-role="content" x="1500.0" y="1650" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">NX1 参考 PAN；F1 参考 PAN + VSYNC</text>
+<text id="text-60" data-graph-role="content" x="1500.0" y="1678" text-anchor="middle" font-size="17" font-weight="400" fill="#475569">NX1 / F1：硬件退休未独立证明</text>
 <line data-graph-role="decoration" x1="70" y1="1748" x2="113" y2="1748" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-call)" />
 <text id="text-61" data-graph-role="label" data-graph-bounds="126.00,1737,263.33,1758" x="126" y="1754" text-anchor="start" font-size="17" font-weight="400" fill="#475569">同步调用 / UI 复制</text>
 <line data-graph-role="decoration" x1="440" y1="1748" x2="483" y2="1748" stroke="#7c3aed" stroke-width="2.3" stroke-dasharray="7 4" marker-end="url(#arrow-async)" />

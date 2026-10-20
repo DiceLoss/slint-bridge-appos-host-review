@@ -2,6 +2,11 @@ use super::*;
 
 #[test]
 fn board_contract_rejects_unsupported_backends() {
+    #[cfg(not(all(feature = "nx1", target_arch = "arm", target_pointer_width = "32")))]
+    assert!(matches!(
+        backends::require(Backend::Nx1),
+        Err(Error::DisplayNotAdmitted { .. })
+    ));
     #[cfg(not(all(feature = "f1", target_arch = "riscv64", target_pointer_width = "64")))]
     assert!(matches!(
         backends::require(Backend::F1),

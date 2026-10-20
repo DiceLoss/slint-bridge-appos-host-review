@@ -1,5 +1,6 @@
 use slint_bridge::{Config, Error, init};
 #[cfg(not(any(
+    all(feature = "nx1", target_arch = "arm", target_pointer_width = "32"),
     all(feature = "nx5", target_arch = "arm", target_pointer_width = "32"),
     all(feature = "f1", target_arch = "riscv64", target_pointer_width = "64")
 )))]
@@ -42,6 +43,7 @@ fn f1_selection_requires_board_admission() {
 
 #[test]
 #[cfg(not(any(
+    all(feature = "nx1", target_arch = "arm", target_pointer_width = "32"),
     all(feature = "nx5", target_arch = "arm", target_pointer_width = "32"),
     all(feature = "f1", target_arch = "riscv64", target_pointer_width = "64")
 )))]
@@ -55,6 +57,23 @@ fn unsupported_backend_is_rejected_before_device_access() {
     assert!(
         matches!(error, Error::DisplayNotAdmitted { backend, .. } if backend == selected_backend())
     );
+}
+
+#[test]
+#[cfg(feature = "nx1")]
+fn nx1_selection_requires_board_admission() {
+    assert_eq!(slint_bridge::selected_backend(), slint_bridge::Backend::Nx1);
+    #[cfg(not(all(target_arch = "arm", target_pointer_width = "32")))]
+    assert!(matches!(
+        init(Config {
+            framebuffer: "/does/not/exist".into(),
+            ..Config::default()
+        }),
+        Err(Error::DisplayNotAdmitted {
+            backend: slint_bridge::Backend::Nx1,
+            ..
+        })
+    ));
 }
 
 #[test]

@@ -1,6 +1,8 @@
 //! A single fullscreen Slint platform for embedded Linux.
 //!
-//! Select exactly one board feature (`fbdev`, `nx5` or `f1`). `nx5-tde` implies `nx5`.
+//! Select exactly one board feature (`fbdev`, `nx1`, `nx5` or `f1`).
+//! `nx5-tde` implies `nx5`. NX1 uses the inspected firmware's reference PAN
+//! convention, whose internal wait errors are not exposed to userspace.
 //! NX5 supports the current firmware's blocking double-buffered presentation.
 //! F1 uses its reference-example PAN followed by WAITFORVSYNC convention on the
 //! inspected firmware. It is not a submission-ID completion fence.
@@ -8,17 +10,21 @@
 
 #[cfg(not(target_os = "linux"))]
 compile_error!("slint-bridge currently supports Linux only");
-#[cfg(not(any(feature = "fbdev", feature = "nx5", feature = "f1")))]
+#[cfg(not(any(feature = "fbdev", feature = "nx1", feature = "nx5", feature = "f1")))]
 compile_error!(
-    "select one board feature: fbdev, nx5 or f1 (nx5-tde implies nx5). \
+    "select one board feature: fbdev, nx1, nx5 or f1 (nx5-tde implies nx5). \
      Enable it in the slint-bridge dependency's features, or select an application feature that forwards to it."
 );
 #[cfg(any(
     all(feature = "fbdev", feature = "nx5"),
     all(feature = "f1", feature = "nx5"),
-    all(feature = "f1", feature = "fbdev")
+    all(feature = "f1", feature = "fbdev"),
+    all(
+        feature = "nx1",
+        any(feature = "fbdev", feature = "nx5", feature = "f1")
+    )
 ))]
-compile_error!("fbdev, nx5 and f1 are mutually exclusive board features");
+compile_error!("fbdev, nx1, nx5 and f1 are mutually exclusive board features");
 
 mod backends;
 mod event_wait;
@@ -43,6 +49,8 @@ use std::{fmt, io, path::PathBuf, time::Duration};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Backend {
     Fbdev,
+    /// NX1 / sun8i, using the explicitly selected reference PAN convention.
+    Nx1,
     Nx5,
     /// F1 / ArtInChip D211, using the reference PAN + WAITFORVSYNC sequence.
     F1,
@@ -54,6 +62,8 @@ pub const fn selected_backend() -> Backend {
         Backend::Nx5
     } else if cfg!(feature = "f1") {
         Backend::F1
+    } else if cfg!(feature = "nx1") {
+        Backend::Nx1
     } else {
         Backend::Fbdev
     }

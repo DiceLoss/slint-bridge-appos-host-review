@@ -1,0 +1,36 @@
+{
+  "observed_date": "2026-10-20",
+  "scope": "Observation only; recheck identity, owners and mounts before use",
+  "serial_port": "/dev/ttyUSB1",
+  "kernel": "3.4.39 #1 Fri Mar 25 14:53:50 CST 2022",
+  "hostname": "X5",
+  "hardware": "sun8i",
+  "cpu": "single Cortex-A7, ARMv7, NEON/VFPv4",
+  "cpu_serial": "140079a287202c210290",
+  "mac": "02:92:d0:15:3d:73",
+  "mem_total_kib": 43532,
+  "framebuffer": {
+    "path": "/dev/fb0",
+    "width": 1024,
+    "height": 600,
+    "virtual_width": 1024,
+    "virtual_height": 1200,
+    "stride_bytes": 4096,
+    "length_bytes": 4915200,
+    "physical_start": "0x43100000",
+    "format": "BGRA8888",
+    "reference_submission": "FBIOPAN_DISPLAY; internal wait errors are discarded by firmware"
+  },
+  "touch": {
+    "path": "/dev/input/event2",
+    "name": "gt911_ts",
+    "protocol": "ABS_X/ABS_Y + BTN_TOUCH",
+    "x_range": [0, 1024],
+    "y_range": [0, 600]
+  },
+  "test_mount": {
+    "path": "/mnt",
+    "type": "nfs",
+    "source": "192.168.1.65:/home/dpower/data/Demo/NXF"
+  }
+}

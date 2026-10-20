@@ -13,7 +13,7 @@ def cargo(*args):
 
 def main():
     results = {}
-    for feature in ("fbdev", "nx5", "nx5-tde", "nx5-mma-background", "nx5-test-hooks", "f1", "f1-g2d"):
+    for feature in ("fbdev", "nx1", "nx5", "nx5-tde", "nx5-mma-background", "nx5-test-hooks", "f1", "f1-g2d"):
         run = cargo("test", "--workspace", "--offline", "--locked", "--no-default-features", "--features", feature, "-j", "4")
         if run.returncode:
             raise SystemExit(run.stdout + run.stderr)
@@ -26,7 +26,13 @@ def main():
                               ("f1,nx5-tde", "mutually exclusive"),
                               ("f1,nx5-mma-background", "mutually exclusive"),
                               ("f1-g2d,fbdev", "mutually exclusive"),
-                              ("f1-g2d,nx5-tde", "mutually exclusive")):
+                              ("f1-g2d,nx5-tde", "mutually exclusive"),
+                              ("nx1,fbdev", "mutually exclusive"),
+                              ("nx1,nx5", "mutually exclusive"),
+                              ("nx1,nx5-tde", "mutually exclusive"),
+                              ("nx1,nx5-mma-background", "mutually exclusive"),
+                              ("nx1,f1", "mutually exclusive"),
+                              ("nx1,f1-g2d", "mutually exclusive")):
         args = ["check", "--offline", "--locked", "--no-default-features", "--lib"]
         if feature:
             args += ["--features", feature]

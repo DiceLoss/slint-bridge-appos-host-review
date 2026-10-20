@@ -11,6 +11,7 @@
 | [Slint MCP](slint-mcp.md) | 原生 UI 查询、交互、事件录制和受内存保护的截图 |
 | [测试应用](../test-app/README.md) | 页面、参数、素材、测试及业务使用方式 |
 | [NX5 设备与工具](../test-app/devices/nx5/README.md) | [部署归档与诊断工具](../test-app/tools/nx5/README.md)、SDK/字体、回归运行前提 |
+| [NX1 设备与工具](../test-app/devices/nx1/README.md) | ARM32 构建、`/mnt` 部署、参考 PAN 与 [只读检查和 evdev 验证](../test-app/tools/nx1/README.md) |
 | [X9 设备与工具](../test-app/devices/x9/README.md) | [DRM/evdev 与性能工具](../test-app/tools/x9/README.md)、旋转及控制台恢复 |
 | [F1 设备与工具](../test-app/devices/f1/README.md) | RISC-V 构建、G2D 路径、[查询、ABI 与离屏验证](../test-app/tools/f1/README.md)；参考 PAN/VSYNC 上屏与性能采样 |
 | [随仓库资源](../third-party/README.md) | SDK 头文件、动态库、字体、版权及 SHA256 |
@@ -21,6 +22,7 @@
 
 | 文档 | 内容 |
 | --- | --- |
+| [NX1 framebuffer 接入](nx1-framebuffer.md) | 当前内核反汇编、PAN/HWC 限制、CPU 双页适配及实机验证 |
 | [NX5 显示完成与合成](nx5-display.md) | #22 准入缺口、#233 双周期、单周期未达成、SDK/WBC 与 alpha 量程 |
 | [NX5 性能记录](nx5-performance.md) | TDE、写页、输入分段、图片/缩放、富列表、MCP 增长对照及内存总账 |
 | [NX5 MMA 背景验证](nx5-mma-background.md) | 已有源槽共享、内存对照、物理像素与软件回退 |

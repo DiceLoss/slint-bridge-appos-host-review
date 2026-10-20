@@ -197,7 +197,7 @@ impl Layout {
         })
     }
 
-    #[cfg(any(feature = "nx5", feature = "fbdev", feature = "f1"))]
+    #[cfg(any(feature = "nx5", feature = "fbdev", feature = "f1", feature = "nx1"))]
     pub(crate) fn same_mode(self, other: Self) -> bool {
         self.size == other.size
             && self.stride == other.stride
