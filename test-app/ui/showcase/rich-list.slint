@@ -55,6 +55,7 @@ export component RichList inherits VerticalLayout {
     in property <int> selected-id;
     private property <bool> horizontal;
     callback select(int);
+    callback orientation-changed(bool);
     spacing: 12px;
     Card {
         height: 72px;
@@ -66,7 +67,7 @@ export component RichList inherits VerticalLayout {
             }
             orientation-toggle := Action {
                 text: root.horizontal ? "Vertical list" : "Horizontal cards";
-                clicked => { root.horizontal = !root.horizontal; listing.content-x = 0px; listing.content-y = 0px; }
+                clicked => { root.horizontal = !root.horizontal; listing.content-x = 0px; listing.content-y = 0px; root.orientation-changed(root.horizontal); }
             }
             start-button := Action { text: "Start"; width: 90px; clicked => { listing.content-x = 0px; listing.content-y = 0px; } }
         }
@@ -76,17 +77,23 @@ export component RichList inherits VerticalLayout {
         mouse-drag-pan-enabled: true;
         content-width: root.horizontal ? max(self.width, root.rows.length * 256px - 12px) : self.width;
         content-height: root.horizontal ? self.height : max(self.height, root.rows.length * 120px - 8px);
-        for row[index] in root.rows: rich-item := RichItem {
+        // Keep cheap position nodes; create heavy card contents only near the viewport.
+        private property <int> visible-count: min(root.rows.length, ceil((root.horizontal ? self.width / 256px : self.height / 120px)) + 2);
+        private property <int> first-row: max(0, min(root.rows.length - self.visible-count, floor(root.horizontal ? -self.content-x / 256px : -self.content-y / 120px) - 1));
+        for index in root.rows.length: Rectangle {
             x: root.horizontal ? index * 256px : 0px;
             y: root.horizontal ? 0px : index * 120px;
             width: root.horizontal ? 244px : listing.width;
             height: root.horizontal ? 328px : 112px;
-            entry: row;
-            horizontal: root.horizontal;
-            selected: root.selected-id == row.id;
-            background-image: root.backgrounds[(root.horizontal ? 2 : 0) + mod(index, 2)];
-            icon: root.icons[mod(index, 4)]; chevron: root.icons[4];
-            activated => { root.select(row.id); }
+            if index >= listing.first-row && index < listing.first-row + listing.visible-count: rich-item := RichItem {
+                width: parent.width; height: parent.height;
+                entry: root.rows[index];
+                horizontal: root.horizontal;
+                selected: root.selected-id == self.entry.id;
+                background-image: root.backgrounds[mod(index, 2)];
+                icon: root.icons[mod(index, 4)]; chevron: root.icons[4];
+                activated => { root.select(self.entry.id); }
+            }
         }
     }
     Rectangle {

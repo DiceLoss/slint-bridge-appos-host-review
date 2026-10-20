@@ -220,12 +220,14 @@ fn showcase_state_forms_filtering_and_transparency() {
     }
     assert_eq!(app.get_rich_rows().row_count(), 100);
     assert_eq!(app.get_rich_rows().row_data(99).unwrap().id, 100);
-    assert_eq!(app.get_rich_backgrounds().row_count(), 4);
-    assert_eq!(app.get_rich_icons().row_count(), 5);
+    assert_eq!(app.get_rich_backgrounds().row_count(), 0);
+    assert_eq!(app.get_rich_icons().row_count(), 0);
     app.invoke_select_rich(100);
     app.invoke_select_rich(101);
     app.invoke_navigate(0);
     app.invoke_navigate(7);
+    assert_eq!(app.get_rich_backgrounds().row_count(), 2);
+    assert_eq!(app.get_rich_icons().row_count(), 5);
     assert_eq!(app.get_rich_selected_id(), 100);
     assert_eq!(app.get_completed(), 6);
     for _ in 0..30 {

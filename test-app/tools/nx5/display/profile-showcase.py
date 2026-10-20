@@ -148,15 +148,13 @@ def main():
         if axis == "horizontal":
             client.click("RichList::orientation-toggle")
         bounds = client.data("get_element_properties", elementHandle=client.find("RichList::listing"))
-        first = client.rich_items()[0]["handle"]
-        coord, length = ("x", "width") if axis == "horizontal" else ("y", "height")
-        origin = client.data("get_element_properties", elementHandle=first)["absolutePosition"][coord]
+        length = "width" if axis == "horizontal" else "height"
         extent = (25588 if axis == "horizontal" else 11992) - bounds["size"][length]
         forward = True
 
         def rich_scroll(_index):
             nonlocal forward
-            offset = origin - client.data("get_element_properties", elementHandle=first)["absolutePosition"][coord]
+            offset = client.rich_offset(bounds, axis)
             if offset > extent - 2 * bounds["size"][length]:
                 forward = False
             elif offset < 2 * bounds["size"][length]:

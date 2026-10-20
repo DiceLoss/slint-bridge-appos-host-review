@@ -51,6 +51,7 @@ export component Showcase inherits Window {
     in property <[image]> rich-icons;
     in property <int> rich-selected-id;
     callback select-rich(int);
+    callback rich-orientation-changed(bool);
     in property <[EventRow]> events;
     in property <[bool]> exercised;
     in property <int> completed;
@@ -125,7 +126,7 @@ export component Showcase inherits Window {
         if root.page == 3: Motion { wallpaper: root.wallpaper; phase: root.phase; ticks: root.ticks; running <=> root.running; speed <=> root.speed; expanded: root.expanded; toggle => { root.toggle-motion(); } replay => { root.replay(); } }
         if root.page == 4: Media { overlay: root.overlay; alpha <=> root.alpha; cutout: root.cutout; toggle-cutout => { root.toggle-cutout(); } blend-changed => { root.blend-changed(); } }
         if root.page == 5: Lab { events: root.events; exercised: root.exercised; completed: root.completed; taps: root.taps; drag-count: root.drag-count; drag-x <=> root.drag-x; drag-y <=> root.drag-y; tap(i) => { root.tap(i); } dragged => { root.dragged(); } clear => { root.clear-journal(); } }
-        if root.page == 7: RichList { rows: root.rich-rows; backgrounds: root.rich-backgrounds; icons: root.rich-icons; selected-id: root.rich-selected-id; select(id) => { root.select-rich(id); } }
+        if root.page == 7: RichList { rows: root.rich-rows; backgrounds: root.rich-backgrounds; icons: root.rich-icons; selected-id: root.rich-selected-id; select(id) => { root.select-rich(id); } orientation-changed(horizontal) => { root.rich-orientation-changed(horizontal); } }
         if root.page == 8: Clock { seconds: root.clock-seconds; time-label: root.clock-label; }
         if root.page == 6: Scaling { zoom <=> root.image-zoom; png: root.scaling-png; svg: root.scaling-svg; }
     }

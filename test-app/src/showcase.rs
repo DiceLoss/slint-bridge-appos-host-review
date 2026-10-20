@@ -99,16 +99,19 @@ fn configure_overlay(app: &Showcase) {
     app.set_overlay(slint::Image::from_rgba8(overlay));
 }
 
-fn configure_rich_list(app: &Showcase) {
-    if slint::Model::row_count(&app.get_rich_rows()) != 0 {
-        return;
-    }
-    let backgrounds: [&[u8]; 4] = [
-        include_bytes!("../ui/assets/rich-row-blue.png"),
-        include_bytes!("../ui/assets/rich-row-amber.png"),
-        include_bytes!("../ui/assets/rich-card-blue.png"),
-        include_bytes!("../ui/assets/rich-card-amber.png"),
-    ];
+fn configure_rich_backgrounds(app: &Showcase, horizontal: bool) {
+    let backgrounds: [&[u8]; 2] = if horizontal {
+        [
+            include_bytes!("../ui/assets/rich-card-blue.png"),
+            include_bytes!("../ui/assets/rich-card-amber.png"),
+        ]
+    } else {
+        [
+            include_bytes!("../ui/assets/rich-row-blue.png"),
+            include_bytes!("../ui/assets/rich-row-amber.png"),
+        ]
+    };
+    app.set_rich_backgrounds(ModelRc::default());
     app.set_rich_backgrounds(ModelRc::new(VecModel::from(
         backgrounds
             .iter()
@@ -118,6 +121,10 @@ fn configure_rich_list(app: &Showcase) {
             })
             .collect::<Vec<_>>(),
     )));
+}
+
+fn configure_rich_list(app: &Showcase) {
+    configure_rich_backgrounds(app, false);
     let icons: [&[u8]; 5] = [
         include_bytes!("../ui/assets/rich-climate.svg"),
         include_bytes!("../ui/assets/rich-light.svg"),
@@ -131,6 +138,9 @@ fn configure_rich_list(app: &Showcase) {
             .map(|data| slint::Image::load_from_svg_data(data).expect("decode rich list SVG"))
             .collect::<Vec<_>>(),
     )));
+    if slint::Model::row_count(&app.get_rich_rows()) != 0 {
+        return;
+    }
     app.set_rich_rows(ModelRc::new(VecModel::from(
         (1..=100)
             .map(|id| DeviceRow {
@@ -228,19 +238,29 @@ pub fn configure(app: &Showcase) -> slint::Timer {
         let Some(name) = PAGES.get(page as usize) else {
             return;
         };
-        if page == 7 {
+        if page == 7 && app.get_page() != 7 {
             configure_rich_list(&app);
         }
         if page == 8 {
             update_clock(&app);
         }
         app.set_page(page);
+        if page != 7 {
+            app.set_rich_backgrounds(ModelRc::default());
+            app.set_rich_icons(ModelRc::default());
+        }
         let mut state = state.borrow_mut();
         state.visited |= 1 << page;
         if state.visited == (1 << PAGES.len()) - 1 {
             state.exercise(&app, 0);
         }
         state.log(&app, format!("Opened {name}"));
+    });
+    let weak = app.as_weak();
+    app.on_rich_orientation_changed(move |horizontal| {
+        if let Some(app) = weak.upgrade() {
+            configure_rich_backgrounds(&app, horizontal);
+        }
     });
     let (weak, state) = (app.as_weak(), session.clone());
     app.on_select_rich(move |id| {

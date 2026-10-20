@@ -66,10 +66,7 @@ def main():
             client.click("RichList::start-button")
             listing = client.find("RichList::listing")
             bounds = client.data("get_element_properties", elementHandle=listing)
-            coord, length = ("x", "width") if axis == "horizontal" else ("y", "height")
-            other = "y" if coord == "x" else "x"
-            first = client.rich_items()[0]["handle"]
-            start_position = client.data("get_element_properties", elementHandle=first)["absolutePosition"]
+            length = "width" if axis == "horizontal" else "height"
             viewport = bounds["size"][length]
             extent = (25588 if axis == "horizontal" else 11992) - viewport
             client.call("scroll_element", elementHandle=listing,
@@ -79,20 +76,17 @@ def main():
 
             def scroll():
                 nonlocal forward
-                before = client.data("get_element_properties", elementHandle=first)["absolutePosition"]
-                offset = start_position[coord] - before[coord]
+                offset = client.rich_offset(bounds, axis)
                 if offset > extent - 2 * viewport:
                     forward = False
                 elif offset < 2 * viewport:
                     forward = True
                 began = time.monotonic()
                 pointer_distance = client.drag_rich(bounds, axis, forward)
-                after = client.data("get_element_properties", elementHandle=first)["absolutePosition"]
-                distance = abs(after[coord] - before[coord])
-                end_offset = start_position[coord] - after[coord]
+                end_offset = client.rich_offset(bounds, axis)
+                distance = abs(end_offset - offset)
                 assert distance > 0.4 * viewport, (axis, "insufficient movement", distance)
                 assert 1 < end_offset < extent - 1, (axis, "reached an endpoint", end_offset)
-                assert abs(after[other] - start_position[other]) < 1
                 return dict(seconds=time.monotonic() - began, forward=forward,
                             content_distance=distance, pointer_distance=pointer_distance,
                             offset_before=offset, offset_after=end_offset, viewport=viewport)

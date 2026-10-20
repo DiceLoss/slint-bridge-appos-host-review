@@ -96,6 +96,22 @@ class Client:
         return [e for e in self.tree() if any(
             item.get("id") == "RichList::rich-item" for item in e["typeNamesAndIds"])]
 
+    def rich_offset(self, bounds, axis):
+        # Delegates may be recreated: derive content position from the current ID,
+        # never keep an offscreen item's handle as a permanent scroll marker.
+        coord, step = ("x", 256) if axis == "horizontal" else ("y", 120)
+        other = "y" if coord == "x" else "x"
+        items = self.rich_items()
+        assert items, "Expected visible rich-list delegates"
+        offsets = []
+        for item in items:
+            index = int(item["accessibleLabel"].split()[-1]) - 1
+            assert abs(item["absolutePosition"][other] - bounds["absolutePosition"][other]) < 1
+            offsets.append(bounds["absolutePosition"][coord] + index * step
+                           - item["absolutePosition"][coord])
+        assert max(offsets) - min(offsets) < 1, "Rich delegates disagree on content position"
+        return offsets[0]
+
     def drag_rich(self, bounds, axis, forward):
         coord, length = ("x", "width") if axis == "horizontal" else ("y", "height")
         low = bounds["absolutePosition"][coord]
@@ -122,22 +138,19 @@ def exercise_rich(client, output, full=False):
         listing = client.find("RichList::listing")
         bounds = client.data("get_element_properties", elementHandle=listing)
         coord, length = ("x", "width") if axis == "horizontal" else ("y", "height")
-        other = "y" if coord == "x" else "x"
-        initial = client.rich_items()
-        first = initial[0]["handle"]
-        start = client.data("get_element_properties", elementHandle=first)["absolutePosition"]
+        assert abs(client.rich_offset(bounds, axis)) < 1
         client.screenshot(output, f"{number}-rich-{axis}")
         selected = next(e["accessibleLabel"] for e in client.tree()
                         if e.get("accessibleLabel", "").startswith("Selected space:"))
         drags = []
         for forward in [True, False]:
+            before = client.rich_offset(bounds, axis)
             drags.append(client.drag_rich(bounds, axis, forward))
             time.sleep(0.2)
             client.expect_text(selected)
-            pos = client.data("get_element_properties", elementHandle=first)["absolutePosition"]
-            assert abs(pos[other] - start[other]) < 1, "List drifted on its locked axis"
+            offset = client.rich_offset(bounds, axis)
             if forward:
-                assert start[coord] - pos[coord] > bounds["size"][length] * 0.4, "Rich drag did not scroll"
+                assert offset - before > bounds["size"][length] * 0.4, "Rich drag did not scroll"
         client.click("RichList::start-button")
         seen = set()
         positions = []
@@ -146,14 +159,13 @@ def exercise_rich(client, output, full=False):
             extent = total - bounds["size"][length]
             assert extent > 30 * bounds["size"][length]
             for forward in [True, False]:
-                target = start[coord] - extent if forward else start[coord]
+                target = extent if forward else 0
                 for _ in range(60):
                     visible = client.rich_items()
                     seen.update(int(e["accessibleLabel"].split()[-1]) for e in visible)
-                    pos = client.data("get_element_properties", elementHandle=first)["absolutePosition"]
-                    assert abs(pos[other] - start[other]) < 1
-                    positions.append(pos[coord])
-                    if abs(pos[coord] - target) < 1:
+                    offset = client.rich_offset(bounds, axis)
+                    positions.append(offset)
+                    if abs(offset - target) < 1:
                         break
                     client.call("scroll_element", elementHandle=listing,
                                 **{"deltaX" if coord == "x" else "deltaY":
@@ -164,8 +176,7 @@ def exercise_rich(client, output, full=False):
                 client.call("scroll_element", elementHandle=listing,
                             **{"deltaX" if coord == "x" else "deltaY": -500 if forward else 500})
                 time.sleep(0.08)
-                pos = client.data("get_element_properties", elementHandle=first)["absolutePosition"]
-                assert abs(pos[coord] - target) < 1, "Rich boundary did not clamp"
+                assert abs(client.rich_offset(bounds, axis) - target) < 1, "Rich boundary did not clamp"
                 client.screenshot(output, f"rich-{axis}-{'end' if forward else 'return'}")
                 endpoint = next(e for e in client.rich_items()
                                 if int(e["accessibleLabel"].split()[-1]) == (100 if forward else 1))

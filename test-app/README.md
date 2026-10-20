@@ -33,6 +33,7 @@ test-app/
 ├── tests/showcase_scaling.rs  # PNG/SVG 运行时缩放及保留缓冲像素回归
 ├── tests/showcase_repaint.rs  # 文字缓存淘汰后的保留缓冲标题刷新回归
 ├── tests/showcase_rich_repaint.rs # 富列表双向裁剪、选择及屏外修改的保留缓冲回归
+├── tests/showcase_rich_memory.rs # 有界条目实例、首末端访问及素材生命周期
 ├── devices/nx5/               # 当前设备记录与构建/运行说明
 └── tools/
     ├── check-feature-matrix.py
@@ -161,6 +162,16 @@ python3 test-app/tools/check-showcase.py --binary target/debug/showcase \
 ```
 
 稳定 ID 为 `RichList::listing`、`rich-item`、`orientation-toggle`、`start-button`（均带 `RichList::` 前缀）。
+
+富列表使用固定尺寸条目，保留每条数据的轻量位置节点，但在 Flickable 中仅为 `ceil(视口长度 / 条目步长) + 2` 项创建完整卡片内容（不超过数据条数）。
+纵向步长为 120px、横向为 256px；保留少量预备项，已在可见范围内的卡片保持原绑定和文字缓存，100 条业务数据与稳定选择 ID 不变。
+屏外卡片会销毁、重新出现时重建，因此滚动检查必须重新读取当前数据 ID，不能把首项的旧句柄当作永久位置标记；`Client.rich_offset()` 同时检查当前实例的位置和轴向一致性。
+背景 PNG 只加载当前方向的两张，纵向像素合计 700 KiB、横向 625.25 KiB；离开富列表会清空背景和图标模型，保留小型业务数据与选择状态。
+重新进入从纵向起点开始并重新加载素材；共享渲染缓存和分配器可能延迟实际内存归还，不能把释放模型引用直接等同于 RSS 等量下降。
+这是测试应用的 UI/资源管理策略，不改变适配库的事件、GE 或双 framebuffer 契约。
+
+`tests/showcase_rich_memory.rs` 通过公开 Model 记录实际请求的行，检查初次绘制和首末端跳转没有读取全部 100 行，
+并覆盖横纵素材切换、离开后释放、重新进入时业务数据/选择保留，以及空模型和单项模型。
 
 `tests/showcase.rs` 使用 Slint 内存软件窗口检查表单校验、状态保留、重置取消、键盘编辑、列表筛选、稳定 ID、日志上限及透明开口的实际 RGBA 像素。`tests/showcase_scaling.rs` 在同一个保留缓冲 renderer 中依次切换 50%→100%→125%→200%→125%→50%→100%，检查原始素材尺寸固定、PNG/SVG 实际色块随缩放变化，并与独立全量重绘逐像素对照，覆盖缩小后的残留清除。`tests/showcase_repaint.rs` 另外通过确定性的文字模型更新和独立参考 renderer，验证缓存淘汰后切页标题仍刷新；不会用截图清空被测 renderer 的缓存。`tests/showcase_rich_repaint.rs` 比较 25 个横纵滚动、奇数/小数偏移、首末端、选中、屏外模型修改及重新进入状态的保留缓冲与独立全量重绘，并验证滚动确实改变画面、屏外修改不改变当前画面。默认 feature 矩阵包含这些测试；MCP 交互检查单独运行。这些检查均不代替 evdev、TDE/DMA、物理双页和扫描输出验证。
 
