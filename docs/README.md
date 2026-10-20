@@ -27,7 +27,7 @@
 | [NX5 验证记录](nx5-validation.md) | 启动/退出失败与修复、真实输入、界面、物理双页及资源清理 |
 | [X9 接入调查](x9-framebuffer.md) | DRM 完成契约、控制台、Type-A 输入、旋转及实际页验证 |
 | [F1 显示接入调查](f1-display.md) | 原应用运行中的只读查询、BGRA8888 与触摸轴、配置时序、参考驱动完成机制及未验证范围 |
-| [F1 图片与透明合成优化](f1-optimization.md) | GE 混合、64 位写页、PNG 硬解、低内存对照及 SVG 奇数行跨度修复验证 |
+| [F1 图片与透明合成优化](f1-optimization.md) | GE 混合、64 位写页、PNG 硬解、SVG 行跨度修复、性能对照及 RSS 来源 |
 | [F1 指令集调查](f1-isa-research.md) | C906FD / RV64GC、玄铁标量扩展、RVV 边界及实机像素微基准 |
 | [F1 图片解码调查](f1-image-decoder-research.md) | VE 格式、实际 SDK ABI/吞错问题、有界原生 PNG 与 DMA 完成条件 |
 | [F1 showcase 实测](f1-showcase.md) | CPU/G2D 对照、原生 MCP、物理前台页、内存与最终部署 |
