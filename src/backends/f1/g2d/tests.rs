@@ -1,6 +1,39 @@
 use super::*;
 use std::{cell::Cell, rc::Rc};
 
+#[test]
+fn source_rows_are_eight_byte_aligned_within_the_fixed_slot() {
+    for (width, height, stride) in [
+        (1, 1, 2),
+        (300, 160, 300),
+        (379, 237, 380),
+        (380, 237, 380),
+        (381, 239, 382),
+        (511, 256, 512),
+        (512, 256, 512),
+        (255, 512, 256),
+        (4095, 32, 4096),
+        (31, 4096, 32),
+    ] {
+        assert_eq!(source_pixel_stride(width, height), Some(stride));
+        assert_eq!(stride * 4 % 8, 0);
+        assert!(stride * height as usize * 4 <= 512 * 1024);
+    }
+    // Packed pixels fit, but padding must not overflow the same 512 KiB slot.
+    for (width, height) in [
+        (255, 513),
+        (511, 257),
+        (512, 257),
+        (0, 1),
+        (1, 0),
+        (4097, 1),
+        (1, 4097),
+        (u32::MAX, u32::MAX),
+    ] {
+        assert_eq!(source_pixel_stride(width, height), None);
+    }
+}
+
 slint::slint! {
     export component FillScene inherits Window {
         width: 320px; height: 240px;

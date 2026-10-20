@@ -11,6 +11,15 @@ use slint::Brush;
 // Two lazy 512 KiB source slots; no full-screen source duplication.
 const SOURCE_PIXELS: usize = 128 * 1024;
 
+fn source_pixel_stride(width: u32, height: u32) -> Option<usize> {
+    if width == 0 || height == 0 || width > 4096 || height > 4096 {
+        return None;
+    }
+    // GE requires an eight-byte source stride, including odd RGBA widths.
+    let stride = (width as usize + 1) & !1;
+    (stride * height as usize <= SOURCE_PIXELS).then_some(stride)
+}
+
 #[cfg(target_arch = "riscv64")]
 mod native;
 
@@ -283,9 +292,7 @@ impl TargetPixelBuffer for Buffer {
             .map(|r| u64::from(r.width) * u64::from(r.height))
             .sum::<u64>();
         if !opaque
-            && u64::from(source.width) * u64::from(source.height) <= SOURCE_PIXELS as u64
-            && source.width <= 4096
-            && source.height <= 4096
+            && source_pixel_stride(source.width, source.height).is_some()
             && area >= 32768
             && !rects.is_empty()
             && area / rects.len() as u64 >= 16384

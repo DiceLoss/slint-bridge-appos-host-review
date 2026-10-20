@@ -29,7 +29,9 @@ fn scene(mode: RepaintBufferType, zoom: f32) -> (Rc<MinimalSoftwareWindow>, Show
 fn png_and_svg_resize_at_runtime_and_clear_previous_extent() {
     let (window, app) = scene(RepaintBufferType::ReusedBuffer, 100.0);
     let mut pixels = vec![PremultipliedRgbaColor::default(); 1024 * 600];
-    for zoom in [50.0, 100.0, 125.0, 200.0, 125.0, 50.0, 100.0] {
+    for zoom in [
+        50.0, 100.0, 125.0, 148.0, 148.02744, 149.0, 150.0, 200.0, 149.0, 50.0, 100.0,
+    ] {
         app.set_image_zoom(zoom);
         for image in [app.get_scaling_png(), app.get_scaling_svg()] {
             assert_eq!((image.size().width, image.size().height), (256, 160));
@@ -60,7 +62,7 @@ fn png_and_svg_resize_at_runtime_and_clear_previous_extent() {
         }
         // The solid interior excludes the outer stroke and white cross (1 px each).
         // Its size must change with zoom; allow two pixels for filtering/rounding.
-        if zoom <= 125.0 {
+        if zoom <= 150.0 {
             for (format, range) in [("PNG", 210..580), ("SVG", 618..988)] {
                 let red = (220..450)
                     .flat_map(|y| range.clone().map(move |x| (x, y)))

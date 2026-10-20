@@ -217,6 +217,9 @@ impl Canvas for Native {
             }
         }
         let data = args.source();
+        let Some(pixel_stride) = super::source_pixel_stride(data.width, data.height) else {
+            return Ok(false);
+        };
         if self.sources[slot].is_none() {
             let Ok(source) = DmaBuffer::new(super::SOURCE_PIXELS) else {
                 return Ok(false);
@@ -228,11 +231,10 @@ impl Canvas for Native {
             for y in 0..data.height as usize {
                 let row = &data.data
                     [y * data.byte_stride..y * data.byte_stride + data.width as usize * 4];
-                for (dst, src) in source.pixels_mut()
-                    [y * data.width as usize..(y + 1) * data.width as usize]
-                    .iter_mut()
-                    .zip(row.as_chunks::<4>().0)
-                {
+                let target = &mut source.pixels_mut()[y * pixel_stride..(y + 1) * pixel_stride];
+                let (target, padding) = target.split_at_mut(data.width as usize);
+                padding.fill(PremultipliedRgbaColor::default());
+                for (dst, src) in target.iter_mut().zip(row.as_chunks::<4>().0) {
                     let scale = |v: u8| (u16::from(v) * u16::from(args.alpha) / 255) as u8;
                     *dst = if data.pixel_format == TexturePixelFormat::RgbaPremultiplied {
                         PremultipliedRgbaColor {
@@ -264,7 +266,7 @@ impl Canvas for Native {
             let mut blt = Bitblt {
                 source: MppBuffer {
                     fd: [source.file.as_ref().unwrap().as_raw_fd(), -1, -1],
-                    stride: [data.width * 4, 0, 0],
+                    stride: [pixel_stride as u32 * 4, 0, 0],
                     size: [data.width as i32, data.height as i32],
                     crop_enabled: 1,
                     crop: [
