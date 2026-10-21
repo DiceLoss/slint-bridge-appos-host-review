@@ -4,7 +4,7 @@
 
 ## 启用及连接
 
-构建启用 `slint/mcp` 并设置 `SLINT_EMIT_DEBUG_INFO=1`，以保留元素 ID 等运行时元数据。两设备的完整构建命令见 [使用指南](getting-started.md#验证并构建示例)。运行时设置 `SLINT_MCP_PORT=9315`；没有该变量时不启动服务。字体、SDK、显示所有权及有限运行时长按各自设备说明配置。
+构建启用 `slint/mcp` 并设置 `SLINT_EMIT_DEBUG_INFO=1`，以保留元素 ID 等运行时元数据。NX5/X9 构建示例见 [使用指南](getting-started.md#验证并构建示例)，NX1/F1 分别见 [NX1](../test-app/devices/nx1/README.md#构建)、[F1](../test-app/devices/f1/README.md#构建) 设备说明。运行时设置 `SLINT_MCP_PORT=9315`；没有该变量时不启动服务。字体、SDK、显示所有权及有限运行时长按各自设备说明配置。
 
 `platform::set_platform()` 安装原生 MCP 钩子，不需要再手动初始化 testing backend；窗口显示且事件循环运行后才开始监听。服务监听设备 localhost，主机通过已核对的 ADB 目标转发：
 
@@ -14,7 +14,7 @@ adb -s 192.168.1.151:5555 forward tcp:19315 tcp:9315
 adb -s 192.168.1.143:5555 forward tcp:19316 tcp:9315
 ```
 
-NX5 使用 `http://127.0.0.1:19315/mcp`，X9 使用 `http://127.0.0.1:19316/mcp`。这是 Streamable HTTP JSON-RPC 接口，不是浏览器页面。先初始化并查询当前进程的工具定义：
+NX5 使用 `http://127.0.0.1:19315/mcp`，X9 使用 `http://127.0.0.1:19316/mcp`。这些端口是示例；NX1/F1 也使用同一原生 MCP 协议，通过各自已核对的设备连接和独立主机端口访问。这是 Streamable HTTP JSON-RPC 接口，不是浏览器页面。先初始化并查询当前进程的工具定义：
 
 ```sh
 curl --noproxy '*' -sS http://127.0.0.1:19315/mcp \
@@ -58,6 +58,8 @@ python3 test-app/tools/nx5/deploy.py --serial 192.168.1.151:5555 screenshot \
 工具先检查 16 MiB 最低可用内存，再查询尺寸，并在调用前要求至少 `max(16 MiB, 3 × 两份 RGBA 缓冲)` 余量，字段缺失或不足则拒绝；PNG 直接保存到主机。其他 MCP 客户端也要遵守该检查，顺序截图的检查不能保证并发操作安全。
 
 X9 没有 `MemAvailable`，不套用 NX5 脚本；按 [X9 设备说明](../test-app/devices/x9/README.md#内存与诊断) 检查 MemFree、Shmem 和当前窗口所需余量。NX5 历史 OOM 与清理复验见 [验证记录](nx5-validation.md#nx5-screenshot-memory)。
+
+NX1 同样没有 `MemAvailable`，内存预算及物理页采样方式见 [NX1 设备说明](../test-app/devices/nx1/README.md#内存与验证)。F1 截图余量和 SD 卡存储要求见 [F1 设备说明](../test-app/devices/f1/README.md#恢复与验证边界)。不跨设备套用 NX5 检查脚本。
 
 ## 验证边界
 

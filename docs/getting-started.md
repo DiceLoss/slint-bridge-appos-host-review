@@ -1,6 +1,6 @@
 # Slint Bridge 获取配置与使用
 
-本指南用于在新的 Linux 开发机上获取工程、配置交叉编译环境、构建 NX5/X9 示例，以及在业务应用中引用适配层。NX5 和 X9 共用同一个 Slint 来源，使用不同的板级 feature 和 ARM 工具链。设备运行只适用于已经准入验证的硬件与固件，详细契约以 [平台说明](software-platform.md) 为准。
+本指南用于在新的 Linux 开发机上获取工程、配置交叉编译环境、构建 NX5、NX1、X9 和 F1 示例，以及在业务应用中引用适配层。四板共用同一个 Slint 来源，使用各自的板级 feature 和 ARM / RISC-V 工具链；下文业务模板以 NX5/X9 为例。设备运行只适用于已经准入验证的硬件与固件，详细契约以 [平台说明](software-platform.md) 为准。
 
 仅在自己的业务工程中使用适配层时，直接按 [业务接入](#在自己的-rust-应用中接入) 配置 Git 依赖即可，无需手动克隆或把适配层源码放入项目目录。前面的仓库克隆步骤用于构建仓库自带示例。
 
@@ -28,7 +28,7 @@ git ls-remote http://192.168.253.238/wshl/slint-last.git HEAD
 
 ```sh
 rustup component add rustfmt clippy
-rustup target add arm-unknown-linux-gnueabi arm-unknown-linux-gnueabihf
+rustup target add arm-unknown-linux-gnueabi arm-unknown-linux-gnueabihf riscv64gc-unknown-linux-gnu
 rustc --version
 cargo --version
 ```
@@ -40,6 +40,7 @@ Rust target 提供 Rust 标准库，不能替代板级 C/C++ 交叉工具链及 
 | NX5 | `arm-unknown-linux-gnueabi` | soft-float ABI，Cortex-A7 | `/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi` |
 | NX1 | `arm-unknown-linux-gnueabi` | soft-float ABI，Cortex-A7 | `/opt/NX1/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi` |
 | X9 | `arm-unknown-linux-gnueabihf` | hard-float ABI，Cortex-A7 | `/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf` |
+| F1 | `riscv64gc-unknown-linux-gnu` | LP64D，T-HEAD | `/opt/F1` |
 
 安装匹配的厂商工具链及 sysroot。不要把 NX5 的 `gnueabi` 和 X9 的 `gnueabihf` 混用，也不要只把一个不同版本的编译器改成相同文件名。
 
@@ -83,8 +84,9 @@ CARGO_NET_GIT_FETCH_WITH_CLI=true cargo fetch --locked
 | [.cargo/nx5.toml](../.cargo/nx5.toml) | NX5 Cortex-A7、NEON 和 softfp 编译参数 |
 | [.cargo/nx1.toml](../.cargo/nx1.toml) | NX1 工具链路径、Cortex-A7、NEON 和 softfp 参数 |
 | [.cargo/x9.toml](../.cargo/x9.toml) | X9 工具链路径、Cortex-A7、NEON 和 hard-float 参数 |
+| [.cargo/f1.toml](../.cargo/f1.toml) | F1 RISC-V 工具链路径与配套 LP64D sysroot |
 
-如果工具链安装在其他目录，修改对应配置文件中的 `linker`、`CC_*`、`CXX_*`、`AR_*` 四类路径，保持 CPU 和 ABI 参数不变。NX5 的路径位于 `config.toml`，X9 的路径位于 `x9.toml`。可以先直接执行配置中 gcc 的 `--version`，确认程序能在开发机运行。
+如果工具链安装在其他目录，修改对应配置文件中的 `linker`、`CC_*`、`CXX_*`、`AR_*` 四类路径，保持 CPU 和 ABI 参数不变。NX5 的路径位于 `config.toml`，其余设备分别位于 `nx1.toml`、`x9.toml`、`f1.toml`。可以先直接执行配置中 gcc 的 `--version`，确认程序能在开发机运行。
 
 ARM `nx5-tde` 默认使用仓库内头文件，不需要设置 `NX5_SDK_INCLUDE`。只有显式测试另一套配套 SDK 时才覆盖该变量。独立 NX5 C 工具支持 `NX5_CC`，但这个变量不会替代 Cargo 的交叉编译器配置。
 
@@ -98,10 +100,13 @@ ARM `nx5-tde` 默认使用仓库内头文件，不需要设置 `NX5_SDK_INCLUDE`
 | `nx1` | NX1 纯 CPU framebuffer 与明确选择的参考 PAN 约定 |
 | `nx5` | NX5 显示会话及软件渲染 |
 | `nx5-tde` | NX5 TDE 加速和软件回退，包含 `nx5` |
+| `nx5-mma-background` | 包含 `nx5-tde`；通过 Config 显式选择 MMA 背景 |
+| `f1` / `f1-g2d` | F1 参考 PAN/VSYNC；后者包含 GE 填充与受限图片混合 |
 
 `fbdev`、`nx1`、`nx5`、`f1` 两两互斥，不使用 `--all-features`。
 NX1 的完整构建和 `/mnt` 部署命令见 [设备说明](../test-app/devices/nx1/README.md)；
-其参考 PAN 约定不代表通用 framebuffer 都已获得可靠完成接口。先运行主机检查：
+F1 的 RISC-V 构建及 SD 卡部署见 [设备说明](../test-app/devices/f1/README.md)。
+两板的参考翻页约定不代表旧页硬件退休已被证明。先运行主机检查：
 
 ```sh
 python3 test-app/tools/check-feature-matrix.py
@@ -171,6 +176,12 @@ SLINT_DEFAULT_FONT="$X9_RUN_DIR/DejaVuSans.ttf" SLINT_MCP_PORT=9315 \
 ```
 
 该配置只对应 [X9 设备说明](../test-app/devices/x9/README.md) 中的已验证板型。X9 的内存字段和显示恢复流程与 NX5 不同，不直接套用 NX5 部署脚本。
+
+### NX1 与 F1
+
+NX1 的程序和资源部署到已核对挂载的 `/mnt`，F1 部署到真实挂载的 SD 卡。
+完整命令、显示所有权、输入及恢复前提分别见 [NX1](../test-app/devices/nx1/README.md) 和
+[F1](../test-app/devices/f1/README.md)，不要套用 NX5 的 SDK 会话或 tmpfs 部署流程。
 
 ### 原生 MCP 连接
 
@@ -346,4 +357,4 @@ git clone http://192.168.253.238/wshl/slint-last.git
 | 字体缺失或画面对照不同 | 部署仓库中的字体及版权说明，并明确设置设备上的 `SLINT_DEFAULT_FONT` |
 | MCP 无法连接 | 检查编译 feature、运行端口、程序状态、ADB 目标和转发端口 |
 
-进一步的设备参数、部署资源保护及故障处理，分别见 [NX5](../test-app/devices/nx5/README.md)、[X9](../test-app/devices/x9/README.md) 和 [完整应用说明](../test-app/README.md)。
+进一步的设备参数、部署资源保护及故障处理，分别见 [NX5](../test-app/devices/nx5/README.md)、[NX1](../test-app/devices/nx1/README.md)、[X9](../test-app/devices/x9/README.md)、[F1](../test-app/devices/f1/README.md) 和 [完整应用说明](../test-app/README.md)。

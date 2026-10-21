@@ -143,7 +143,7 @@ cargo tree --locked --offline -p slint-bridge-test-app \
 
 - **关闭 MCP 或 `SLINT_EMIT_DEBUG_INFO`。** 前者移除查询/交互/截图，后者使元素 ID 查询等能力缺少 UI 元数据；这是 `.slint` 运行时元数据，与 ELF 的 DWARF/符号表不同。[当前 MCP 构建约定](slint-mcp.md#启用及连接)、无元数据时拒绝元素 ID 查询（`Slint/internal/backends/testing/introspection/mod.rs:364`）。
 - **删除 PNG 编码器。** 当前 MCP 截图确实调用 PNG 编码；即使应用从不“保存图片”，该功能仍在使用编码器。
-- **改成 `panic = "abort"`。** 该策略从栈展开改为立即结束进程；当前 presentation worker 的退出通知、板级会话持有和析构回归覆盖 panic 路径，不能当作保持生命周期语义的纯体积开关。[Rust/Cargo panic 策略](https://doc.rust-lang.org/cargo/reference/profiles.html#panic)、[当前 worker 与退出保护](../src/presentation.rs:21)、[页生命周期回归](../src/tests/framebuffer_lifecycle.rs:393)。
+- **改成 `panic = "abort"`。** 该策略从栈展开改为立即结束进程；当前 presentation worker 的退出通知、板级会话持有和析构回归覆盖 panic 路径，不能当作保持生命周期语义的纯体积开关。[Rust/Cargo panic 策略](https://doc.rust-lang.org/cargo/reference/profiles.html#panic)、[当前 worker 与退出保护](../src/presentation.rs)、[页生命周期回归](../src/tests/framebuffer_lifecycle.rs)。
 - **减小 SVG 栅格缓存、TDE 源槽或 framebuffer。** 这些是运行期内存，容量并不以同等字节存入可执行文件；减少它们不能把之前的 MiB 内存占用直接扣减成固件体积。
 
 本节通过源码、目标 feature 树及官方构建文档核对依赖和语义；不把尚未构建的候选写成已实现节约，也不把候选编译成功当成实机功能、像素和性能已验证。

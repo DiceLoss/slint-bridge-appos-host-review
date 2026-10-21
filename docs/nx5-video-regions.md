@@ -47,7 +47,7 @@ flowchart TB
 
 一张 1024×600 RGBA 缓冲为 2,457,600 字节，约 2.34 MiB；基准图、输出图和临时复制可能同时存在。这是普通内存成本，不是新增物理 framebuffer。高频拖动时还要计入重建、上传和绘制成本。
 
-NX5 当前 TDE 对带透明源的混合要求目标区域不透明，透明目标走精确软件合成。因此整张带洞背景可能改变硬件加速命中，不能只凭减少 Image 数量就判定它最快；应与不透明分片方案实测比较。[现有 TDE 条件](../src/backends/nx5/tde/native.c:427)
+NX5 当前 TDE 对带透明源的混合要求目标区域不透明，透明目标走精确软件合成。因此整张带洞背景可能改变硬件加速命中，不能只凭减少 Image 数量就判定它最快；应与不透明分片方案实测比较。[现有 TDE 条件](../src/backends/nx5/tde/native.c)
 
 ## 本地主机像素试验
 
@@ -69,7 +69,7 @@ LGUI3 `476e327e` 的 vdec 只定义宽高，位置/隐藏沿用通用控件；�
 
 无遮罩、覆盖填充分支直接把含 alpha 的整像素写入目标，因此可以清掉之前的图片背景；存在 vdec 时还跳过部分 GPU 路径。填充（`LGUI3/c_library/src/lvgl/lv_draw/lv_draw_blend.c:359`）、像素赋值（`LGUI3/c_library/src/lvgl/lv_misc/lv_color.c:40`）
 
-Slint 普通 source-over 在源 alpha=0 时保留目标像素。叠一块透明 Rectangle 或设置 opacity=0 都不会擦除已绘制的照片；当前 Showcase 的 cutout 实际是隐藏整张 wallpaper。混合公式（`Slint/internal/renderers/software/draw_functions.rs:874`）、[当前 wallpaper](../test-app/ui/showcase.slint:77)
+Slint 普通 source-over 在源 alpha=0 时保留目标像素。叠一块透明 Rectangle 或设置 opacity=0 都不会擦除已绘制的照片；当前 Showcase 的 cutout 实际是隐藏整张 wallpaper。混合公式（`Slint/internal/renderers/software/draw_functions.rs:874`）、[当前 wallpaper](../test-app/ui/showcase.slint)
 
 不能在最终写页时把视频矩形统一清零，因为背景和按钮/弹窗已经混在一起。仅改 alpha 而保留 RGB 也违反预乘约束。公开背景方案通过“背景自身带洞/不画洞内内容”实现所需效果，而不要求复刻 LGUI3 覆盖擦除任意 UI 的全部语义。
 

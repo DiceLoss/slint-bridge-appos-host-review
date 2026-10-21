@@ -6,7 +6,7 @@
 
 | 文档 | 内容 |
 | --- | --- |
-| [获取配置与使用](getting-started.md) | 两个 Git 仓库、新机器环境、独立业务工程及 NX5/X9 构建配置 |
+| [获取配置与使用](getting-started.md) | 两个 Git 仓库、新机器环境、四板工具链及 NX5/X9 业务接入示例 |
 | [平台实现说明](software-platform.md) | 公共 API、feature、输入、画布、双页、提交及错误契约 |
 | [Slint MCP](slint-mcp.md) | 原生 UI 查询、交互、事件录制和受内存保护的截图 |
 | [测试应用](../test-app/README.md) | 页面、参数、素材、测试及业务使用方式 |
@@ -23,6 +23,7 @@
 | 文档 | 内容 |
 | --- | --- |
 | [NX1 framebuffer 接入](nx1-framebuffer.md) | 当前内核反汇编、PAN/HWC 限制、CPU 双页适配及实机验证 |
+| [NX1 渲染与内存分析](nx1-performance.md) | 分阶段计时、RSS/PSS 与 ION 内存账、保持画质的纹理复制原型及优化优先级 |
 | [NX5 显示完成与合成](nx5-display.md) | #22 准入缺口、#233 双周期、单周期未达成、SDK/WBC 与 alpha 量程 |
 | [NX5 性能记录](nx5-performance.md) | TDE、写页、输入分段、图片/缩放、富列表、MCP 增长对照及内存总账 |
 | [NX5 MMA 背景验证](nx5-mma-background.md) | 已有源槽共享、内存对照、物理像素与软件回退 |

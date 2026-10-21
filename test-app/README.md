@@ -34,11 +34,11 @@ test-app/
 ├── tests/showcase_repaint.rs  # 文字缓存淘汰后的保留缓冲标题刷新回归
 ├── tests/showcase_rich_repaint.rs # 富列表双向裁剪、选择及屏外修改的保留缓冲回归
 ├── tests/showcase_rich_memory.rs # 有界条目实例、首末端访问及素材生命周期
-├── devices/nx5/               # 当前设备记录与构建/运行说明
+├── devices/{nx1,nx5,x9,f1}/   # 各设备记录与构建/运行说明
 └── tools/
     ├── check-feature-matrix.py
     ├── check-showcase.py      # 主机原生 Slint MCP 交互与截图检查
-    └── nx5/                  # WBC、TDE、翻页等硬件诊断及历史证据重放
+    └── {nx1,nx5,x9,f1}/       # 板级检查、采样、输入及硬件诊断
 ```
 
 以下命令从仓库根目录执行。根目录不加 package 选择时默认只检查适配库；使用 `-p slint-bridge-test-app`、`--manifest-path test-app/Cargo.toml` 或进入本目录可单独选择测试工程，使用 `--workspace` 检查两者。
@@ -80,8 +80,9 @@ F1 showcase 在 `init()` 前通过 `slint_bridge::try_decode_png` 尝试加载�
 
 | 项目 | 选择方式 |
 | --- | --- |
-| 通用 framebuffer 软件组合 | `--features fbdev` |
+| X9 软件渲染与 DRM 完成事件 | `--features fbdev` |
 | NX1 软件渲染与参考 PAN | `--features nx1` |
+| F1 参考 PAN/VSYNC | `--features f1`（软件）或 `--features f1-g2d`（含 GE 加速） |
 | NX5 软件渲染 | `--features nx5` |
 | NX5 TDE 和软件回退 | `--features nx5-tde` |
 | NX5 MMA 背景能力 | `--features nx5-mma-background`，运行时 `--background=mma` |
@@ -129,7 +130,7 @@ F1 showcase 在 `init()` 前通过 `slint_bridge::try_decode_png` 尝试加载�
 
 Clock 按白色圆盘、黑色数字和时分针、红色秒针绘制，配浅蓝背景及阴影；表盘随可用区域等比例缩放。使用 Slint 文字与 Path，无额外表盘位图。显示设备系统的本地时间（含系统时区），秒针每秒跳动，时分针含秒数偏移；进入页面立即同步，离开页面停止更新时间属性。Motion 的暂停不影响时钟；没有联网校时或设置设备时间的行为，设备 RTC/系统时间不准时显示也会不准。 NX5 的部署、指针及物理页验证见[钟表页实测](../docs/nx5-validation.md#nx5-clock)。
 
-Rich list 首次进入时才加载两套 PNG 底图和五个原始 SVG，并建立 100 项模型。1024×600 面板上可视区为 800×340；纵向总长 11992 px、可滚动 11652 px（约 34.3 屏），横向总长 25588 px、可滚动 24788 px（约 31.0 屏）。两套底图交替使用；每张卡片都含 32×32 SVG 主图标、16×16 SVG 箭头和文本，透明边缘与阴影参与合成。每张卡片限定自身裁剪边界，使 renderer 跳过屏外子树，保留原图像、阴影、文字和命中区域。当前固定 100 个卡片实例，没有列表虚拟化；这是本例的负载范围，不代表无限列表的内存特性。方向切换回到起点，选择状态在离开页面后仍保留；侧栏导航高度为 40 px，以容纳九页。
+Rich list 首次进入时才建立 100 项模型；每次进入加载纵向的两张 PNG 底图和五个原始 SVG，切换方向时替换为对应底图。1024×600 面板上可视区为 800×340；纵向总长 11992 px、可滚动 11652 px（约 34.3 屏），横向总长 25588 px、可滚动 24788 px（约 31.0 屏）。两套底图交替使用；每张卡片都含 32×32 SVG 主图标、16×16 SVG 箭头和文本，透明边缘与阴影参与合成。每张卡片限定自身裁剪边界，使 renderer 跳过屏外子树，保留原图像、阴影、文字和命中区域。100 项数据保留轻量位置节点，完整卡片内容仅在视口附近创建；实例上限与素材生命周期见下文。此固定负载不代表无限列表的内存特性。方向切换回到起点，选择状态在离开页面后仍保留；侧栏导航高度为 40 px，以容纳九页。
 
 Controls 预览圆环从顶部顺时针显示配置百分比：0% 只显示底轨，100% 显示完整着色环。关闭输出时仍保留配置进度，并改用灰色；下方线性 Meter 显示关闭后的零输出。修复与设备验证见 [圆环报告](../docs/nx5-validation.md#nx5-controls-ring)。
 
@@ -256,7 +257,7 @@ cargo build --locked --offline --release -p slint-bridge-test-app \
 
 NX5 部署与测试后的归档清理统一使用 [deploy.py](tools/nx5/README.md#部署归档清理和截图)，保留当前程序、一份恢复版本及其依赖；截图子命令会即时检查设备可用内存。
 
-NX5 TDE、观察器插件、部署与 MCP 运行命令见 [devices/nx5/README.md](devices/nx5/README.md)。NX5 SDK 头文件/动态库和两设备字体已随 [third-party/](../third-party/README.md) 保存。所有构建均从仓库配置的同一个 Slint Git 来源解析依赖，不指定 `rev`；首次联网准备及更新锁文件的方法见 [平台说明](../docs/software-platform.md#构建依赖)。
+NX5 TDE、观察器插件、部署与 MCP 运行命令见 [devices/nx5/README.md](devices/nx5/README.md)。NX5 SDK 头文件/动态库和各设备字体已随 [third-party/](../third-party/README.md) 保存。所有构建均从仓库配置的同一个 Slint Git 来源解析依赖，不指定 `rev`；首次联网准备及更新锁文件的方法见 [平台说明](../docs/software-platform.md#构建依赖)。
 
 启动、退出、路径、输入和物理页的历史验证统一见 [NX5 验证记录](../docs/nx5-validation.md)；显示合成见 [NX5 显示调查](../docs/nx5-display.md)，性能见 [NX5 性能记录](../docs/nx5-performance.md) 和 [Slint 两设备对照](../docs/slint-optimization.md)。当前操作只采用设备说明中的流程，历史 PID 和测试计数不作为当前运行状态。
 

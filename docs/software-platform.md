@@ -162,7 +162,7 @@ CPU 图片绘制由 [texture_renderer.rs](../src/texture_renderer.rs) 在 Slint 
 
 `fbdev` 在保留画布前增加一项不透明背景缓存（[实现](../src/software_background.rs)）。仅处理目标恰好覆盖整张画布、整体 alpha=255、无着色和铺排的共享 RGB/RGBA 图片；RGBA 源视图还须全部不透明。缓存保存按当前旋转、裁剪源视图及 Slint 定点采样规则得到的物理方向像素，命中时只复制本帧脏区，随后前景照常叠加。源身份、源视图、画布尺寸或旋转变化会重建缓存；身份键保留不可变源存储，源像素写时复制不会误命中旧内容。
 
-派生像素最多 4 MiB，此外保留一份源图共享引用；X9 800×1280 使用 3.90625 MiB。每帧最多检查一张候选图片，避免多个全屏层反复替换。为保持嵌套裁剪的取整一致，只接受 Q8 采样步长为 16 的倍数、源视图宽高不超过 4095 的情形；其他尺寸、透明源、不支持的格式或分配失败沿用 Slint 绘制。缓存不写物理页，不增加线程或在途帧，也不改变 NX5 路径。回归覆盖旋转、局部重绘、源替换、裁剪、隐藏、透明度和尺寸变化，见 [缓存差分测试](../src/tests/software_background.rs)。
+派生像素最多 4 MiB，此外保留一份源图共享引用；X9 800×1280 使用 3.90625 MiB。每帧最多检查一张候选图片，避免多个全屏层反复替换。为保持嵌套裁剪的取整一致，只接受 Q8 采样步长为 16 的倍数、源视图宽高不超过 4095 的情形；其他尺寸、透明源、不支持的格式或分配失败先尝试公共 CPU 纹理路径，未处理时交回 Slint。缓存不写物理页，不增加线程或在途帧，也不改变 NX5 路径。回归覆盖旋转、局部重绘、源替换、裁剪、隐藏、透明度和尺寸变化，见 [缓存差分测试](../src/tests/software_background.rs)。
 
 `fbdev` 还为重复使用的等尺寸图片提供[旋转纹理缓存](../src/software_texture.rs)。准入限于 90°/270°、源视图宽高均不少于 64、无着色/铺排、整体 alpha=255 的预乘 RGBA；旋转后尺寸必须与目标严格一比一。缓存保留原始逐像素 alpha，按当前裁剪区和平移位置读取连续像素，调用适配层公共批量混合及不透明批次复制，不缓存文字、选中边框或已经与背景合成的整张卡片。
 
@@ -275,8 +275,8 @@ flowchart LR
 ## 构建依赖
 
 F1 构建使用 `.cargo/f1.toml` 和 `riscv64gc-unknown-linux-gnu`，链接到
-`/opt/F1` T-HEAD 工具链与 LP64D sysroot。`f1`、`fbdev`、`nx5` 两两互斥，
-`f1-g2d` 包含 `f1` 并启用同源 renderer 的 `experimental` 接口。
+`/opt/F1` T-HEAD 工具链与 LP64D sysroot。`f1`、`fbdev`、`nx1`、`nx5` 两两互斥。
+`f1-g2d` 包含 `f1`；同源 renderer 的 `experimental` 接口由库统一启用。
 F1 不切换 Slint 源码、不链接 NX5 SDK，也不加载参考工程中的视频解码库。
 
 `f1-g2d` 用 `/dev/dma_heap/reserved` 分配一份预乘 RGBA 保留画布，
@@ -290,7 +290,8 @@ F1 不切换 Slint 源码、不链接 NX5 SDK，也不加载参考工程中的�
 求交；预乘输入按整体透明度缩放，straight 输入先合并 alpha 再预乘。
 软件混合与 Slint 的整数规则一致。不透明全屏背景只记住不可变共享源的身份
 及 opacity 判定，直接复制裁剪行，不保存第二份全屏像素；源改变重新检查，
-本帧不再使用时释放该身份引用。缩放、旋转、染色、AlphaMap 等继续交给 Slint。
+本帧不再使用时释放该身份引用。缩放、旋转及 RGB 输入先尝试上文的公共 CPU 纹理路径；
+超出该路径采样条件、染色、平铺和 AlphaMap 等再交给 Slint。
 
 对较小且反复使用的透明图片，GE 混合另保留两个惰性分配的源槽，每槽
 512 KiB、合计最多 1 MiB。RGBA 源上传行跨度补齐到 8 字节，补齐后的行像素数
@@ -332,15 +333,15 @@ DMA 槽容量保留到画布销毁。新源先按软件相同顺序准备预乘�
 
 外部业务通过 [适配层 Git 仓库](http://192.168.253.238/wshl/slint_bridge.git) 引用本库，Cargo 将依赖和 SDK 头文件放在 Git 缓存中，无需业务目录内的源码副本。本仓库 `test-app` 的 `path = ".."` 仅用于测试同一工作区的适配层改动，不是外部业务的接入要求。交叉编译器仍由业务工程自己的 Cargo 配置指定；完整独立配置见 [使用指南](getting-started.md#业务工程的交叉编译配置)。
 
-Slint 使用用户指定的 Git 仓库 [Slint 源码仓库](http://192.168.253.238/wshl/slint-last.git)，依赖清单不设置 `rev` 或 tag，跟随仓库默认分支。X9 与 NX5 统一使用同一来源，保留缓存身份、外部像素等现有扩展，不按设备另分 Slint 补丁版本。依赖关闭默认桌面后端，启用 `std`、`renderer-software` 和 `compat-1-18`。所有板级路径都启用同源软件 renderer 的 `experimental` 目标缓冲接口，以使用适配层的公共 CPU 纹理处理。`nx5-tde` 的 ARM 构建额外编译使用仓库内 `third-party/nx5/include/` SDK 头文件的 C 接口，运行时复用已加载的 SDK 会话。
+Slint 使用用户指定的 Git 仓库 [Slint 源码仓库](http://192.168.253.238/wshl/slint-last.git)，依赖清单不设置 `rev` 或 tag，跟随仓库默认分支。NX5、NX1、X9 与 F1 统一使用同一来源，保留缓存身份、外部像素等现有扩展，不按设备另分 Slint 补丁版本。依赖关闭默认桌面后端，启用 `std`、`renderer-software` 和 `compat-1-18`。所有板级路径都启用同源软件 renderer 的 `experimental` 目标缓冲接口，以使用适配层的公共 CPU 纹理处理。`nx5-tde` 的 ARM 构建额外编译使用仓库内 `third-party/nx5/include/` SDK 头文件的 C 接口，运行时复用已加载的 SDK 会话。
 
-NX5 的构建默认头文件、观察器链接所需动态库，以及两设备部署用 DejaVu 字体均纳入 [third-party/](../third-party/README.md)，保留来源、版权说明和 SHA256。`NX5_SDK_INCLUDE` 可覆盖默认头文件目录；构建脚本按 package 根目录定位资源，消费方无需设置原开发机器的路径。运行时仍通过 `libVideoDec.so` 和设备动态库搜索路径加载 SDK，不绑定主机资源目录。交叉工具链和 sysroot 仍需按设备配置安装，Rust/Cargo 依赖仍按锁文件获取。
+NX5 的构建默认头文件、观察器链接所需动态库，以及各设备部署用 DejaVu 字体均纳入 [third-party/](../third-party/README.md)，保留来源、版权说明和 SHA256。`NX5_SDK_INCLUDE` 可覆盖默认头文件目录；构建脚本按 package 根目录定位资源，消费方无需设置原开发机器的路径。运行时仍通过 `libVideoDec.so` 和设备动态库搜索路径加载 SDK，不绑定主机资源目录。交叉工具链和 sysroot 仍需按设备配置安装，Rust/Cargo 依赖仍按锁文件获取。
 
 `fontique` 固定到 Slint 当前使用的 0.11.1，并启用 `fontconfig-dlopen`，避免 ARM 构建依赖主机的 Fontconfig 链接配置。没有系统字体库的设备仍需由应用提供字体，例如设置 `SLINT_DEFAULT_FONT` 或在 `.slint` 中导入字体资源。
 
 运行库、软件 renderer、测试所用内部 crate 与 `slint-build` 均引用同一个 Git 地址。`Cargo.lock` 自动记录本次解析的 Git 提交，以支持 `--locked` 和离线复现；这不是依赖清单中的 `rev` 固定。首次构建前联网执行 `cargo fetch --locked`；需要跟进远端更新时执行 `cargo update -p slint`，核对所有 Slint crate 仍来自同一提交后提交更新的锁文件。现有 `=1.18.1` 版本约束仍保留，升级 Slint 版本号时需同步调整相关依赖。
 
-后续升级 Slint 时按功能迁移现有补丁；先检查新版是否已有等价实现，再应用仍需要的补丁，保留独立提交以便追踪。早期纹理优化的增量范围为 `95becfd3d6bc2e840df4956b4004bfef936bfe95..c878901fb9793efc3d515aee37225cbad57de40d`，该范围不代表相对官方 Slint 的全部定制差异。升级验收包括主机 feature 矩阵、缓存/旋转/纹理像素回归、两设备 ARM 构建，以及受影响路径的实机画面、功能和性能对照；补丁应用成功或编译通过不能替代验证。
+后续升级 Slint 时按功能迁移现有补丁；先检查新版是否已有等价实现，再应用仍需要的补丁，保留独立提交以便追踪。早期纹理优化的增量范围为 `95becfd3d6bc2e840df4956b4004bfef936bfe95..c878901fb9793efc3d515aee37225cbad57de40d`，该范围不代表相对官方 Slint 的全部定制差异。升级验收包括主机 feature 矩阵、缓存/旋转/纹理像素回归、受影响设备的 ARM / RISC-V 交叉构建，以及受影响路径的实机画面、功能和性能对照；补丁应用成功或编译通过不能替代验证。
 
 该版本还修复文字布局缓存淘汰时未通知重绘依赖的问题：否则持续动画后切页可能保留旧标题，而完整截图仍显示新标题。展示应用的保留缓冲回归见 `test-app/tests/showcase_repaint.rs`。缓存容量限制仍保持不变。
 
@@ -385,7 +386,7 @@ flowchart LR
 
 原生 [check-native.sh](../test-app/tools/nx5/tde/check-native.sh) 用主机替身 SDK 验证无版本库名在不同目录下的搜索、`RTLD_NOLOAD` 会话复用及引用释放，同时检查 TDE 故障处理与像素转换边界；不代表新源码已部署或通过实机验证。
 
-[test-app/tools/check-feature-matrix.py](../test-app/tools/check-feature-matrix.py) 对 `fbdev`、`nx5`、`nx5-tde`、`nx5-mma-background`、`nx5-test-hooks` 五种组合分别执行 workspace 测试，确认未选板级、冲突组合编译失败，并检查库的 `fbdev` 普通依赖树没有桌面或 GPU 后端。脚本将结果输出到标准输出，不自动写入 `evidence/`。
+[test-app/tools/check-feature-matrix.py](../test-app/tools/check-feature-matrix.py) 对 `fbdev`、`nx1`、`nx5`、`nx5-tde`、`nx5-mma-background`、`nx5-test-hooks`、`f1`、`f1-g2d` 八种组合分别执行 workspace 测试，确认未选板级、冲突组合编译失败，并检查库的 `fbdev` 普通依赖树没有桌面或 GPU 后端。脚本将结果输出到标准输出，不自动写入 `evidence/`。
 
 2026-10-12，`bccf6b9` 阶段记录的测试分布如下。此后的队列延迟修复为各板级 feature 新增 3 项库内主机回归；当前计数以执行结果为准：
 
@@ -415,6 +416,6 @@ cargo doc --locked --offline --workspace --features nx5-tde --no-deps
 
 UI 截图、元素检查及应用层输入交互使用 [Slint 原生 MCP](slint-mcp.md)。MCP 输入直接进入 Slint，截图重新渲染窗口；它们不能替代 evdev 解码、framebuffer 页生命周期、像素转换及 TDE 故障注入测试。
 
-独立测试工程另提供八页 `showcase`，用法与验证范围集中在 [应用说明](../test-app/README.md#展示应用-showcase)。其 `showcase-preview` feature 仅为应用提供同源 Slint headless 软件预览；正常设备运行仍调用本库 `init(Config)`。标准控件所需的 SVG 解码依赖由测试工程引入，不改变库的 features、默认值、提交契约或设备准入。
+独立测试工程另提供九页 `showcase`，用法与验证范围集中在 [应用说明](../test-app/README.md#展示应用-showcase)。其 `showcase-preview` feature 仅为应用提供同源 Slint headless 软件预览；正常设备运行仍调用本库 `init(Config)`。标准控件所需的 SVG 解码依赖由测试工程引入，不改变库的 features、默认值、提交契约或设备准入。
 
 当前 NX5 可使用显式的 `.cargo/nx5.toml` CPU 预设和 NEON RGBA→BGRA 写页路径；未使用该预设时仍有原有像素转换路径。生产写页没有使用 TDE：单次格式转换与 CPU 转换后 TDE 搬运只存在于独立诊断探针，所测正确路径更慢，见 [TDE 写页调查](nx5-performance.md#nx5-tde-writeback)。整屏性能及当前驱动提交上限见 [帧率优化报告](nx5-performance.md#nx5-fps)。

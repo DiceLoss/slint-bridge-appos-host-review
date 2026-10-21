@@ -12,7 +12,7 @@
 slint_bridge/
 ├── Cargo.toml / Cargo.lock    # 根库 + test-app workspace
 ├── build.rs                  # 可选 NX5 TDE 原生桥构建
-├── .cargo/                   # ARM 工具链和 NX5 / X9 CPU 预设
+├── .cargo/                   # ARM / RISC-V 工具链及板级 CPU 预设
 ├── src/
 │   ├── lib.rs                # Config、init、Error、Backend
 │   ├── runtime.rs            # UI 事件循环与调度
@@ -78,7 +78,7 @@ slint_bridge::init(Config {
 
 F1 可通过 `try_decode_png(encoded)` 显式请求有界 PNG 硬解，成功返回普通 Slint 图像；`Ok(None)` 时由应用选择软件解码。错误不能作为软件回退，须保留进程等待设备恢复。格式、内存及生命周期见[平台说明](docs/software-platform.md#f1-png-加载)。展示程序只对实测受益的大背景使用该入口，SVG 加载和缓存仍由 Slint 负责。
 
-`Config::frame_interval` 是最小渲染启动间隔，默认 16667 微秒；没有 NX5 专用 30 FPS 钳制。当前驱动的实际提交上限约为 29 FPS，原因及尚未实现的单周期改动见 [驱动调查](docs/nx5-display.md#nx5-single-cycle)。
+`Config::frame_interval` 是最小渲染启动间隔，默认 16667 微秒；没有 NX5 专用 30 FPS 钳制。NX5 #233 驱动实测提交上限约为 29 FPS，原因及尚未实现的单周期改动见 [驱动调查](docs/nx5-display.md#nx5-single-cycle)。
 
 同时最多一次翻页提交和一帧预渲染。提交完成前不改写两张物理显示页，成功后才复用旧页；不提供单缓冲或忽略完成错误的回退。framebuffer 与触摸设备路径由 `Config` 指定，分辨率和行跨度读取设备当前模式；接口、像素格式和输入范围见 [平台说明](docs/software-platform.md)。
 
@@ -86,7 +86,7 @@ F1 可通过 `try_decode_png(encoded)` 显式请求有界 PNG 硬解，成功返
 
 从 [test-app/src/bin/basic.rs](test-app/src/bin/basic.rs) 查看最小接入方式，从 [test-app/ui/](test-app/ui/app.slint) 查看独立界面文件。完整用例、参数及设备配置见 [测试工程说明](test-app/README.md)。
 
-完整界面展示使用 `--bin showcase`：包含总览、控件/表单、设备列表、动画、图像/透明、交互记录、运行时图片缩放和富内容长列表八页。主机原生 MCP 预览、自动交互检查及 NX5 / X9 运行方式见 [展示应用说明](test-app/README.md#展示应用-showcase)；`display` 保留为原有诊断场景。
+完整界面展示使用 `--bin showcase`：包含总览、控件/表单、设备列表、动画、图像/透明、交互记录、运行时图片缩放、富内容长列表和时钟九页。主机原生 MCP 预览、自动交互检查及各设备运行方式见 [展示应用说明](test-app/README.md#展示应用-showcase)；`display` 保留为原有诊断场景。
 
 图片背景中的多个透明区域使用独立 `--bin background-holes` 演示：应用组件只裁剪背景，前景控件和弹窗正常叠加，见 [接入与约束](test-app/README.md#图片背景中的多个透明区域) 及 [NX5 实测](docs/nx5-validation.md#nx5-background-holes)。
 
@@ -108,4 +108,4 @@ cargo --config .cargo/nx5.toml build --locked --offline --release \
 
 UI 检查使用 [Slint 原生 MCP](docs/slint-mcp.md)：元素查询、截图、交互与事件录制。底层页生命周期、evdev 解码、TDE 故障注入和实际输出采样继续使用相应回归，不能用 UI 截图代替。
 
-当前设备记录及测试命令分别见 [NX5](test-app/devices/nx5/README.md) 和 [X9](test-app/devices/x9/README.md)。历史报告由 [docs/README.md](docs/README.md) 导航；报告引用的 `evidence/` 原始证据作为本地档案保存，不纳入 Git，检出仓库后需另行获取。
+当前设备记录及测试命令分别见 [NX5](test-app/devices/nx5/README.md)、[NX1](test-app/devices/nx1/README.md)、[X9](test-app/devices/x9/README.md) 和 [F1](test-app/devices/f1/README.md)。历史报告由 [docs/README.md](docs/README.md) 导航；报告引用的 `evidence/` 原始证据作为本地档案保存，不纳入 Git，检出仓库后需另行获取。

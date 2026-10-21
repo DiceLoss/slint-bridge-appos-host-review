@@ -23,6 +23,6 @@ python3 -c 'import cairosvg; cairosvg.svg2png(url="test-app/ui/assets/scaling-re
 
 ## 富内容长列表
 
-`rich-row-{blue,amber}.png` 为 800×112，`rich-card-{blue,amber}.png` 为 244×328，透明边缘内含圆角、渐变、光斑、弧线和多层柔和阴影。四份同名 SVG 为底图源，使用本目录 `generate-rich-cards.py`（Python + CairoSVG）确定性生成；它不是 Cargo 构建步骤。PNG 原图在首次进入 Rich list 时加载，按面板上的原生卡片尺寸绘制。
+`rich-row-{blue,amber}.png` 为 800×112，`rich-card-{blue,amber}.png` 为 244×328，透明边缘内含圆角、渐变、光斑、弧线和多层柔和阴影。四份同名 SVG 为底图源，使用本目录 `generate-rich-cards.py`（Python + CairoSVG）确定性生成；它不是 Cargo 构建步骤。进入 Rich list 时加载纵向的两张 PNG，切换方向时替换为对应两张，离页时释放应用持有的素材引用；按面板上的原生卡片尺寸绘制。
 
 `rich-{climate,light,room,air}.svg` 是 32×32 主图标，`rich-chevron.svg` 是 16×16 箭头，均为本工程绘制的简单矢量路径。它们通过 `Image::load_from_svg_data` 保留为运行时 SVG；未合入底图、未预先栅格化。两套底板在 100 项中交替复用，不是 100 张不同照片的纹理负载。
