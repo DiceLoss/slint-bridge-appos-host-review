@@ -45,7 +45,7 @@ slint_bridge/
 
 ```toml
 [dependencies]
-slint-bridge = { git = "http://192.168.253.238/wshl/slint_bridge.git", default-features = false, features = ["nx5-tde"] }
+slint-bridge = { git = "ssh://git@github.com/omni-stack-gen/slint_bridge.git", default-features = false, features = ["nx5-tde"] }
 slint = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
 ```
 

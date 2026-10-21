@@ -8,15 +8,15 @@
 
 | 仓库 | 地址 | 用途 |
 | --- | --- | --- |
-| 适配层 | [slint_bridge](http://192.168.253.238/wshl/slint_bridge.git) | Rust 适配库、测试应用、设备工具、NX5 SDK 资源和字体 |
+| 适配层 | [slint_bridge](https://github.com/omni-stack-gen/slint_bridge) | Rust 适配库、测试应用、设备工具、NX5 SDK 资源和字体 |
 | Slint | [slint-last](http://192.168.253.238/wshl/slint-last.git) | 与适配层配套的 Slint 运行库、软件 renderer 和构建工具 |
 
 配套 Slint 更新须先发布，再发布引用它的桥接层及锁文件；仅有本地 Slint 提交不能供新机器 `cargo fetch --locked` 获取。
 
-两个地址都需要开发机能访问 `192.168.253.238`。如服务器要求认证，先配置 Git 的账户凭据；不要把密码或令牌写入 Cargo 清单或仓库 URL。可用下面的只读命令检查访问权限：
+适配层仓库使用 GitHub SSH 地址 `git@github.com:omni-stack-gen/slint_bridge.git`，开发机需配置具有仓库访问权限的 SSH 密钥。Slint 依赖仍位于 `192.168.253.238`，首次获取或更新依赖仍需内网连通性及对应 Git 凭据；本次迁移不改变 Slint 来源。不要把密码、私钥或令牌写入仓库。可用下面的只读命令分别检查访问权限：
 
 ```sh
-git ls-remote http://192.168.253.238/wshl/slint_bridge.git HEAD
+git ls-remote git@github.com:omni-stack-gen/slint_bridge.git HEAD
 git ls-remote http://192.168.253.238/wshl/slint-last.git HEAD
 ```
 
@@ -47,11 +47,13 @@ Rust target 提供 Rust 标准库，不能替代板级 C/C++ 交叉工具链及 
 ## 获取示例工程和依赖
 
 ```sh
-git clone http://192.168.253.238/wshl/slint_bridge.git
+git clone git@github.com:omni-stack-gen/slint_bridge.git
 cd slint_bridge
 cargo fetch --locked
 (cd third-party && sha256sum -c SHA256SUMS)
 ```
+
+已有克隆可执行 `git remote set-url origin git@github.com:omni-stack-gen/slint_bridge.git` 更新远端，并用 `git remote -v` 核对。
 
 正常构建不需要另行克隆 Slint，Cargo 会从配置的 Slint Git 地址获取源码。`Cargo.toml` 不设置 `rev` 或 tag；`Cargo.lock` 自动记录本次解析的提交，使 `--locked` 和离线构建可复现。普通构建不会自动升级到远端每个新提交。
 
@@ -217,7 +219,7 @@ nx5-tde = ["nx5", "slint-bridge/nx5-tde"]
 fbdev = ["slint-bridge/fbdev"]
 
 [dependencies]
-slint-bridge = { git = "http://192.168.253.238/wshl/slint_bridge.git", default-features = false }
+slint-bridge = { git = "ssh://git@github.com/omni-stack-gen/slint_bridge.git", default-features = false }
 slint = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
 
 [build-dependencies]
@@ -231,6 +233,8 @@ codegen-units = 1
 `"slint-bridge/nx5-tde"` 中的斜杠表示“依赖包 / feature”，不是目录。它引用同一清单 `[dependencies]` 中的 Git 包；仅定义 feature 名称不会启用它，还需要 `default` 或构建参数选择。
 
 本例默认 `nx5-tde`，因此不传 `--features` 也会选择 NX5 TDE。转发同时启用应用自身的 `nx5`，与测试工程的包含关系一致；适配库和测试工程自身仍为 `default = []`，不能把业务模板的默认值套到前面的仓库构建命令。若希望每次构建显式选板，可把应用的 `default` 改回 `[]`，并始终传 `--features nx5-tde` 或 `--features fbdev`。适配库本身仍不默认选择设备。仅使用 NX5 的应用也可以不声明这些转发项，直接在 `slint-bridge` 依赖中写 `features = ["nx5-tde"]`。
+
+Cargo 的 `git` 字段使用完整 SSH URL `ssh://git@github.com/omni-stack-gen/slint_bridge.git`；`git clone` 和远端配置使用上面的 `git@github.com:...` 写法。已有业务工程需修改适配层依赖地址并更新自己的锁文件，Slint 依赖地址保持不变。
 
 ### build.rs
 
@@ -347,7 +351,7 @@ git clone http://192.168.253.238/wshl/slint-last.git
 
 | 现象 | 检查项 |
 | --- | --- |
-| Git/Cargo 不能访问仓库 | 内网连通性、两个 URL 的访问权限、Git 凭据；需要时使用 Git CLI 获取依赖 |
+| Git/Cargo 不能访问仓库 | GitHub SSH 密钥及仓库权限、Slint 内网连通性与 Git 凭据；需要时使用 Git CLI 获取依赖 |
 | 离线构建提示找不到依赖或提交 | 先联网运行 `cargo fetch --locked`；首次新业务工程没有锁文件时使用 `cargo fetch` |
 | 找不到交叉 gcc，或 ELF/浮点 ABI 不匹配 | 检查对应 target 的 linker、CC/CXX/AR 和完整 sysroot，确认没有混用 NX5/X9 工具链 |
 | 报必须选择板级 feature 或 feature 互斥 | `default = []` 时必须传 `--features`；已有默认设备时，切换设备或模式使用 `--no-default-features --features ...`。不要用 `--all-features`；这类错误不表示缺少本地源码目录 |
