@@ -14,13 +14,13 @@ use std::{
         fd::{AsFd, AsRawFd, BorrowedFd},
         unix::fs::{FileTypeExt, MetadataExt},
     },
-    sync::{Arc, Mutex},
+    sync::Mutex,
     time::{Duration, Instant},
 };
 
 struct Session {
     // Drop the compositor mapping (and restore its original output mode) before
-    // releasing the lock. Both contract closures retain the same session.
+    // releasing the lock. The validation closure retains it for the contract lifetime.
     output: Mutex<Option<composition::OutputAlpha>>,
     _lock: File,
 }
@@ -229,11 +229,10 @@ pub(crate) fn open() -> Result<Admission, Error> {
         .map_err(io_error)?;
     crate::backends::lock_exclusive(lock.as_fd(), "lock NX1 display")?;
     require_unowned().map_err(ownership_error)?;
-    let session = Arc::new(Session {
+    let initial_session = Session {
         output: Mutex::new(None),
         _lock: lock,
-    });
-    let initial_session = session.clone();
+    };
     let trace = std::env::var_os("SLINT_BRIDGE_TRACE").is_some();
     let mut front = None;
     let mut count = 0u64;
@@ -264,13 +263,11 @@ pub(crate) fn open() -> Result<Admission, Error> {
                 Ok(layout)
             }),
             complete: Box::new(move |fd, y, layout| {
-                session.check_output()?;
                 let previous = front.unwrap_or(layout.initial_page as u32 * layout.size.height);
                 if y == previous {
                     return Err(io::Error::other("NX1 must alternate pages"));
                 }
                 let pan = present(fd, previous, y, layout)?;
-                session.check_output()?;
                 front = Some(y);
                 if trace {
                     count += 1;
