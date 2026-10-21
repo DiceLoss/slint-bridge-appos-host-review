@@ -212,6 +212,20 @@ PAN 提交数、提交 FPS 与平均调用耗时，不代表面板无撕裂帧�
 构建和操作前提见 [NX1 设备说明](../test-app/devices/nx1/README.md)，
 固件缺陷和实测边界见 [NX1 报告](nx1-framebuffer.md)。
 
+NX1 的 LCD 接收最终 RGB，透明图层在 DE2 中完成合成后还需执行输出预乘。
+已检查内核在启用显示管理器时清除 `BLEND_OUTPUT_CTL.premultiply_en`，
+单个透明图层因此可能把未加权的 straight RGB 直接显示出来。
+NX1 会话通过 `/dev/mem` 映射已核对的 DE 寄存器区域，在首次写页前仅启用
+最终输出控制字的 bit 0，并在每次参考 PAN 前后检查。
+先核验 1024×600 输出、ch2/layer0 的 ARGB8888 / pixel alpha / 非预乘输入及逐行输出；
+权限不足、布局不符或运行中该模式变化均报错，不静默返回错误的透明显示。
+这不改变 framebuffer 的 straight BGRA 字节、像素 Alpha、图层路由或下层内容，
+也不增加固定底层、画布或 DMA 分配。所有图层合成后的最终乘法同样适用于真实下层图层。
+提交线程结束且最后一个会话引用释放后，在仍持有显示锁时恢复进入前的输出控制字；
+若显示配置已被改变则不覆盖新配置。进程被强杀不能保证此析构恢复。
+机制、修复及验证见 [NX1 透明合成](nx1-transparency.md)。
+
+
 `f1` 分派到 `src/backends/f1/`，核验 RISC-V64、D211 compatible、
 已检查内核标识及 1024×600 BGRA8888 双页布局（stride 4096、物理基址
 0x42440000、长度 4915200）。获取会话锁，并检查其他进程的 framebuffer

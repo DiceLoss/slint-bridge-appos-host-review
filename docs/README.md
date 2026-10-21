@@ -24,6 +24,7 @@
 | 文档 | 内容 |
 | --- | --- |
 | [NX1 framebuffer 接入](nx1-framebuffer.md) | 当前内核反汇编、PAN/HWC 限制、CPU 双页适配及实机验证 |
+| [NX1 透明合成](nx1-transparency.md) | 低透明度亮色圈、DE2 最终输出预乘、真实下层叠加与会话恢复 |
 | [NX1 渲染与内存分析](nx1-performance.md) | 分阶段计时、RSS/PSS 与 ION 内存账、保持画质的纹理复制原型及优化优先级 |
 | [NX5 显示完成与合成](nx5-display.md) | #22 准入缺口、#233 双周期、单周期未达成、SDK/WBC 与 alpha 量程 |
 | [NX5 性能记录](nx5-performance.md) | TDE、写页、输入分段、图片/缩放、富列表、MCP 增长对照及内存总账 |

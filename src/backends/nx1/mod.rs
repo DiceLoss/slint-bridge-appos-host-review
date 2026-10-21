@@ -1,6 +1,7 @@
 //! NX1's explicitly selected reference PAN convention, not a retirement fence.
 //! The inspected kernel waits internally but discards its wait result;
 //! WAITFORVSYNC is a no-op. See docs/nx1-framebuffer.md for the limitations.
+mod composition;
 use crate::{
     Backend, Error,
     backends::{Admission, PresentationContract},
@@ -13,9 +14,39 @@ use std::{
         fd::{AsFd, AsRawFd, BorrowedFd},
         unix::fs::{FileTypeExt, MetadataExt},
     },
-    sync::Arc,
+    sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
+
+struct Session {
+    // Drop the compositor mapping (and restore its original output mode) before
+    // releasing the lock. Both contract closures retain the same session.
+    output: Mutex<Option<composition::OutputAlpha>>,
+    _lock: File,
+}
+
+impl Session {
+    fn output(&self) -> io::Result<std::sync::MutexGuard<'_, Option<composition::OutputAlpha>>> {
+        self.output
+            .lock()
+            .map_err(|_| io::Error::other("NX1 compositor state poisoned"))
+    }
+
+    fn initialize_output(&self) -> io::Result<()> {
+        let mut output = self.output()?;
+        if output.is_none() {
+            *output = Some(composition::OutputAlpha::open()?);
+        }
+        output.as_ref().unwrap().check()
+    }
+
+    fn check_output(&self) -> io::Result<()> {
+        self.output()?
+            .as_ref()
+            .ok_or_else(|| io::Error::other("NX1 compositor is not initialized"))?
+            .check()
+    }
+}
 
 fn rejected(reason: &'static str) -> Error {
     Error::DisplayNotAdmitted {
@@ -189,18 +220,20 @@ pub(crate) fn open() -> Result<Admission, Error> {
     ) {
         return Err(rejected("unverified NX1 firmware/device"));
     }
-    let lock = Arc::new(
-        OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .open("/run/slint-bridge-nx1.lock")
-            .map_err(io_error)?,
-    );
+    let lock = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open("/run/slint-bridge-nx1.lock")
+        .map_err(io_error)?;
     crate::backends::lock_exclusive(lock.as_fd(), "lock NX1 display")?;
     require_unowned().map_err(ownership_error)?;
-    let initial_lock = lock.clone();
+    let session = Arc::new(Session {
+        output: Mutex::new(None),
+        _lock: lock,
+    });
+    let initial_session = session.clone();
     let trace = std::env::var_os("SLINT_BRIDGE_TRACE").is_some();
     let mut front = None;
     let mut count = 0u64;
@@ -214,7 +247,6 @@ pub(crate) fn open() -> Result<Admission, Error> {
         timer_quantum: Duration::ZERO,
         presentation: PresentationContract {
             validate_layout: Box::new(move |fd, f, v| {
-                let _owner = &initial_lock;
                 let opened = File::from(fd.try_clone_to_owned().map_err(io_error)?)
                     .metadata()
                     .map_err(io_error)?;
@@ -225,17 +257,20 @@ pub(crate) fn open() -> Result<Admission, Error> {
                 }
                 require_unowned().map_err(ownership_error)?;
                 let layout = validate_layout(f, v)?;
+                initial_session.initialize_output().map_err(io_error)?;
                 // Establish the reference sequence before either page is written.
                 present(fd, v.yoffset, v.yoffset, &layout).map_err(io_error)?;
+                initial_session.check_output().map_err(io_error)?;
                 Ok(layout)
             }),
             complete: Box::new(move |fd, y, layout| {
-                let _owner = &lock;
+                session.check_output()?;
                 let previous = front.unwrap_or(layout.initial_page as u32 * layout.size.height);
                 if y == previous {
                     return Err(io::Error::other("NX1 must alternate pages"));
                 }
                 let pan = present(fd, previous, y, layout)?;
+                session.check_output()?;
                 front = Some(y);
                 if trace {
                     count += 1;

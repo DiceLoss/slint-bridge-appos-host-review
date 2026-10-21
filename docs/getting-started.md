@@ -11,7 +11,7 @@
 | 设备 | feature | 业务工程配置 | Rust target | 触摸 / 顺时针旋转 | 运行依赖与目录 |
 | --- | --- | --- | --- | --- | --- |
 | [NX5](../test-app/devices/nx5/README.md) | `nx5-tde`；纯软件用 `nx5` | [`.cargo/nx5.toml`](#cargonx5toml) | `arm-unknown-linux-gnueabi` | `/dev/input/event0` / 0° | `libVideoDec.so`、字体；独立应用目录 |
-| [NX1](../test-app/devices/nx1/README.md) | `nx1` | [`.cargo/nx1.toml`](#cargonx1toml) | `arm-unknown-linux-gnueabi` | `/dev/input/event2` / 0° | 字体；已核对挂载的 `/mnt` |
+| [NX1](../test-app/devices/nx1/README.md) | `nx1` | [`.cargo/nx1.toml`](#cargonx1toml) | `arm-unknown-linux-gnueabi` | `/dev/input/event2` / 0° | 字体、读写 `/dev/mem` 的权限；已核对挂载的 `/mnt` |
 | [X9](../test-app/devices/x9/README.md) | `fbdev` | [`.cargo/x9.toml`](#cargox9toml) | `arm-unknown-linux-gnueabihf` | `/dev/input/event1` / 90° | 字体；无厂商 SDK，需 DRM 完成事件 |
 | [F1](../test-app/devices/f1/README.md) | `f1-g2d`；纯软件渲染用 `f1` | [`.cargo/f1.toml`](#cargof1toml) | `riscv64gc-unknown-linux-gnu` | `/dev/input/event0` / 0° | 字体；真实 SD 卡挂载 `/tmp/sdcard`，不加载 MPP SDK |
 
@@ -300,7 +300,7 @@ SLINT_DEFAULT_FONT="$X9_RUN_DIR/DejaVuSans.ttf" "$X9_RUN_DIR/panel-app"
 
 ### NX1
 
-程序和资源放在已核对挂载的 `/mnt` 新目录。原应用可能带看门狗，退出原显示程序时应按产品的设备管理流程处理，避免被自动重新拉起。本文配置使用 event2、不旋转。
+程序和资源放在已核对挂载的 `/mnt` 新目录。原应用可能带看门狗，退出原显示程序时应按产品的设备管理流程处理，避免被自动重新拉起。本文配置使用 event2、不旋转。运行账户还须能读写 `/dev/mem`，供 NX1 后端配置最终透明合成；权限不足会拒绝初始化。
 
 ```sh
 NX1_RUN_DIR=/mnt/panel-app-001

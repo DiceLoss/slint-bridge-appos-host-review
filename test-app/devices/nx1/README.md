@@ -12,7 +12,10 @@ glibc 2.21，内核可管理内存 43532 KiB。身份快照见
 
 `/dev/fb0` 为 1024×600 / 虚拟 1024×1200、stride 4096、
 BGRA8888 双页，物理基址 `0x43100000`，总长度 4915200 字节。
-软件渲染不需要 SDK、DRM 或加速器。`nx1` 是独立板级 feature，
+软件渲染不需要 SDK、DRM 或加速器。
+运行账户还须能读写 `/dev/mem`：NX1 后端管理当前固件的 DE2 最终输出预乘位，
+以保持透明图层的正确颜色和亮度；不改写物理页的 Alpha 或增加固定底层。
+初始化、每次提交检查及正常析构恢复规则见 [透明合成说明](../../../docs/nx1-transparency.md)。`nx1` 是独立板级 feature，
 不能使用仅接入 X9 的 `fbdev` 替代。
 
 本次用户明确允许参考 PAN 约定：提交使用 `FBIOPAN_DISPLAY`，
@@ -58,7 +61,7 @@ Slint 运行库、软件 renderer 与 slint-build 保持锁文件的同一来源
 在已核对的 root 设备会话中运行，`NX1_RUN_DIR` 换成实际目录：
 
 ```sh
-NX1_RUN_DIR=/mnt/slint-nx1-20261020/final
+NX1_RUN_DIR=/mnt/slint-nx1-release-001
 SLINT_DEFAULT_FONT="$NX1_RUN_DIR/DejaVuSans.ttf" SLINT_BRIDGE_TRACE=1 \
   "$NX1_RUN_DIR/display" --framebuffer=/dev/fb0 --touch=/dev/input/event2 --seconds=20
 
