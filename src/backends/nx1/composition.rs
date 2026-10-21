@@ -19,6 +19,24 @@ const UI_ATTRIBUTE: usize = 0x3000;
 const UI_SIZE: usize = 0x3004;
 const PANEL_SIZE: u32 = (599 << 16) | 1023;
 
+fn stable_snapshot(mut sample: impl FnMut() -> [u32; 4]) -> io::Result<[u32; 4]> {
+    // On this firmware, live DE reads can briefly return unrelated values even
+    // with ARM barriers or DISP_SHADOW_PROTECT. Require a coherent observation,
+    // not a sample that happens to match the expected configuration. No delay,
+    // PAN retry or register write is performed while sampling.
+    let mut previous = sample();
+    for _ in 1..4 {
+        let current = sample();
+        if current == previous {
+            return Ok(current);
+        }
+        previous = current;
+    }
+    Err(io::Error::other(
+        "NX1 compositor registers did not stabilize",
+    ))
+}
+
 pub(super) struct OutputAlpha {
     registers: *mut u32,
     original: u32,
@@ -60,8 +78,7 @@ impl OutputAlpha {
             original: 0,
             restore: false,
         };
-        output.check_layout()?;
-        output.original = output.read(OUTPUT_CONTROL);
+        output.original = output.check_layout()?;
         output.write_output(output.original | 1);
         output.restore = true;
         output.check()?;
@@ -81,22 +98,26 @@ impl OutputAlpha {
         fence(Ordering::SeqCst);
     }
 
-    fn check_layout(&self) -> io::Result<()> {
-        if self.read(OUTPUT_SIZE) != PANEL_SIZE
-            || self.read(UI_SIZE) != PANEL_SIZE
-            || self.read(UI_ATTRIBUTE) != 0xff00_0001
-            || self.read(OUTPUT_CONTROL) & !1 != 0
+    fn check_layout(&self) -> io::Result<u32> {
+        let [output_size, ui_size, ui_attribute, output_control] = stable_snapshot(|| {
+            [OUTPUT_SIZE, UI_SIZE, UI_ATTRIBUTE, OUTPUT_CONTROL].map(|offset| self.read(offset))
+        })?;
+        if output_size != PANEL_SIZE
+            || ui_size != PANEL_SIZE
+            || ui_attribute != 0xff00_0001
+            || output_control & !1 != 0
         {
-            return Err(io::Error::other(
-                "NX1 compositor layout or alpha mode changed",
-            ));
+            return Err(io::Error::other(format!(
+                "NX1 compositor layout or alpha mode changed: output_size={output_size:#010x} \
+                 ui_size={ui_size:#010x} ui_attribute={ui_attribute:#010x} \
+                 output_control={output_control:#010x}"
+            )));
         }
-        Ok(())
+        Ok(output_control)
     }
 
     pub(super) fn check(&self) -> io::Result<()> {
-        self.check_layout()?;
-        if self.read(OUTPUT_CONTROL) != 1 {
+        if self.check_layout()? != 1 {
             return Err(io::Error::other("NX1 final output alpha is disabled"));
         }
         Ok(())
@@ -109,7 +130,7 @@ impl Drop for OutputAlpha {
         // still holds the exclusive display lock while this restoration runs.
         if self.restore && self.check().is_ok() {
             self.write_output(self.original);
-            if self.read(OUTPUT_CONTROL) != self.original {
+            if self.check_layout().ok() != Some(self.original) {
                 eprintln!("slint-bridge: NX1 output alpha restoration failed");
             }
         }
@@ -122,6 +143,31 @@ impl Drop for OutputAlpha {
 mod tests {
     use super::*;
     use std::os::{fd::FromRawFd, unix::fs::FileExt};
+
+    const VALID: [u32; 4] = [PANEL_SIZE, PANEL_SIZE, 0xff00_0001, 1];
+    const GLITCH: [u32; 4] = [PANEL_SIZE, 0x6440_cb0c, 0x0ce8_ec76, 0];
+
+    #[test]
+    fn transient_mmio_values_require_two_matching_complete_samples() {
+        for samples in [[GLITCH, VALID, VALID, VALID], [VALID, GLITCH, VALID, VALID]] {
+            let mut samples = samples.into_iter();
+            assert_eq!(stable_snapshot(|| samples.next().unwrap()).unwrap(), VALID);
+        }
+    }
+
+    #[test]
+    fn stable_wrong_configuration_is_not_skipped_for_a_later_valid_sample() {
+        let mut samples = [GLITCH, GLITCH, VALID, VALID].into_iter();
+        assert_eq!(stable_snapshot(|| samples.next().unwrap()).unwrap(), GLITCH);
+        assert_eq!(samples.count(), 2);
+    }
+
+    #[test]
+    fn unstable_registers_stop_after_four_samples() {
+        let mut samples = [VALID, GLITCH, VALID, GLITCH].into_iter();
+        assert!(stable_snapshot(|| samples.next().unwrap()).is_err());
+        assert_eq!(samples.count(), 0);
+    }
 
     fn registers(output: u32) -> File {
         // SAFETY: valid NUL-terminated name; ownership of the new fd is taken.
