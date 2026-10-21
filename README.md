@@ -2,7 +2,7 @@
 
 面向低性能 Linux 设备的 Rust / Slint 1.18.1 适配库。通用层负责事件循环、输入、保留画布和双 framebuffer；板级实现负责准入、硬件加速及翻页完成语义。
 
-新电脑配置、Git 依赖、交叉编译和业务接入步骤见 [获取配置与使用指南](docs/getting-started.md)。
+NX5 / NX1 / X9 / F1 的 [配置速查](docs/getting-started.md#按设备选择配置)、新电脑配置、Git 依赖、交叉编译和业务接入步骤见 [获取配置与使用指南](docs/getting-started.md)。
 
 仓库包含两个 Cargo package：根目录的 `slint-bridge` 库，以及通过公开接口使用它的 [test-app/](test-app/README.md) 独立测试工程。两者共用 workspace、锁文件和构建产物。
 

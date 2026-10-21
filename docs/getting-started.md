@@ -1,8 +1,23 @@
 # Slint Bridge 获取配置与使用
 
-本指南用于在新的 Linux 开发机上获取工程、配置交叉编译环境、构建 NX5、NX1、X9 和 F1 示例，以及在业务应用中引用适配层。四板共用同一个 Slint 来源，使用各自的板级 feature 和 ARM / RISC-V 工具链；下文业务模板以 NX5/X9 为例。设备运行只适用于已经准入验证的硬件与固件，详细契约以 [平台说明](software-platform.md) 为准。
+本指南用于在新的 Linux 开发机上获取工程、配置交叉编译环境、构建 NX5、NX1、X9 和 F1 示例，以及在业务应用中引用适配层。四板共用同一个 Slint 来源，使用各自的板级 feature 和 ARM / RISC-V 工具链；下文业务模板支持四板切换。设备运行只适用于已经准入验证的硬件与固件，详细契约以 [平台说明](software-platform.md) 为准。
 
 仅在自己的业务工程中使用适配层时，直接按 [业务接入](#在自己的-rust-应用中接入) 配置 Git 依赖即可，无需手动克隆或把适配层源码放入项目目录。前面的仓库克隆步骤用于构建仓库自带示例。
+
+## 按设备选择配置
+
+一次构建需要同时匹配 **Cargo feature、交叉工具链/target、运行时输入与旋转**。feature 选择板级实现，不会自动选择编译器；`Config` 配置设备路径，不会切换板级实现。下表对应已验证设备，完整准入条件见 [平台说明](software-platform.md#准入边界)。
+
+| 设备 | feature | 仓库构建配置 | Rust target | 触摸 / 顺时针旋转 | 运行依赖与目录 |
+| --- | --- | --- | --- | --- | --- |
+| [NX5](../test-app/devices/nx5/README.md) | `nx5-tde`；纯软件用 `nx5` | `.cargo/nx5.toml` + 自动读取的 `.cargo/config.toml` | `arm-unknown-linux-gnueabi` | `/dev/input/event0` / 0° | `libVideoDec.so`、字体；按 NX5 部署工具管理目录 |
+| [NX1](../test-app/devices/nx1/README.md) | `nx1` | `.cargo/nx1.toml` | `arm-unknown-linux-gnueabi` | `/dev/input/event2` / 0° | 字体；已核对挂载的 `/mnt` |
+| [X9](../test-app/devices/x9/README.md) | `fbdev` | `.cargo/x9.toml` | `arm-unknown-linux-gnueabihf` | `/dev/input/event1` / 90° | 字体；无厂商 SDK，需 DRM 完成事件 |
+| [F1](../test-app/devices/f1/README.md) | `f1-g2d`；纯软件渲染用 `f1` | `.cargo/f1.toml` | `riscv64gc-unknown-linux-gnu` | `/dev/input/event0` / 0° | 字体；真实 SD 卡挂载 `/tmp/sdcard`，不加载 MPP SDK |
+
+当前四板均使用 `/dev/fb0`；NX5/NX1/F1 的示例面板为 1024×600，X9 物理 800×1280、旋转后逻辑 1280×800。分辨率与 stride 由库读取当前显示模式，不在 `Config` 中填写。无触摸时把 `inputs` 设为空；设备节点变化时按实际输入设备调整。
+
+NX5 与 NX1 共用 Rust target 名称，但工具链分别位于 `/opt/X5`、`/opt/NX1`，不能只改 feature 而沿用另一板的链接器。X9 使用 hard-float ABI，F1 使用 RISC-V LP64D，均不可混用。NX1/F1 的参考翻页约定及验证限制保持不变。
 
 ## 仓库地址
 
@@ -135,7 +150,23 @@ SLINT_EMIT_DEBUG_INFO=1 cargo --config .cargo/x9.toml build --locked --offline -
   -p slint-bridge-test-app --bin showcase
 ```
 
-对应输出分别为 `target/arm-unknown-linux-gnueabi/release/showcase` 和 `target/arm-unknown-linux-gnueabihf/release/showcase`。`slint/mcp` 和 `SLINT_EMIT_DEBUG_INFO=1` 用于开发时的原生 UI 查询；不需要 MCP 时可去掉这两项。其他示例及参数见 [测试工程说明](../test-app/README.md)。
+构建 NX1 展示程序：
+
+```sh
+SLINT_EMIT_DEBUG_INFO=1 cargo --config .cargo/nx1.toml build --locked --offline --release \
+  --target arm-unknown-linux-gnueabi --features nx1,slint/mcp \
+  -p slint-bridge-test-app --bin showcase
+```
+
+构建 F1 展示程序（纯软件渲染将 `f1-g2d` 改为 `f1`）：
+
+```sh
+SLINT_EMIT_DEBUG_INFO=1 cargo --config .cargo/f1.toml build --locked --offline --release \
+  --target riscv64gc-unknown-linux-gnu --features f1-g2d,slint/mcp \
+  -p slint-bridge-test-app --bin showcase
+```
+
+输出均位于 `target/<Rust target>/release/showcase`。NX5/NX1 共用输出路径，切换设备构建前应另存需要部署或回退的程序副本；不要仅凭文件名判断目标设备。`slint/mcp` 和 `SLINT_EMIT_DEBUG_INFO=1` 用于开发时的原生 UI 查询；不需要 MCP 时可去掉这两项。其他示例及参数见 [测试工程说明](../test-app/README.md)。
 
 ## 配置设备运行环境
 
@@ -179,11 +210,27 @@ SLINT_DEFAULT_FONT="$X9_RUN_DIR/DejaVuSans.ttf" SLINT_MCP_PORT=9315 \
 
 该配置只对应 [X9 设备说明](../test-app/devices/x9/README.md) 中的已验证板型。X9 的内存字段和显示恢复流程与 NX5 不同，不直接套用 NX5 部署脚本。
 
-### NX1 与 F1
+### NX1
 
-NX1 的程序和资源部署到已核对挂载的 `/mnt`，F1 部署到真实挂载的 SD 卡。
-完整命令、显示所有权、输入及恢复前提分别见 [NX1](../test-app/devices/nx1/README.md) 和
-[F1](../test-app/devices/f1/README.md)，不要套用 NX5 的 SDK 会话或 tmpfs 部署流程。
+程序、字体及字体版权部署到已核对挂载的 `/mnt` 新目录。先按 [NX1 设备说明](../test-app/devices/nx1/README.md#部署与恢复) 核对显示所有者和原应用看门狗，再在 root 会话中运行；下例目录须替换为实际部署目录：
+
+```sh
+NX1_RUN_DIR=/mnt/slint-bridge-demo-001
+SLINT_DEFAULT_FONT="$NX1_RUN_DIR/DejaVuSans.ttf" SLINT_MCP_PORT=9315 \
+"$NX1_RUN_DIR/showcase" --framebuffer=/dev/fb0 --touch=/dev/input/event2 --rotation=0 --seconds=20
+```
+
+### F1
+
+程序、字体及版权部署到真实 SD 卡挂载 `/tmp/sdcard` 的新目录。先按 [F1 设备说明](../test-app/devices/f1/README.md#sd-卡部署与所有权) 核对所有权和挂载，保留配套 control_service；下例将构建产物命名为 `showcase`：
+
+```sh
+F1_RUN_DIR=/tmp/sdcard/slint-bridge-demo-001
+SLINT_DEFAULT_FONT="$F1_RUN_DIR/DejaVuSans.ttf" SLINT_MCP_PORT=9315 \
+"$F1_RUN_DIR/showcase" --framebuffer=/dev/fb0 --touch=/dev/input/event0 --rotation=0 --seconds=20
+```
+
+以上两板不加载 NX5 SDK，不套用 NX5 的 tmpfs 部署流程。通过旧 adbd 启动后台进程时，使用设备说明中的 `run-detached`，不要把普通 `&` 当作断连后仍可运行的保证。
 
 ### 原生 MCP 连接
 
@@ -201,7 +248,7 @@ NX5 endpoint 为 `http://127.0.0.1:19315/mcp`，X9 为 `http://127.0.0.1:19316/m
 
 ## 在自己的 Rust 应用中接入
 
-业务工程直接声明两个 Git 依赖；Cargo 将源码下载到自己的 Git 缓存，不要求业务目录中存在 `slint-bridge/`，也不需要 `path` 依赖。下面的应用默认选择 NX5 TDE，X9 构建时关闭默认 feature 后选择 `fbdev`。所有 Slint 包使用同一 Git 地址，不设置提交哈希。
+业务工程直接声明两个 Git 依赖；Cargo 将源码下载到自己的 Git 缓存，不要求业务目录中存在 `slint-bridge/`，也不需要 `path` 依赖。下面的应用默认选择 NX5 TDE；NX1、X9、F1 构建时关闭默认 feature，再选择对应板级 feature。所有 Slint 包使用同一 Git 地址，不设置提交哈希。
 
 ### Cargo.toml
 
@@ -217,6 +264,9 @@ default = ["nx5-tde"]
 nx5 = ["slint-bridge/nx5"]
 nx5-tde = ["nx5", "slint-bridge/nx5-tde"]
 fbdev = ["slint-bridge/fbdev"]
+nx1 = ["slint-bridge/nx1"]
+f1 = ["slint-bridge/f1"]
+f1-g2d = ["f1", "slint-bridge/f1-g2d"]
 
 [dependencies]
 slint-bridge = { git = "ssh://git@github.com/omni-stack-gen/slint_bridge.git", default-features = false }
@@ -264,6 +314,8 @@ slint::include_modules!();
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (touch, rotation) = if cfg!(feature = "fbdev") {
         ("/dev/input/event1", Rotation::Clockwise90)
+    } else if cfg!(feature = "nx1") {
+        ("/dev/input/event2", Rotation::None)
     } else {
         ("/dev/input/event0", Rotation::None)
     };
@@ -278,21 +330,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-这是两台已验证设备的示例配置。实际业务按目标设备设置路径和旋转；无触摸设备时将 `inputs` 设为空。创建 Slint 窗口前先调用 `slint_bridge::init`。
+这是上述四板已验证设备的示例配置；NX5/F1 共用 event0、无旋转这一分支。实际业务按目标设备设置路径和旋转；无触摸设备时将 `inputs` 设为空。创建 Slint 窗口前先调用 `slint_bridge::init`。
 
 ### 业务工程的交叉编译配置
 
-**Git 依赖中的 `.cargo/` 不会自动成为业务工程的交叉编译配置。** 在业务工程中自行创建以下 `.cargo/config.toml` 即可，不需要克隆适配层仓库。按实际安装位置修改工具链路径，保持两个 target 的 ABI 参数不变。SDK 头文件随 Git 依赖提供，由适配层自身定位，不需要复制到业务工程。
+**Git 依赖中的 `.cargo/` 不会自动成为业务工程的交叉编译配置。** 在业务工程根目录创建 `.cargo/`，按目标设备保存下面的独立配置文件；不需要克隆适配层仓库。这里的 NX5 文件已包含完整链接器路径，与本仓库中拆分的 `config.toml` + `nx5.toml` 等效。
 
-### .cargo/config.toml
+通过 `cargo --config .cargo/<设备>.toml` 显式选择一个文件。此模板不需要在 `.cargo/config.toml` 中重复设置板级工具链；已有同名 target 或环境覆盖时先核对，尤其不要同时加载 NX5/NX1 的配置。工具链安装目录不同则一并修改 linker、CC/CXX/AR 路径，并保留 ABI 参数。SDK 头文件仍由适配库从 Git 依赖目录定位。
+
+### .cargo/nx5.toml
 
 ```toml
 [target.arm-unknown-linux-gnueabi]
 linker = "/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-gcc"
-rustflags = ["-C", "target-cpu=cortex-a7"]
-
-[target.arm-unknown-linux-gnueabihf]
-linker = "/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc"
 rustflags = ["-C", "target-cpu=cortex-a7"]
 
 [env]
@@ -300,24 +350,70 @@ CC_arm_unknown_linux_gnueabi = "/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linu
 CXX_arm_unknown_linux_gnueabi = "/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-g++"
 AR_arm_unknown_linux_gnueabi = "/opt/X5/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-ar"
 CFLAGS_arm_unknown_linux_gnueabi = "-march=armv7-a -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=softfp"
+```
+
+### .cargo/nx1.toml
+
+```toml
+# NX1 / sun8i: Cortex-A7, soft-float ABI, CPU rendering into fbdev.
+[target.arm-unknown-linux-gnueabi]
+linker = "/opt/NX1/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-gcc"
+rustflags = ["-C", "target-cpu=cortex-a7"]
+
+[env]
+CC_arm_unknown_linux_gnueabi = "/opt/NX1/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-gcc"
+CXX_arm_unknown_linux_gnueabi = "/opt/NX1/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-g++"
+AR_arm_unknown_linux_gnueabi = "/opt/NX1/gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabi/bin/arm-linux-gnueabi-ar"
+CFLAGS_arm_unknown_linux_gnueabi = "-march=armv7-a -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=softfp"
+```
+
+### .cargo/x9.toml
+
+```toml
+# X9 / Lombo N7: Cortex-A7, hard-float ABI, software framebuffer rendering.
+[target.arm-unknown-linux-gnueabihf]
+linker = "/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc"
+rustflags = ["-C", "target-cpu=cortex-a7"]
+
+[env]
 CC_arm_unknown_linux_gnueabihf = "/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc"
 CXX_arm_unknown_linux_gnueabihf = "/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-g++"
 AR_arm_unknown_linux_gnueabihf = "/opt/X9/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-ar"
 CFLAGS_arm_unknown_linux_gnueabihf = "-march=armv7-a -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
 ```
 
-从业务工程根目录执行首次解析，生成并提交业务工程自己的 `Cargo.lock`：
+### .cargo/f1.toml
+
+```toml
+# F1 / ArtInChip D211: T-HEAD RISC-V 64-bit, LP64D ABI.
+# Use the matching vendor sysroot and loader; do not link against host libraries.
+[target.riscv64gc-unknown-linux-gnu]
+linker = "/opt/F1/bin/riscv64-unknown-linux-gnu-gcc"
+
+[env]
+CC_riscv64gc_unknown_linux_gnu = "/opt/F1/bin/riscv64-unknown-linux-gnu-gcc"
+CXX_riscv64gc_unknown_linux_gnu = "/opt/F1/bin/riscv64-unknown-linux-gnu-g++"
+AR_riscv64gc_unknown_linux_gnu = "/opt/F1/bin/riscv64-unknown-linux-gnu-ar"
+```
+
+从业务工程根目录首次执行 `cargo fetch`，生成并提交业务工程自己的 `Cargo.lock`。之后按目标设备构建：
 
 ```sh
-cargo fetch
 # NX5 TDE，使用应用默认 feature。
-cargo build --locked --offline --release --target arm-unknown-linux-gnueabi
-# X9，先关闭默认的 NX5 TDE。
-cargo build --locked --offline --release --target arm-unknown-linux-gnueabihf \
-  --no-default-features --features fbdev
-# NX5 纯软件模式，同样先关闭默认的 TDE。
-cargo build --locked --offline --release --target arm-unknown-linux-gnueabi \
-  --no-default-features --features nx5
+cargo --config .cargo/nx5.toml build --locked --offline --release \
+  --target arm-unknown-linux-gnueabi
+# NX5 纯软件渲染。
+cargo --config .cargo/nx5.toml build --locked --offline --release \
+  --target arm-unknown-linux-gnueabi --no-default-features --features nx5
+# NX1。
+cargo --config .cargo/nx1.toml build --locked --offline --release \
+  --target arm-unknown-linux-gnueabi --no-default-features --features nx1
+# X9。
+cargo --config .cargo/x9.toml build --locked --offline --release \
+  --target arm-unknown-linux-gnueabihf --no-default-features --features fbdev
+# F1 GE；纯软件渲染将 f1-g2d 改为 f1。
+cargo --config .cargo/f1.toml build --locked --offline --release \
+  --target riscv64gc-unknown-linux-gnu --no-default-features --features f1-g2d
 ```
 
 输出程序名为 `panel-app`。这个最小例子没有测试工程的命令行参数解析，不接受 `--seconds`、`--touch` 或 `--rotation`；相关值来自上述 `Config`，需要参数支持时由业务应用自行添加。
