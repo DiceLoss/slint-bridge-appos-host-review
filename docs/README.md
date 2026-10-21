@@ -6,7 +6,8 @@
 
 | 文档 | 内容 |
 | --- | --- |
-| [获取配置与使用](getting-started.md) | 两个 Git 仓库、新机器环境、四板配置速查、工具链及完整业务接入示例 |
+| [获取配置与使用](getting-started.md) | 用户业务工程的 Cargo Git 接入、四板配置、构建、部署及依赖更新 |
+| [开发与维护](development.md) | 维护者的仓库检查、测试程序构建、MCP 与依赖升级验证 |
 | [平台实现说明](software-platform.md) | 公共 API、feature、输入、画布、双页、提交及错误契约 |
 | [Slint MCP](slint-mcp.md) | 原生 UI 查询、交互、事件录制和受内存保护的截图 |
 | [测试应用](../test-app/README.md) | 页面、参数、素材、测试及业务使用方式 |

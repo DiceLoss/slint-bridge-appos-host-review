@@ -4,7 +4,7 @@
 
 ## 启用及连接
 
-构建启用 `slint/mcp` 并设置 `SLINT_EMIT_DEBUG_INFO=1`，以保留元素 ID 等运行时元数据。NX5/X9 构建示例见 [使用指南](getting-started.md#验证并构建示例)，NX1/F1 分别见 [NX1](../test-app/devices/nx1/README.md#构建)、[F1](../test-app/devices/f1/README.md#构建) 设备说明。运行时设置 `SLINT_MCP_PORT=9315`；没有该变量时不启动服务。字体、SDK、显示所有权及有限运行时长按各自设备说明配置。
+构建启用 `slint/mcp` 并设置 `SLINT_EMIT_DEBUG_INFO=1`，以保留元素 ID 等运行时元数据。NX5/X9 构建示例见 [开发与维护](development.md#验证并构建示例)，NX1/F1 分别见 [NX1](../test-app/devices/nx1/README.md#构建)、[F1](../test-app/devices/f1/README.md#构建) 设备说明。运行时设置 `SLINT_MCP_PORT=9315`；没有该变量时不启动服务。字体、SDK、显示所有权及有限运行时长按各自设备说明配置。
 
 `platform::set_platform()` 安装原生 MCP 钩子，不需要再手动初始化 testing backend；窗口显示且事件循环运行后才开始监听。服务监听设备 localhost，主机通过已核对的 ADB 目标转发：
 
