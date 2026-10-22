@@ -63,6 +63,9 @@ slint_bridge::init(Config {
 // 然后按普通 Slint 应用创建组件并调用 run()。
 ```
 
+不固定 event 编号时，可将触摸配置替换为 `InputDevice::auto_touchscreen()`；
+它在启动时选择唯一支持的触摸屏。候选歧义、旧驱动兼容和手动路径规则见[输入说明](docs/software-platform.md#统一-api)。
+
 | Feature | 行为 |
 | --- | --- |
 | `fbdev` | 纯 CPU framebuffer；当前接入 X9 Lombo #452 板级完成契约 |

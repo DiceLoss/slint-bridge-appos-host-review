@@ -88,12 +88,18 @@ F1 showcase 在 `init()` 前通过 `slint_bridge::try_decode_png` 尝试加载�
 | NX5 MMA 背景能力 | `--features nx5-mma-background`，运行时 `--background=mma` |
 | 背景存储 | `--background=heap`（默认）或 `--background=mma`，映射 `Config.background_storage` |
 | framebuffer 路径 | `--framebuffer=/dev/fb0`，默认 `/dev/fb0`，可替换为目标设备路径或设备链接 |
-| 触摸设备 | `--touch=/dev/input/event0`，默认不开启输入设备 |
+| 触摸设备 | `--touch=auto` 启动识别唯一支持的触摸屏；或 `--touch=/dev/input/event0` 手动指定；默认不开启输入设备 |
 | Slint MCP | 构建加 `slint/mcp`，并按 [MCP 指南](../docs/slint-mcp.md) 设置环境变量 |
 
 本库和测试工程的 `default = []`，必须在构建命令中选择一个板级 feature；`fbdev`、`nx1`、`nx5`、`f1` 两两互斥。业务模板中的默认 NX5 TDE 仅属于该业务应用，不会改变本测试工程。NX5 使用板级阻塞翻页契约，不比对固定内核版本、驱动名称或文件摘要；`fbdev` 在真实设备运行时仍会拒绝未验证的提交契约。NX1/F1 的明确参考约定不放宽其他设备的检查。
 
 ## 用例与预期
+
+四板可统一使用 `showcase --touch=auto`，X9 另保留 `--rotation=90`。
+自动识别只在启动时进行，不依赖 udev，不按 event 编号或设备名称猜测；选中设备的路径、名称、
+协议及坐标范围会输出一行启动日志。没有候选、多个候选或无法完整读取设备能力时初始化失败。
+多触摸屏产品应继续显式指定路径或系统提供的稳定设备链接；手动路径不会触发自动扫描。
+完整筛选和错误规则见[平台说明](../docs/software-platform.md#统一-api)。
 
 | 用例 | 运行选择 | 验证内容 |
 | --- | --- | --- |
