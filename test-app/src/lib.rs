@@ -29,7 +29,11 @@ fn config_from_arguments(arguments: impl IntoIterator<Item = String>) -> Config 
         } else if let Some(path) = argument.strip_prefix("--framebuffer=") {
             config.framebuffer = path.into();
         } else if let Some(path) = argument.strip_prefix("--touch=") {
-            config.inputs.push(InputDevice::touchscreen(path));
+            config.inputs.push(if path == "auto" {
+                InputDevice::auto_touchscreen()
+            } else {
+                InputDevice::touchscreen(path)
+            });
         } else if let Some(value) = argument.strip_prefix("--rotation=") {
             config.rotation = match value {
                 "0" => Rotation::None,
@@ -78,5 +82,20 @@ fn background_argument_selects_config_storage() {
     }
     assert!(
         std::panic::catch_unwind(|| config_from_arguments(["--background=auto".into()])).is_err()
+    );
+}
+
+#[cfg(test)]
+#[test]
+fn touch_argument_keeps_auto_and_explicit_paths_distinct() {
+    assert!(config_from_arguments([]).inputs.is_empty());
+    assert!(matches!(
+        config_from_arguments(["--touch=auto".into()])
+            .inputs
+            .as_slice(),
+        [InputDevice::AutoTouchscreen]
+    ));
+    assert!(
+        matches!(config_from_arguments(["--touch=/dev/input/event2".into()]).inputs.as_slice(), [InputDevice::Touchscreen { path }] if path == std::path::Path::new("/dev/input/event2"))
     );
 }

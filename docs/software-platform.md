@@ -45,7 +45,7 @@ flowchart LR
 | `Config` 字段 | 默认值 | 当前约束 |
 | --- | --- | --- |
 | `framebuffer` | `/dev/fb0` | 可配置任意 framebuffer 设备路径或设备链接 |
-| `inputs` | 空列表 | 至多一个 `Touchscreen` 和一个 `Keys` |
+| `inputs` | 空列表 | 至多一个触摸输入（`Touchscreen` 或 `AutoTouchscreen`）和一个 `Keys` |
 | `rotation` | `Rotation::None` | 固定为不旋转或顺时针 90、180、270 度；90/270 度交换逻辑宽高 |
 | `background_storage` | `BackgroundStorage::Heap` | 普通模式保留原图像；MMA 仅限已启用能力且资源可用的 ARM32 NX5 |
 | `frame_interval` | 16667 微秒 | 非零且可加到单调时钟；约束两次渲染启动的最小间隔 |
@@ -61,6 +61,20 @@ flowchart LR
 `InputDevice::keys(path)` 提供方向、确认、返回等导航键。产品可通过 `InputDevice::Keys { path, bindings }` 和 `KeyBinding::new(code, text)` 指定 Linux 键码到 Slint 特殊键或字符的映射。它处理按下、自动重复和释放，不提供键盘布局或输入法。自定义按键映射要求 Linux key code 小于 768、彼此不重复，且映射文本非空；不满足时返回 `InvalidConfig`。输入掉线会终止事件循环并返回错误，避免持续轮询失效描述符。
 
 每轮对每个输入设备最多进行 8 次非阻塞读取，每次缓冲最多 32 条原始 evdev 记录；这不是 Slint 事件数量或采样频率上限。仍有数据时，描述符保持可读，后续轮次继续处理。该批次限制与业务任务的 2 ms 预算分别执行，避免把输入或任务积压一次性处理到底。
+
+`InputDevice::auto_touchscreen()` 显式选择启动自动识别；默认空 `inputs` 仍不开启触摸。
+初始化枚举 `/dev/input/event*`，查询 evdev 的事件、轴、按键和属性，要求唯一一个支持的触摸屏。
+单点候选要求 `ABS_X/Y + BTN_TOUCH`；Type-A 要求无 slot 的 `ABS_MT_POSITION_X/Y + ABS_MT_TRACKING_ID`。
+纯 Type-B 不支持，带完整单点兼容事件的设备可用单点路径。轴范围必须有效。
+排除 pointer、buttonpad、semi-MT、accelerometer 和笔类工具；没有 DIRECT 属性的旧设备还须没有
+相对坐标或 TOOL_FINGER 等间接指针特征。设备名仅用于诊断，不按名称或最小 event 编号选设备。
+不支持属性查询的旧内核（ENOTTY/EINVAL）按无属性处理；其他查询/打开失败视为不完整扫描并报错，
+即使已有一个可用候选也不猜测。多个合格候选或没有候选均报错，日志包含路径及原因。
+
+选中后直接复用已查询的文件描述符，按原有 `rotation`、轴归一化与解码规则接入；不抓取独占输入，
+不注入事件，不在运行时扫描、切换设备或热插拔重连。手动 `touchscreen(path)` 继续只打开指定路径，
+保留原有校验行为；自动和手动触摸同时配置仍属于两个触摸输入，会被拒绝。
+新增枚举项 `AutoTouchscreen`，外部对 `InputDevice` 的穷举匹配需要增加对应分支。
 
 ### F1 PNG 加载
 

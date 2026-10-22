@@ -95,6 +95,26 @@ fn invalid_frame_timing_is_reported_without_opening_devices() {
 }
 
 #[test]
+fn automatic_touch_is_opt_in_and_counts_as_a_touchscreen() {
+    use slint_bridge::InputDevice;
+    assert!(Config::default().inputs.is_empty());
+    assert!(matches!(
+        InputDevice::auto_touchscreen(),
+        InputDevice::AutoTouchscreen
+    ));
+    for second in [
+        InputDevice::auto_touchscreen(),
+        InputDevice::touchscreen("/missing"),
+    ] {
+        assert!(matches!(init(Config {
+            framebuffer: "/missing".into(),
+            inputs: vec![InputDevice::auto_touchscreen(), second],
+            ..Config::default()
+        }), Err(Error::InvalidConfig(reason)) if reason.contains("at most one touchscreen")));
+    }
+}
+
+#[test]
 #[cfg(not(feature = "nx5-mma-background"))]
 fn ordinary_pixel_buffer_keeps_original_layout() {
     #[repr(C)]

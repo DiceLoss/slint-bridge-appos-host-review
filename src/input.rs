@@ -27,11 +27,14 @@ impl KeyBinding {
     }
 }
 
-/// Explicit input selection. Touchscreens use ABS_X/ABS_Y and BTN_TOUCH,
+/// Explicit or startup-discovered input selection. Touchscreens use ABS_X/ABS_Y and BTN_TOUCH,
 /// or Type-A ABS_MT_POSITION_X/Y with tracking IDs (no slots);
 /// key devices use mappings rather than assuming a keyboard layout or IME.
 #[derive(Debug, Clone)]
 pub enum InputDevice {
+    /// Discover exactly one supported touchscreen when the platform starts.
+    /// Does not monitor hotplug or select between multiple candidates.
+    AutoTouchscreen,
     Touchscreen {
         path: PathBuf,
     },
@@ -42,6 +45,12 @@ pub enum InputDevice {
 }
 
 impl InputDevice {
+    /// Select the unique supported touchscreen from `/dev/input/event*` at startup.
+    /// Ambiguous or incomplete scans fail; no device is selected by event number.
+    pub fn auto_touchscreen() -> Self {
+        Self::AutoTouchscreen
+    }
+
     pub fn touchscreen(path: impl Into<PathBuf>) -> Self {
         Self::Touchscreen { path: path.into() }
     }
@@ -379,9 +388,13 @@ impl Evdev {
         panel: PhysicalSize,
         rotation: Rotation,
     ) -> Result<Self, Error> {
+        if matches!(device, InputDevice::AutoTouchscreen) {
+            return discovery::open(panel, rotation);
+        }
         let (path, touch, bindings) = match device {
             InputDevice::Touchscreen { path } => (path, true, &[][..]),
             InputDevice::Keys { path, bindings } => (path, false, bindings.as_slice()),
+            InputDevice::AutoTouchscreen => unreachable!(),
         };
         let file = OpenOptions::new()
             .read(true)
@@ -515,3 +528,5 @@ impl Evdev {
         Ok(())
     }
 }
+
+mod discovery;

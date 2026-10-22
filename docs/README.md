@@ -42,6 +42,7 @@
 
 ## 独立专题
 
+- [启动触摸自动识别验证](input-discovery-validation.md)：四板自动/手动路径、evdev 输入链路与验证边界。
 - [程序体积分析](nx5-binary-size.md)：ELF 与资源占比、无损压缩及功能保留边界。
 - [透明区域与视频接入调查](nx5-video-regions.md)：公共组件方案及尚未验证的真实视频集成。
 

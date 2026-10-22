@@ -260,7 +260,12 @@ pub fn init(config: Config) -> Result<(), Error> {
     let touches = config
         .inputs
         .iter()
-        .filter(|input| matches!(input, InputDevice::Touchscreen { .. }))
+        .filter(|input| {
+            matches!(
+                input,
+                InputDevice::Touchscreen { .. } | InputDevice::AutoTouchscreen
+            )
+        })
         .count();
     let keys = config.inputs.len() - touches;
     if touches > 1 || keys > 1 {
