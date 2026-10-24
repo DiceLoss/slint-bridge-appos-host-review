@@ -1,0 +1,129 @@
+From e28ff09354eee60c9530ffc251ad9505234d6d05 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=8D=83=E5=A4=8F?= <qianxia@d-power.com.cn>
+Date: Sun, 25 Oct 2026 01:38:19 +0800
+Subject: [PATCH] fix: defer AppOS host font registration
+
+---
+ src/runtime.rs       | 29 ++++++++++++++++++++++++-----
+ src/tests/runtime.rs | 41 +++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 65 insertions(+), 5 deletions(-)
+
+diff --git a/src/runtime.rs b/src/runtime.rs
+index eda204f..45fa8fb 100644
+--- a/src/runtime.rs
++++ b/src/runtime.rs
+@@ -80,6 +80,8 @@ pub(crate) fn run_until_first_presented_frame() -> Result<(), slint::PlatformErr
+ pub(crate) struct BridgeWindow {
+     window: Window,
+     renderer: SoftwareRenderer,
++    font_paths: Vec<std::path::PathBuf>,
++    fonts_loaded: Cell<bool>,
+     size: PhysicalSize,
+     visible: Cell<bool>,
+     dirty: Cell<bool>,
+@@ -99,14 +101,11 @@ impl BridgeWindow {
+         let renderer =
+             SoftwareRenderer::new_with_repaint_buffer_type(RepaintBufferType::ReusedBuffer);
+         renderer.set_rendering_rotation(rotation.renderer());
+-        for path in font_paths {
+-            (&renderer as &dyn Renderer)
+-                .register_font_from_path(path)
+-                .map_err(|error| PlatformError::from(error.to_string()))?;
+-        }
+         Ok(Rc::new_cyclic(|weak: &Weak<Self>| Self {
+             window: Window::new(weak.clone()),
+             renderer,
++            font_paths: font_paths.to_vec(),
++            fonts_loaded: Cell::new(false),
+             size,
+             visible: Cell::new(false),
+             dirty: Cell::new(true),
+@@ -117,6 +116,20 @@ impl BridgeWindow {
+         }))
+     }
+ 
++    fn load_fonts_once(&self) {
++        if self.fonts_loaded.replace(true) {
++            return;
++        }
++        for path in &self.font_paths {
++            if let Err(error) = (&self.renderer as &dyn Renderer).register_font_from_path(path) {
++                eprintln!(
++                    "slint-bridge: cannot load host font {}: {error}",
++                    path.display()
++                );
++            }
++        }
++    }
++
+     fn resize(&self) {
+         self.window.dispatch_event(WindowEvent::Resized {
+             size: self.size.to_logical(1.0),
+@@ -342,6 +355,12 @@ impl BridgePlatform {
+                 self.wait(platform::duration_until_next_timer_update())?;
+                 continue;
+             };
++            // Slint binds the renderer to its context only after the root
++            // component is associated with this WindowAdapter. Registering
++            // host fonts in `create_window_adapter()` is therefore too early
++            // and fails with "slint platform not initialized". The event loop
++            // starts after `show()`, so this remains before the first render.
++            window.load_fonts_once();
+             for event in events.drain(..) {
+                 #[cfg(feature = "appos-host")]
+                 if let Some(hooks) = &self.host_hooks {
+diff --git a/src/tests/runtime.rs b/src/tests/runtime.rs
+index b5a3743..7309990 100644
+--- a/src/tests/runtime.rs
++++ b/src/tests/runtime.rs
+@@ -44,6 +44,47 @@ fn appos_first_frame_gate_returns_only_after_completed_presentation() {
+     ui.hide().unwrap();
+ }
+ 
++#[cfg(feature = "appos-host")]
++#[test]
++fn appos_host_defers_font_registration_until_the_window_has_a_slint_context() {
++    const NAME: &str =
++        "tests::runtime::appos_host_defers_font_registration_until_the_window_has_a_slint_context";
++    if std::env::var("SLINT_BRIDGE_TEST_CHILD").as_deref() != Ok(NAME) {
++        let run = std::process::Command::new(std::env::current_exe().unwrap())
++            .args(["--exact", NAME, "--nocapture"])
++            .env("SLINT_BRIDGE_TEST_CHILD", NAME)
++            .output()
++            .unwrap();
++        assert!(
++            run.status.success(),
++            "{}{}",
++            String::from_utf8_lossy(&run.stdout),
++            String::from_utf8_lossy(&run.stderr)
++        );
++        return;
++    }
++
++    let target = surface_with_completion(8, 6, 32, 0, |_| Ok(()));
++    let font = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
++        .join("third-party/fonts/DejaVuSans.ttf");
++    let platform = crate::runtime::BridgePlatform::with_host_inputs(
++        Config::default(),
++        target.fb,
++        Vec::new(),
++        Vec::new(),
++        vec![font],
++        None,
++    );
++    slint::platform::set_platform(Box::new(platform)).unwrap();
++    let ui = LoopScene::new().unwrap();
++    ui.show().unwrap();
++
++    crate::runtime::run_until_first_presented_frame().unwrap();
++
++    assert!(ui.window().is_visible());
++    ui.hide().unwrap();
++}
++
+ fn send_input(writer: &mut File, events: &[(u16, u16, i32)]) {
+     let records: Vec<libc::input_event> = events
+         .iter()
+-- 
+2.43.0
+
