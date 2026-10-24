@@ -369,6 +369,8 @@ DMA 槽容量保留到画布销毁。新源先按软件相同顺序准备预乘�
 扫描、自动发现和重新打开设备在该模式不可用。首阶段采用单页 private staging-copy，
 一帧全部转换完成后才写可见页。首帧完成、完整重绘、renderer cache 回收和局部视频
 alpha 由窄公开接口提供，Activity、资源和视频会话所有权仍属于 AppOS。
+AppOS 通过受限 `HostHooks` 保留输入唤醒、屏保、亮度与呈现诊断策略，bridge 只负责事件投递
+和最终 scanout 转换；产品字体路径也由 host 显式提供，bridge 不扫描产品文件系统。
 
 外部业务通过 [适配层 Git 仓库](https://github.com/omni-stack-gen/slint_bridge) 引用本库，Cargo 将依赖和 SDK 头文件放在 Git 缓存中，无需业务目录内的源码副本。本仓库 `test-app` 的 `path = ".."` 仅用于测试同一工作区的适配层改动，不是外部业务的接入要求。交叉编译器仍由业务工程自己的 Cargo 配置指定；完整独立配置见 [使用指南](getting-started.md#业务工程的交叉编译配置)。
 

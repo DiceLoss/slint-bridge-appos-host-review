@@ -11,8 +11,10 @@ use slint::platform::software_renderer::PremultipliedRgbaColor;
 use slint::platform::{WindowEvent, set_platform};
 use std::{
     cell::Cell,
+    fmt,
     os::fd::OwnedFd,
     path::PathBuf,
+    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -21,6 +23,91 @@ use crate::KeyBinding;
 thread_local! {
     static PANEL_SIZE: Cell<Option<slint::PhysicalSize>> = const { Cell::new(None) };
     static VIDEO_SURFACE: Cell<Option<HostVideoSurfaceRect>> = const { Cell::new(None) };
+    static FRAME_POLICY: Cell<HostFramePolicy> = const { Cell::new(HostFramePolicy::DEFAULT) };
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HostInputEvent {
+    TouchPressed,
+    TouchReleased,
+    PointerMotion,
+    Key,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HostInputDisposition {
+    Dispatch,
+    Consume,
+}
+
+/// Output policy applied while copying the retained Slint frame to scanout.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HostFramePolicy {
+    pub blanked: bool,
+    pub luminance: u8,
+}
+
+impl HostFramePolicy {
+    pub const DEFAULT: Self = Self {
+        blanked: false,
+        luminance: u8::MAX,
+    };
+}
+
+impl Default for HostFramePolicy {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+/// Narrow callbacks from the device-owning GUI backend to AppOS policy.
+/// Implementations must be bounded and must not re-enter Slint.
+pub trait HostHooks: Send + Sync {
+    fn input(&self, _event: HostInputEvent, _at: Instant) -> HostInputDisposition {
+        HostInputDisposition::Dispatch
+    }
+
+    fn evaluate_idle(&self, _now: Instant) -> bool {
+        false
+    }
+
+    fn until_idle_deadline(&self, _now: Instant) -> Option<Duration> {
+        None
+    }
+
+    fn frame_policy(&self) -> HostFramePolicy {
+        HostFramePolicy::DEFAULT
+    }
+
+    fn frame_presented(&self, _started_at: Instant, _presented_at: Instant) {}
+}
+
+pub(crate) fn set_frame_policy(policy: HostFramePolicy) -> bool {
+    FRAME_POLICY.with(|active| active.replace(policy) != policy)
+}
+
+pub(crate) fn output_policy_is_identity() -> bool {
+    FRAME_POLICY.with(|policy| policy.get() == HostFramePolicy::DEFAULT)
+}
+
+pub(crate) fn transform_output_pixel(mut pixel: PremultipliedRgbaColor) -> PremultipliedRgbaColor {
+    FRAME_POLICY.with(|policy| {
+        let policy = policy.get();
+        if policy.blanked {
+            return PremultipliedRgbaColor {
+                red: 0,
+                green: 0,
+                blue: 0,
+                alpha: u8::MAX,
+            };
+        }
+        let scale =
+            |channel: u8| ((u16::from(channel) * u16::from(policy.luminance) + 127) / 255) as u8;
+        pixel.red = scale(pixel.red);
+        pixel.green = scale(pixel.green);
+        pixel.blue = scale(pixel.blue);
+        pixel
+    })
 }
 
 /// Physical AppOS video viewport whose pixels remain transparent for the
@@ -107,7 +194,6 @@ impl HostInputDevice {
 ///
 /// The expected dimensions come from the AppOS board requirement manifest and
 /// bind the transferred descriptor to the selected product profile.
-#[derive(Debug)]
 pub struct HostConfig {
     pub framebuffer: OwnedFd,
     pub inputs: Vec<HostInputDevice>,
@@ -115,6 +201,24 @@ pub struct HostConfig {
     pub expected_height: u32,
     pub rotation: Rotation,
     pub frame_interval: Duration,
+    pub font_paths: Vec<PathBuf>,
+    pub hooks: Option<Arc<dyn HostHooks>>,
+}
+
+impl fmt::Debug for HostConfig {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("HostConfig")
+            .field("framebuffer", &self.framebuffer)
+            .field("inputs", &self.inputs)
+            .field("expected_width", &self.expected_width)
+            .field("expected_height", &self.expected_height)
+            .field("rotation", &self.rotation)
+            .field("frame_interval", &self.frame_interval)
+            .field("font_paths", &self.font_paths)
+            .field("hooks", &self.hooks.as_ref().map(|_| "installed"))
+            .finish()
+    }
 }
 
 impl HostConfig {
@@ -126,6 +230,8 @@ impl HostConfig {
             expected_height,
             rotation: Rotation::None,
             frame_interval: Duration::from_micros(16_667),
+            font_paths: Vec::new(),
+            hooks: None,
         }
     }
 }
@@ -206,9 +312,17 @@ pub fn init_host(config: HostConfig) -> Result<(), Error> {
         background_storage: BackgroundStorage::Heap,
         frame_interval: config.frame_interval,
     };
-    let platform = BridgePlatform::with_inputs(runtime_config, framebuffer, inputs, initial_events);
+    let platform = BridgePlatform::with_host_inputs(
+        runtime_config,
+        framebuffer,
+        inputs,
+        initial_events,
+        config.font_paths,
+        config.hooks,
+    );
     PANEL_SIZE.with(|size| size.set(Some(panel)));
     VIDEO_SURFACE.with(|surface| surface.set(None));
+    FRAME_POLICY.with(|policy| policy.set(HostFramePolicy::DEFAULT));
     let installed = set_platform(Box::new(platform)).map_err(Error::Platform);
     if installed.is_err() {
         PANEL_SIZE.with(|size| size.set(None));
@@ -357,5 +471,38 @@ mod tests {
         );
         VIDEO_SURFACE.with(|surface| surface.set(None));
         PANEL_SIZE.with(|size| size.set(None));
+    }
+
+    #[test]
+    fn output_policy_dims_without_mutating_alpha_and_blank_is_opaque() {
+        set_frame_policy(HostFramePolicy {
+            blanked: false,
+            luminance: 128,
+        });
+        let dimmed = transform_output_pixel(PremultipliedRgbaColor {
+            red: 200,
+            green: 100,
+            blue: 50,
+            alpha: 220,
+        });
+        assert_eq!(
+            [dimmed.red, dimmed.green, dimmed.blue, dimmed.alpha],
+            [100, 50, 25, 220]
+        );
+        set_frame_policy(HostFramePolicy {
+            blanked: true,
+            luminance: 0,
+        });
+        let blank = transform_output_pixel(PremultipliedRgbaColor {
+            red: 200,
+            green: 100,
+            blue: 50,
+            alpha: 0,
+        });
+        assert_eq!(
+            [blank.red, blank.green, blank.blue, blank.alpha],
+            [0, 0, 0, 255]
+        );
+        set_frame_policy(HostFramePolicy::DEFAULT);
     }
 }

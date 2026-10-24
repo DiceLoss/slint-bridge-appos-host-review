@@ -82,6 +82,10 @@ slint_bridge::init_host(config)?;
 Activity host 可用 `run_event_loop_until_first_presented_frame()` 在提交 `Resumed` 前等待首帧
 完成，用 `release_application_graphics_caches()` 响应 UI 回收，并通过受校验的
 `set_video_surface_rect()` 设置框架拥有的视频透明矩形。以上接口不向数据态 APP 暴露。
+`HostConfig::hooks` 只把原生输入类别和已完成呈现时刻报告给 AppOS，并读取 AppOS 最终裁决的
+熄屏/亮度策略；Activity、屏保和资源策略仍属于 AppOS Shell。亮度仅在写入 scanout 时应用，
+不会反复修改 renderer 的 retained buffer；熄屏始终写入不透明黑色，避免下层视频泄露。
+`font_paths` 也由 host 明确传入，bridge 不扫描产品字体目录。
 
 | Feature | 行为 |
 | --- | --- |

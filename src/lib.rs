@@ -55,7 +55,8 @@ mod wake;
 pub use geometry::Rotation;
 #[cfg(feature = "appos-host")]
 pub use host::{
-    HostConfig, HostInputDevice, HostVideoSurfaceRect, init_host, set_video_surface_rect,
+    HostConfig, HostFramePolicy, HostHooks, HostInputDevice, HostInputDisposition, HostInputEvent,
+    HostVideoSurfaceRect, init_host, set_video_surface_rect,
 };
 pub use input::{InputDevice, KeyBinding};
 

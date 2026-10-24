@@ -295,6 +295,7 @@ impl Layout {
             };
             if self.channels.map(|c| (c.offset, c.length)) == [(16, 8), (8, 8), (0, 8), (24, 8)] {
                 if self.alpha_max == 255
+                    && (!cfg!(feature = "appos-host") || crate::host::output_policy_is_identity())
                     && source.len() >= 16
                     && source.as_ptr().align_offset(4) == 0
                 {
@@ -319,7 +320,11 @@ impl Layout {
                     }
                 }
                 for (word, pixel) in words.iter_mut().zip(source) {
-                    let [r, g, b, a] = self.output_rgba(*pixel);
+                    #[cfg(feature = "appos-host")]
+                    let pixel = crate::host::transform_output_pixel(*pixel);
+                    #[cfg(not(feature = "appos-host"))]
+                    let pixel = *pixel;
+                    let [r, g, b, a] = self.output_rgba(pixel);
                     *word = (u32::from(a) << 24)
                         | (u32::from(r) << 16)
                         | (u32::from(g) << 8)
@@ -327,7 +332,11 @@ impl Layout {
                 }
             } else {
                 for (word, pixel) in words.iter_mut().zip(source) {
-                    *word = self.pixel(*pixel);
+                    #[cfg(feature = "appos-host")]
+                    let pixel = crate::host::transform_output_pixel(*pixel);
+                    #[cfg(not(feature = "appos-host"))]
+                    let pixel = *pixel;
+                    *word = self.pixel(pixel);
                 }
             }
         } else {
@@ -335,7 +344,11 @@ impl Layout {
                 .chunks_exact_mut(self.bytes_per_pixel)
                 .zip(source)
             {
-                let pixel = self.pixel(*pixel);
+                #[cfg(feature = "appos-host")]
+                let pixel = crate::host::transform_output_pixel(*pixel);
+                #[cfg(not(feature = "appos-host"))]
+                let pixel = *pixel;
+                let pixel = self.pixel(pixel);
                 if self.bytes_per_pixel == 2 {
                     bytes.copy_from_slice(&(pixel as u16).to_ne_bytes());
                 } else {

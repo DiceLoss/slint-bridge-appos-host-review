@@ -90,23 +90,31 @@ pub(crate) struct BridgeWindow {
 }
 
 impl BridgeWindow {
-    fn new(size: PhysicalSize, rotation: Rotation, wake: Arc<WakeQueue>) -> Rc<Self> {
-        Rc::new_cyclic(|weak: &Weak<Self>| {
-            let renderer =
-                SoftwareRenderer::new_with_repaint_buffer_type(RepaintBufferType::ReusedBuffer);
-            renderer.set_rendering_rotation(rotation.renderer());
-            Self {
-                window: Window::new(weak.clone()),
-                renderer,
-                size,
-                visible: Cell::new(false),
-                dirty: Cell::new(true),
-                force_full_repaint: Cell::new(false),
-                incompatible_layout: Cell::new(false),
-                rolling_back_show: Cell::new(false),
-                wake,
-            }
-        })
+    fn new(
+        size: PhysicalSize,
+        rotation: Rotation,
+        wake: Arc<WakeQueue>,
+        font_paths: &[std::path::PathBuf],
+    ) -> Result<Rc<Self>, PlatformError> {
+        let renderer =
+            SoftwareRenderer::new_with_repaint_buffer_type(RepaintBufferType::ReusedBuffer);
+        renderer.set_rendering_rotation(rotation.renderer());
+        for path in font_paths {
+            (&renderer as &dyn Renderer)
+                .register_font_from_path(path)
+                .map_err(|error| PlatformError::from(error.to_string()))?;
+        }
+        Ok(Rc::new_cyclic(|weak: &Weak<Self>| Self {
+            window: Window::new(weak.clone()),
+            renderer,
+            size,
+            visible: Cell::new(false),
+            dirty: Cell::new(true),
+            force_full_repaint: Cell::new(false),
+            incompatible_layout: Cell::new(false),
+            rolling_back_show: Cell::new(false),
+            wake,
+        }))
     }
 
     fn resize(&self) {
@@ -198,6 +206,11 @@ pub(crate) struct BridgePlatform {
     timer_quantum: Duration,
     created: Cell<bool>,
     running: Cell<bool>,
+    pending_frame_started: Cell<Option<Instant>>,
+    #[cfg(feature = "appos-host")]
+    host_hooks: Option<Arc<dyn crate::host::HostHooks>>,
+    #[cfg(feature = "appos-host")]
+    font_paths: Vec<std::path::PathBuf>,
 }
 
 impl BridgePlatform {
@@ -239,7 +252,27 @@ impl BridgePlatform {
             timer_quantum: Duration::ZERO,
             created: Cell::new(false),
             running: Cell::new(false),
+            pending_frame_started: Cell::new(None),
+            #[cfg(feature = "appos-host")]
+            host_hooks: None,
+            #[cfg(feature = "appos-host")]
+            font_paths: Vec::new(),
         }
+    }
+
+    #[cfg(feature = "appos-host")]
+    pub(crate) fn with_host_inputs(
+        config: Config,
+        framebuffer: Framebuffer,
+        inputs: Vec<Evdev>,
+        initial_events: Vec<WindowEvent>,
+        font_paths: Vec<std::path::PathBuf>,
+        hooks: Option<Arc<dyn crate::host::HostHooks>>,
+    ) -> Self {
+        let mut platform = Self::with_inputs(config, framebuffer, inputs, initial_events);
+        platform.host_hooks = hooks;
+        platform.font_paths = font_paths;
+        platform
     }
 
     fn run(&self) -> Result<(), Error> {
@@ -272,6 +305,13 @@ impl BridgePlatform {
         loop {
             self.wake.drain_signal()?;
             let presented = self.framebuffer.borrow_mut().poll_presented()?;
+            #[cfg(feature = "appos-host")]
+            if presented
+                && let Some(started_at) = self.pending_frame_started.take()
+                && let Some(hooks) = &self.host_hooks
+            {
+                hooks.frame_presented(started_at, Instant::now());
+            }
             if presented
                 && FIRST_FRAME_ONLY.with(Cell::get)
                 && FIRST_FRAME_SUBMITTED.with(Cell::get)
@@ -303,6 +343,32 @@ impl BridgePlatform {
                 continue;
             };
             for event in events.drain(..) {
+                #[cfg(feature = "appos-host")]
+                if let Some(hooks) = &self.host_hooks {
+                    let host_event = match &event {
+                        WindowEvent::PointerPressed { .. } => {
+                            Some(crate::host::HostInputEvent::TouchPressed)
+                        }
+                        WindowEvent::PointerReleased { .. } => {
+                            Some(crate::host::HostInputEvent::TouchReleased)
+                        }
+                        WindowEvent::PointerMoved { .. } => {
+                            Some(crate::host::HostInputEvent::PointerMotion)
+                        }
+                        WindowEvent::KeyPressed { .. } | WindowEvent::KeyReleased { .. } => {
+                            Some(crate::host::HostInputEvent::Key)
+                        }
+                        _ => None,
+                    };
+                    if host_event.is_some_and(|event| {
+                        hooks.input(event, Instant::now())
+                            == crate::host::HostInputDisposition::Consume
+                    }) {
+                        window.force_full_repaint.set(true);
+                        window.request_redraw();
+                        continue;
+                    }
+                }
                 window.window.dispatch_event(event);
             }
             // Input and queued callbacks can schedule zero-delay window-property
@@ -317,6 +383,17 @@ impl BridgePlatform {
                 ));
             }
             let now = Instant::now();
+            #[cfg(feature = "appos-host")]
+            if let Some(hooks) = &self.host_hooks {
+                if hooks.evaluate_idle(now) {
+                    window.force_full_repaint.set(true);
+                    window.request_redraw();
+                }
+                if crate::host::set_frame_policy(hooks.frame_policy()) {
+                    window.force_full_repaint.set(true);
+                    window.request_redraw();
+                }
+            }
             if window.visible.get()
                 && (window.dirty.get() || window.window.has_active_animations())
                 && self.framebuffer.borrow().can_render()
@@ -336,7 +413,9 @@ impl BridgePlatform {
                         .renderer
                         .set_repaint_buffer_type(RepaintBufferType::ReusedBuffer);
                 }
-                render?;
+                if render? {
+                    self.pending_frame_started.set(Some(now));
+                }
                 // Rendering can occupy the UI thread for a full frame. Return
                 // to input before starting framebuffer conversion/writeback.
                 // The prepared frame prevents another render until submission.
@@ -359,6 +438,12 @@ impl BridgePlatform {
             let animating = window.visible.get() && window.window.has_active_animations();
             let redraw_pending = window.visible.get() && window.dirty.get();
             let mut timeout = platform::duration_until_next_timer_update();
+            #[cfg(feature = "appos-host")]
+            if let Some(hooks) = &self.host_hooks
+                && let Some(idle_wait) = hooks.until_idle_deadline(Instant::now())
+            {
+                timeout = Some(timeout.map_or(idle_wait, |timer| timer.min(idle_wait)));
+            }
             if (animating || redraw_pending) && self.framebuffer.borrow().can_render() {
                 // One retained frame can be prepared while the worker owns
                 // both display pages. Further rendering waits for submission.
@@ -410,7 +495,11 @@ impl Platform for BridgePlatform {
                 "only one fullscreen root window is supported".to_string(),
             ));
         }
-        let window = BridgeWindow::new(self.size, self.rotation, self.wake.clone());
+        #[cfg(feature = "appos-host")]
+        let font_paths = self.font_paths.as_slice();
+        #[cfg(not(feature = "appos-host"))]
+        let font_paths = &[];
+        let window = BridgeWindow::new(self.size, self.rotation, self.wake.clone(), font_paths)?;
         ACTIVE_WINDOW.with(|active| *active.borrow_mut() = Rc::downgrade(&window));
         *self.window.borrow_mut() = Rc::downgrade(&window);
         window
