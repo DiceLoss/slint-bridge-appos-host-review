@@ -217,7 +217,6 @@ pub(crate) struct BridgePlatform {
     pub(crate) wake: Arc<WakeQueue>,
     frame_interval: Duration,
     timer_quantum: Duration,
-    created: Cell<bool>,
     running: Cell<bool>,
     pending_frame_started: Cell<Option<Instant>>,
     #[cfg(feature = "appos-host")]
@@ -263,7 +262,6 @@ impl BridgePlatform {
             wake,
             frame_interval: config.frame_interval,
             timer_quantum: Duration::ZERO,
-            created: Cell::new(false),
             running: Cell::new(false),
             pending_frame_started: Cell::new(None),
             #[cfg(feature = "appos-host")]
@@ -509,10 +507,13 @@ impl BridgePlatform {
 
 impl Platform for BridgePlatform {
     fn create_window_adapter(&self) -> Result<Rc<dyn WindowAdapter>, PlatformError> {
-        if self.created.replace(true) {
-            return Err(PlatformError::from(
-                "only one fullscreen root window is supported".to_string(),
-            ));
+        // AppOS owns exactly one physical fullscreen surface, but Activity
+        // transitions may construct the incoming Slint root before dropping
+        // the outgoing one.  Reuse the same adapter for those roots, matching
+        // the legacy AppOS platform: creating a second component must not be
+        // mistaken for creating a second display window.
+        if let Some(window) = self.window.borrow().upgrade() {
+            return Ok(window);
         }
         #[cfg(feature = "appos-host")]
         let font_paths = self.font_paths.as_slice();

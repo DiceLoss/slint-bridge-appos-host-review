@@ -85,6 +85,52 @@ fn appos_host_defers_font_registration_until_the_window_has_a_slint_context() {
     ui.hide().unwrap();
 }
 
+#[cfg(feature = "appos-host")]
+#[test]
+fn appos_host_reuses_one_adapter_across_sequential_activity_roots() {
+    const NAME: &str =
+        "tests::runtime::appos_host_reuses_one_adapter_across_sequential_activity_roots";
+    if std::env::var("SLINT_BRIDGE_TEST_CHILD").as_deref() != Ok(NAME) {
+        let run = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", NAME, "--nocapture"])
+            .env("SLINT_BRIDGE_TEST_CHILD", NAME)
+            .output()
+            .unwrap();
+        assert!(
+            run.status.success(),
+            "{}{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        return;
+    }
+
+    let target = surface_with_completion(8, 6, 32, 0, |_| Ok(()));
+    let platform = crate::runtime::BridgePlatform::with_host_inputs(
+        Config::default(),
+        target.fb,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        None,
+    );
+    slint::platform::set_platform(Box::new(platform)).unwrap();
+
+    let outgoing = LoopScene::new().unwrap();
+    outgoing.show().unwrap();
+    outgoing.hide().unwrap();
+    // Keep the outgoing component alive while constructing the incoming one;
+    // this is the Activity transition ordering used by AppOS.
+    let incoming = LoopScene::new().unwrap();
+    incoming.show().unwrap();
+
+    crate::runtime::run_until_first_presented_frame().unwrap();
+
+    assert!(incoming.window().is_visible());
+    incoming.hide().unwrap();
+    drop(outgoing);
+}
+
 fn send_input(writer: &mut File, events: &[(u16, u16, i32)]) {
     let records: Vec<libc::input_event> = events
         .iter()
