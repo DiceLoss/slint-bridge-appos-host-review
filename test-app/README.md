@@ -42,6 +42,7 @@ test-app/
 ```
 
 以下命令从仓库根目录执行。根目录不加 package 选择时默认只检查适配库；使用 `-p slint-bridge-test-app`、`--manifest-path test-app/Cargo.toml` 或进入本目录可单独选择测试工程，使用 `--workspace` 检查两者。
+Python 3.10 及更早版本先执行 `python3 -m pip install --requirement test-app/requirements-dev.txt`；Python 3.11 及以上直接使用标准库 TOML 解析器。
 
 ## 从最小例子看接入方法
 

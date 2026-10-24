@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Reject mixed or floating Slint source revisions in this workspace."""
 
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10 and older.
+    import tomli as tomllib
 from pathlib import Path
 
 
