@@ -118,21 +118,25 @@ fn appos_host_reuses_one_adapter_across_sequential_activity_roots() {
 
     let outgoing = LoopScene::new().unwrap();
     let outgoing_weak = outgoing.as_weak();
+    let adapter_before = crate::runtime::active_window_address().unwrap();
     outgoing.show().unwrap();
     outgoing.hide().unwrap();
-    // Keep the outgoing component alive while constructing the incoming one;
-    // this is the Activity transition ordering used by AppOS.
-    let incoming = LoopScene::new().unwrap();
-    incoming.show().unwrap();
-
-    crate::runtime::run_until_first_presented_frame().unwrap();
-
-    assert!(incoming.window().is_visible());
     drop(outgoing);
     assert!(
         outgoing_weak.upgrade().is_none(),
         "the reused adapter retained the hidden outgoing Activity root"
     );
+
+    // AppOS drops the outgoing Activity before constructing its successor.
+    // The physical adapter and renderer must nevertheless remain stable.
+    let incoming = LoopScene::new().unwrap();
+    let adapter_after = crate::runtime::active_window_address().unwrap();
+    assert_eq!(adapter_before, adapter_after);
+    incoming.show().unwrap();
+
+    crate::runtime::run_until_first_presented_frame().unwrap();
+
+    assert!(incoming.window().is_visible());
     incoming.hide().unwrap();
 }
 
