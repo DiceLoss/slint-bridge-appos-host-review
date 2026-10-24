@@ -49,6 +49,7 @@ pub(crate) fn request_full_redraw() {
 pub(crate) fn release_graphics_caches() {
     ACTIVE_WINDOW.with(|active| {
         if let Some(window) = active.borrow().upgrade() {
+            window.release_scene_cache();
             window.renderer.clear_font_caches();
             window.renderer.clear_image_caches();
             window.force_full_repaint.set(true);
@@ -134,6 +135,17 @@ impl BridgeWindow {
         self.window.dispatch_event(WindowEvent::Resized {
             size: self.size.to_logical(1.0),
         });
+    }
+
+    fn release_scene_cache(&self) {
+        let configured = self.renderer.repaint_buffer_type();
+        let temporary = if configured == RepaintBufferType::NewBuffer {
+            RepaintBufferType::ReusedBuffer
+        } else {
+            RepaintBufferType::NewBuffer
+        };
+        self.renderer.set_repaint_buffer_type(temporary);
+        self.renderer.set_repaint_buffer_type(configured);
     }
 }
 

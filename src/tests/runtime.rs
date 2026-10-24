@@ -117,6 +117,7 @@ fn appos_host_reuses_one_adapter_across_sequential_activity_roots() {
     slint::platform::set_platform(Box::new(platform)).unwrap();
 
     let outgoing = LoopScene::new().unwrap();
+    let outgoing_weak = outgoing.as_weak();
     outgoing.show().unwrap();
     outgoing.hide().unwrap();
     // Keep the outgoing component alive while constructing the incoming one;
@@ -127,8 +128,12 @@ fn appos_host_reuses_one_adapter_across_sequential_activity_roots() {
     crate::runtime::run_until_first_presented_frame().unwrap();
 
     assert!(incoming.window().is_visible());
-    incoming.hide().unwrap();
     drop(outgoing);
+    assert!(
+        outgoing_weak.upgrade().is_none(),
+        "the reused adapter retained the hidden outgoing Activity root"
+    );
+    incoming.hide().unwrap();
 }
 
 fn send_input(writer: &mut File, events: &[(u16, u16, i32)]) {
