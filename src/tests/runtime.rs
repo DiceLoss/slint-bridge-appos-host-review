@@ -44,6 +44,47 @@ fn appos_first_frame_gate_returns_only_after_completed_presentation() {
     ui.hide().unwrap();
 }
 
+#[cfg(feature = "appos-host")]
+#[test]
+fn appos_host_defers_font_registration_until_the_window_has_a_slint_context() {
+    const NAME: &str =
+        "tests::runtime::appos_host_defers_font_registration_until_the_window_has_a_slint_context";
+    if std::env::var("SLINT_BRIDGE_TEST_CHILD").as_deref() != Ok(NAME) {
+        let run = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", NAME, "--nocapture"])
+            .env("SLINT_BRIDGE_TEST_CHILD", NAME)
+            .output()
+            .unwrap();
+        assert!(
+            run.status.success(),
+            "{}{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        return;
+    }
+
+    let target = surface_with_completion(8, 6, 32, 0, |_| Ok(()));
+    let font = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("third-party/fonts/DejaVuSans.ttf");
+    let platform = crate::runtime::BridgePlatform::with_host_inputs(
+        Config::default(),
+        target.fb,
+        Vec::new(),
+        Vec::new(),
+        vec![font],
+        None,
+    );
+    slint::platform::set_platform(Box::new(platform)).unwrap();
+    let ui = LoopScene::new().unwrap();
+    ui.show().unwrap();
+
+    crate::runtime::run_until_first_presented_frame().unwrap();
+
+    assert!(ui.window().is_visible());
+    ui.hide().unwrap();
+}
+
 fn send_input(writer: &mut File, events: &[(u16, u16, i32)]) {
     let records: Vec<libc::input_event> = events
         .iter()

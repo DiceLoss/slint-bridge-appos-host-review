@@ -80,6 +80,8 @@ pub(crate) fn run_until_first_presented_frame() -> Result<(), slint::PlatformErr
 pub(crate) struct BridgeWindow {
     window: Window,
     renderer: SoftwareRenderer,
+    font_paths: Vec<std::path::PathBuf>,
+    fonts_loaded: Cell<bool>,
     size: PhysicalSize,
     visible: Cell<bool>,
     dirty: Cell<bool>,
@@ -99,14 +101,11 @@ impl BridgeWindow {
         let renderer =
             SoftwareRenderer::new_with_repaint_buffer_type(RepaintBufferType::ReusedBuffer);
         renderer.set_rendering_rotation(rotation.renderer());
-        for path in font_paths {
-            (&renderer as &dyn Renderer)
-                .register_font_from_path(path)
-                .map_err(|error| PlatformError::from(error.to_string()))?;
-        }
         Ok(Rc::new_cyclic(|weak: &Weak<Self>| Self {
             window: Window::new(weak.clone()),
             renderer,
+            font_paths: font_paths.to_vec(),
+            fonts_loaded: Cell::new(false),
             size,
             visible: Cell::new(false),
             dirty: Cell::new(true),
@@ -115,6 +114,20 @@ impl BridgeWindow {
             rolling_back_show: Cell::new(false),
             wake,
         }))
+    }
+
+    fn load_fonts_once(&self) {
+        if self.fonts_loaded.replace(true) {
+            return;
+        }
+        for path in &self.font_paths {
+            if let Err(error) = (&self.renderer as &dyn Renderer).register_font_from_path(path) {
+                eprintln!(
+                    "slint-bridge: cannot load host font {}: {error}",
+                    path.display()
+                );
+            }
+        }
     }
 
     fn resize(&self) {
@@ -342,6 +355,12 @@ impl BridgePlatform {
                 self.wait(platform::duration_until_next_timer_update())?;
                 continue;
             };
+            // Slint binds the renderer to its context only after the root
+            // component is associated with this WindowAdapter. Registering
+            // host fonts in `create_window_adapter()` is therefore too early
+            // and fails with "slint platform not initialized". The event loop
+            // starts after `show()`, so this remains before the first render.
+            window.load_fonts_once();
             for event in events.drain(..) {
                 #[cfg(feature = "appos-host")]
                 if let Some(hooks) = &self.host_hooks {
