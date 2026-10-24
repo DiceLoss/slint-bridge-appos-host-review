@@ -1,0 +1,50 @@
+From eb99482718a3ad8ddd7ad042090b21b79c697ca7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=8D=83=E5=A4=8F?= <qianxia@d-power.com.cn>
+Date: Sat, 24 Oct 2026 22:40:44 +0800
+Subject: [PATCH 4/4] test: support Python 3.8 feature matrix hosts
+
+---
+ test-app/README.md                   | 1 +
+ test-app/requirements-dev.txt        | 1 +
+ test-app/tools/check-slint-source.py | 5 ++++-
+ 3 files changed, 6 insertions(+), 1 deletion(-)
+ create mode 100644 test-app/requirements-dev.txt
+
+diff --git a/test-app/README.md b/test-app/README.md
+index 750a926..1ebed2a 100644
+--- a/test-app/README.md
++++ b/test-app/README.md
+@@ -42,6 +42,7 @@ test-app/
+ ```
+ 
+ 以下命令从仓库根目录执行。根目录不加 package 选择时默认只检查适配库；使用 `-p slint-bridge-test-app`、`--manifest-path test-app/Cargo.toml` 或进入本目录可单独选择测试工程，使用 `--workspace` 检查两者。
++Python 3.10 及更早版本先执行 `python3 -m pip install --requirement test-app/requirements-dev.txt`；Python 3.11 及以上直接使用标准库 TOML 解析器。
+ 
+ ## 从最小例子看接入方法
+ 
+diff --git a/test-app/requirements-dev.txt b/test-app/requirements-dev.txt
+new file mode 100644
+index 0000000..92f257d
+--- /dev/null
++++ b/test-app/requirements-dev.txt
+@@ -0,0 +1 @@
++tomli==2.5.0; python_version < "3.11"
+diff --git a/test-app/tools/check-slint-source.py b/test-app/tools/check-slint-source.py
+index c8235c4..4723060 100644
+--- a/test-app/tools/check-slint-source.py
++++ b/test-app/tools/check-slint-source.py
+@@ -1,7 +1,10 @@
+ #!/usr/bin/env python3
+ """Reject mixed or floating Slint source revisions in this workspace."""
+ 
+-import tomllib
++try:
++    import tomllib
++except ModuleNotFoundError:  # Python 3.10 and older.
++    import tomli as tomllib
+ from pathlib import Path
+ 
+ 
+-- 
+2.43.0
+

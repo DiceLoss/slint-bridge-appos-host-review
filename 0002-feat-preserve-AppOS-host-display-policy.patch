@@ -1,0 +1,513 @@
+From f650aa814a115ef0fd7132a57733938fc01dd731 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=8D=83=E5=A4=8F?= <qianxia@d-power.com.cn>
+Date: Sat, 24 Oct 2026 21:44:19 +0800
+Subject: [PATCH 2/4] feat: preserve AppOS host display policy
+
+---
+ README.md                 |   4 +
+ docs/software-platform.md |   2 +
+ src/framebuffer.rs        |  19 ++++-
+ src/host.rs               | 151 +++++++++++++++++++++++++++++++++++++-
+ src/lib.rs                |   3 +-
+ src/runtime.rs            | 127 +++++++++++++++++++++++++++-----
+ 6 files changed, 281 insertions(+), 25 deletions(-)
+
+diff --git a/README.md b/README.md
+index 9b546ef..68e3a64 100644
+--- a/README.md
++++ b/README.md
+@@ -82,6 +82,10 @@ slint_bridge::init_host(config)?;
+ Activity host 可用 `run_event_loop_until_first_presented_frame()` 在提交 `Resumed` 前等待首帧
+ 完成，用 `release_application_graphics_caches()` 响应 UI 回收，并通过受校验的
+ `set_video_surface_rect()` 设置框架拥有的视频透明矩形。以上接口不向数据态 APP 暴露。
++`HostConfig::hooks` 只把原生输入类别和已完成呈现时刻报告给 AppOS，并读取 AppOS 最终裁决的
++熄屏/亮度策略；Activity、屏保和资源策略仍属于 AppOS Shell。亮度仅在写入 scanout 时应用，
++不会反复修改 renderer 的 retained buffer；熄屏始终写入不透明黑色，避免下层视频泄露。
++`font_paths` 也由 host 明确传入，bridge 不扫描产品字体目录。
+ 
+ | Feature | 行为 |
+ | --- | --- |
+diff --git a/docs/software-platform.md b/docs/software-platform.md
+index c5d8d6c..468a923 100644
+--- a/docs/software-platform.md
++++ b/docs/software-platform.md
+@@ -369,6 +369,8 @@ DMA 槽容量保留到画布销毁。新源先按软件相同顺序准备预乘
+ 扫描、自动发现和重新打开设备在该模式不可用。首阶段采用单页 private staging-copy，
+ 一帧全部转换完成后才写可见页。首帧完成、完整重绘、renderer cache 回收和局部视频
+ alpha 由窄公开接口提供，Activity、资源和视频会话所有权仍属于 AppOS。
++AppOS 通过受限 `HostHooks` 保留输入唤醒、屏保、亮度与呈现诊断策略，bridge 只负责事件投递
++和最终 scanout 转换；产品字体路径也由 host 显式提供，bridge 不扫描产品文件系统。
+ 
+ 外部业务通过 [适配层 Git 仓库](https://github.com/omni-stack-gen/slint_bridge) 引用本库，Cargo 将依赖和 SDK 头文件放在 Git 缓存中，无需业务目录内的源码副本。本仓库 `test-app` 的 `path = ".."` 仅用于测试同一工作区的适配层改动，不是外部业务的接入要求。交叉编译器仍由业务工程自己的 Cargo 配置指定；完整独立配置见 [使用指南](getting-started.md#业务工程的交叉编译配置)。
+ 
+diff --git a/src/framebuffer.rs b/src/framebuffer.rs
+index c343a68..f1283db 100644
+--- a/src/framebuffer.rs
++++ b/src/framebuffer.rs
+@@ -295,6 +295,7 @@ impl Layout {
+             };
+             if self.channels.map(|c| (c.offset, c.length)) == [(16, 8), (8, 8), (0, 8), (24, 8)] {
+                 if self.alpha_max == 255
++                    && (!cfg!(feature = "appos-host") || crate::host::output_policy_is_identity())
+                     && source.len() >= 16
+                     && source.as_ptr().align_offset(4) == 0
+                 {
+@@ -319,7 +320,11 @@ impl Layout {
+                     }
+                 }
+                 for (word, pixel) in words.iter_mut().zip(source) {
+-                    let [r, g, b, a] = self.output_rgba(*pixel);
++                    #[cfg(feature = "appos-host")]
++                    let pixel = crate::host::transform_output_pixel(*pixel);
++                    #[cfg(not(feature = "appos-host"))]
++                    let pixel = *pixel;
++                    let [r, g, b, a] = self.output_rgba(pixel);
+                     *word = (u32::from(a) << 24)
+                         | (u32::from(r) << 16)
+                         | (u32::from(g) << 8)
+@@ -327,7 +332,11 @@ impl Layout {
+                 }
+             } else {
+                 for (word, pixel) in words.iter_mut().zip(source) {
+-                    *word = self.pixel(*pixel);
++                    #[cfg(feature = "appos-host")]
++                    let pixel = crate::host::transform_output_pixel(*pixel);
++                    #[cfg(not(feature = "appos-host"))]
++                    let pixel = *pixel;
++                    *word = self.pixel(pixel);
+                 }
+             }
+         } else {
+@@ -335,7 +344,11 @@ impl Layout {
+                 .chunks_exact_mut(self.bytes_per_pixel)
+                 .zip(source)
+             {
+-                let pixel = self.pixel(*pixel);
++                #[cfg(feature = "appos-host")]
++                let pixel = crate::host::transform_output_pixel(*pixel);
++                #[cfg(not(feature = "appos-host"))]
++                let pixel = *pixel;
++                let pixel = self.pixel(pixel);
+                 if self.bytes_per_pixel == 2 {
+                     bytes.copy_from_slice(&(pixel as u16).to_ne_bytes());
+                 } else {
+diff --git a/src/host.rs b/src/host.rs
+index 94b6106..3471729 100644
+--- a/src/host.rs
++++ b/src/host.rs
+@@ -11,8 +11,10 @@ use slint::platform::software_renderer::PremultipliedRgbaColor;
+ use slint::platform::{WindowEvent, set_platform};
+ use std::{
+     cell::Cell,
++    fmt,
+     os::fd::OwnedFd,
+     path::PathBuf,
++    sync::Arc,
+     time::{Duration, Instant},
+ };
+ 
+@@ -21,6 +23,91 @@ use crate::KeyBinding;
+ thread_local! {
+     static PANEL_SIZE: Cell<Option<slint::PhysicalSize>> = const { Cell::new(None) };
+     static VIDEO_SURFACE: Cell<Option<HostVideoSurfaceRect>> = const { Cell::new(None) };
++    static FRAME_POLICY: Cell<HostFramePolicy> = const { Cell::new(HostFramePolicy::DEFAULT) };
++}
++
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub enum HostInputEvent {
++    TouchPressed,
++    TouchReleased,
++    PointerMotion,
++    Key,
++}
++
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub enum HostInputDisposition {
++    Dispatch,
++    Consume,
++}
++
++/// Output policy applied while copying the retained Slint frame to scanout.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct HostFramePolicy {
++    pub blanked: bool,
++    pub luminance: u8,
++}
++
++impl HostFramePolicy {
++    pub const DEFAULT: Self = Self {
++        blanked: false,
++        luminance: u8::MAX,
++    };
++}
++
++impl Default for HostFramePolicy {
++    fn default() -> Self {
++        Self::DEFAULT
++    }
++}
++
++/// Narrow callbacks from the device-owning GUI backend to AppOS policy.
++/// Implementations must be bounded and must not re-enter Slint.
++pub trait HostHooks: Send + Sync {
++    fn input(&self, _event: HostInputEvent, _at: Instant) -> HostInputDisposition {
++        HostInputDisposition::Dispatch
++    }
++
++    fn evaluate_idle(&self, _now: Instant) -> bool {
++        false
++    }
++
++    fn until_idle_deadline(&self, _now: Instant) -> Option<Duration> {
++        None
++    }
++
++    fn frame_policy(&self) -> HostFramePolicy {
++        HostFramePolicy::DEFAULT
++    }
++
++    fn frame_presented(&self, _started_at: Instant, _presented_at: Instant) {}
++}
++
++pub(crate) fn set_frame_policy(policy: HostFramePolicy) -> bool {
++    FRAME_POLICY.with(|active| active.replace(policy) != policy)
++}
++
++pub(crate) fn output_policy_is_identity() -> bool {
++    FRAME_POLICY.with(|policy| policy.get() == HostFramePolicy::DEFAULT)
++}
++
++pub(crate) fn transform_output_pixel(mut pixel: PremultipliedRgbaColor) -> PremultipliedRgbaColor {
++    FRAME_POLICY.with(|policy| {
++        let policy = policy.get();
++        if policy.blanked {
++            return PremultipliedRgbaColor {
++                red: 0,
++                green: 0,
++                blue: 0,
++                alpha: u8::MAX,
++            };
++        }
++        let scale =
++            |channel: u8| ((u16::from(channel) * u16::from(policy.luminance) + 127) / 255) as u8;
++        pixel.red = scale(pixel.red);
++        pixel.green = scale(pixel.green);
++        pixel.blue = scale(pixel.blue);
++        pixel
++    })
+ }
+ 
+ /// Physical AppOS video viewport whose pixels remain transparent for the
+@@ -107,7 +194,6 @@ impl HostInputDevice {
+ ///
+ /// The expected dimensions come from the AppOS board requirement manifest and
+ /// bind the transferred descriptor to the selected product profile.
+-#[derive(Debug)]
+ pub struct HostConfig {
+     pub framebuffer: OwnedFd,
+     pub inputs: Vec<HostInputDevice>,
+@@ -115,6 +201,24 @@ pub struct HostConfig {
+     pub expected_height: u32,
+     pub rotation: Rotation,
+     pub frame_interval: Duration,
++    pub font_paths: Vec<PathBuf>,
++    pub hooks: Option<Arc<dyn HostHooks>>,
++}
++
++impl fmt::Debug for HostConfig {
++    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
++        formatter
++            .debug_struct("HostConfig")
++            .field("framebuffer", &self.framebuffer)
++            .field("inputs", &self.inputs)
++            .field("expected_width", &self.expected_width)
++            .field("expected_height", &self.expected_height)
++            .field("rotation", &self.rotation)
++            .field("frame_interval", &self.frame_interval)
++            .field("font_paths", &self.font_paths)
++            .field("hooks", &self.hooks.as_ref().map(|_| "installed"))
++            .finish()
++    }
+ }
+ 
+ impl HostConfig {
+@@ -126,6 +230,8 @@ impl HostConfig {
+             expected_height,
+             rotation: Rotation::None,
+             frame_interval: Duration::from_micros(16_667),
++            font_paths: Vec::new(),
++            hooks: None,
+         }
+     }
+ }
+@@ -206,9 +312,17 @@ pub fn init_host(config: HostConfig) -> Result<(), Error> {
+         background_storage: BackgroundStorage::Heap,
+         frame_interval: config.frame_interval,
+     };
+-    let platform = BridgePlatform::with_inputs(runtime_config, framebuffer, inputs, initial_events);
++    let platform = BridgePlatform::with_host_inputs(
++        runtime_config,
++        framebuffer,
++        inputs,
++        initial_events,
++        config.font_paths,
++        config.hooks,
++    );
+     PANEL_SIZE.with(|size| size.set(Some(panel)));
+     VIDEO_SURFACE.with(|surface| surface.set(None));
++    FRAME_POLICY.with(|policy| policy.set(HostFramePolicy::DEFAULT));
+     let installed = set_platform(Box::new(platform)).map_err(Error::Platform);
+     if installed.is_err() {
+         PANEL_SIZE.with(|size| size.set(None));
+@@ -358,4 +472,37 @@ mod tests {
+         VIDEO_SURFACE.with(|surface| surface.set(None));
+         PANEL_SIZE.with(|size| size.set(None));
+     }
++
++    #[test]
++    fn output_policy_dims_without_mutating_alpha_and_blank_is_opaque() {
++        set_frame_policy(HostFramePolicy {
++            blanked: false,
++            luminance: 128,
++        });
++        let dimmed = transform_output_pixel(PremultipliedRgbaColor {
++            red: 200,
++            green: 100,
++            blue: 50,
++            alpha: 220,
++        });
++        assert_eq!(
++            [dimmed.red, dimmed.green, dimmed.blue, dimmed.alpha],
++            [100, 50, 25, 220]
++        );
++        set_frame_policy(HostFramePolicy {
++            blanked: true,
++            luminance: 0,
++        });
++        let blank = transform_output_pixel(PremultipliedRgbaColor {
++            red: 200,
++            green: 100,
++            blue: 50,
++            alpha: 0,
++        });
++        assert_eq!(
++            [blank.red, blank.green, blank.blue, blank.alpha],
++            [0, 0, 0, 255]
++        );
++        set_frame_policy(HostFramePolicy::DEFAULT);
++    }
+ }
+diff --git a/src/lib.rs b/src/lib.rs
+index 6974e0f..cff4e9c 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -55,7 +55,8 @@ mod wake;
+ pub use geometry::Rotation;
+ #[cfg(feature = "appos-host")]
+ pub use host::{
+-    HostConfig, HostInputDevice, HostVideoSurfaceRect, init_host, set_video_surface_rect,
++    HostConfig, HostFramePolicy, HostHooks, HostInputDevice, HostInputDisposition, HostInputEvent,
++    HostVideoSurfaceRect, init_host, set_video_surface_rect,
+ };
+ pub use input::{InputDevice, KeyBinding};
+ 
+diff --git a/src/runtime.rs b/src/runtime.rs
+index dbfd3a9..eda204f 100644
+--- a/src/runtime.rs
++++ b/src/runtime.rs
+@@ -90,23 +90,31 @@ pub(crate) struct BridgeWindow {
+ }
+ 
+ impl BridgeWindow {
+-    fn new(size: PhysicalSize, rotation: Rotation, wake: Arc<WakeQueue>) -> Rc<Self> {
+-        Rc::new_cyclic(|weak: &Weak<Self>| {
+-            let renderer =
+-                SoftwareRenderer::new_with_repaint_buffer_type(RepaintBufferType::ReusedBuffer);
+-            renderer.set_rendering_rotation(rotation.renderer());
+-            Self {
+-                window: Window::new(weak.clone()),
+-                renderer,
+-                size,
+-                visible: Cell::new(false),
+-                dirty: Cell::new(true),
+-                force_full_repaint: Cell::new(false),
+-                incompatible_layout: Cell::new(false),
+-                rolling_back_show: Cell::new(false),
+-                wake,
+-            }
+-        })
++    fn new(
++        size: PhysicalSize,
++        rotation: Rotation,
++        wake: Arc<WakeQueue>,
++        font_paths: &[std::path::PathBuf],
++    ) -> Result<Rc<Self>, PlatformError> {
++        let renderer =
++            SoftwareRenderer::new_with_repaint_buffer_type(RepaintBufferType::ReusedBuffer);
++        renderer.set_rendering_rotation(rotation.renderer());
++        for path in font_paths {
++            (&renderer as &dyn Renderer)
++                .register_font_from_path(path)
++                .map_err(|error| PlatformError::from(error.to_string()))?;
++        }
++        Ok(Rc::new_cyclic(|weak: &Weak<Self>| Self {
++            window: Window::new(weak.clone()),
++            renderer,
++            size,
++            visible: Cell::new(false),
++            dirty: Cell::new(true),
++            force_full_repaint: Cell::new(false),
++            incompatible_layout: Cell::new(false),
++            rolling_back_show: Cell::new(false),
++            wake,
++        }))
+     }
+ 
+     fn resize(&self) {
+@@ -198,6 +206,11 @@ pub(crate) struct BridgePlatform {
+     timer_quantum: Duration,
+     created: Cell<bool>,
+     running: Cell<bool>,
++    pending_frame_started: Cell<Option<Instant>>,
++    #[cfg(feature = "appos-host")]
++    host_hooks: Option<Arc<dyn crate::host::HostHooks>>,
++    #[cfg(feature = "appos-host")]
++    font_paths: Vec<std::path::PathBuf>,
+ }
+ 
+ impl BridgePlatform {
+@@ -239,9 +252,29 @@ impl BridgePlatform {
+             timer_quantum: Duration::ZERO,
+             created: Cell::new(false),
+             running: Cell::new(false),
++            pending_frame_started: Cell::new(None),
++            #[cfg(feature = "appos-host")]
++            host_hooks: None,
++            #[cfg(feature = "appos-host")]
++            font_paths: Vec::new(),
+         }
+     }
+ 
++    #[cfg(feature = "appos-host")]
++    pub(crate) fn with_host_inputs(
++        config: Config,
++        framebuffer: Framebuffer,
++        inputs: Vec<Evdev>,
++        initial_events: Vec<WindowEvent>,
++        font_paths: Vec<std::path::PathBuf>,
++        hooks: Option<Arc<dyn crate::host::HostHooks>>,
++    ) -> Self {
++        let mut platform = Self::with_inputs(config, framebuffer, inputs, initial_events);
++        platform.host_hooks = hooks;
++        platform.font_paths = font_paths;
++        platform
++    }
++
+     fn run(&self) -> Result<(), Error> {
+         let result = self.run_frames();
+         // A quit or input/render error must still drain the submitted page.
+@@ -272,6 +305,13 @@ impl BridgePlatform {
+         loop {
+             self.wake.drain_signal()?;
+             let presented = self.framebuffer.borrow_mut().poll_presented()?;
++            #[cfg(feature = "appos-host")]
++            if presented
++                && let Some(started_at) = self.pending_frame_started.take()
++                && let Some(hooks) = &self.host_hooks
++            {
++                hooks.frame_presented(started_at, Instant::now());
++            }
+             if presented
+                 && FIRST_FRAME_ONLY.with(Cell::get)
+                 && FIRST_FRAME_SUBMITTED.with(Cell::get)
+@@ -303,6 +343,32 @@ impl BridgePlatform {
+                 continue;
+             };
+             for event in events.drain(..) {
++                #[cfg(feature = "appos-host")]
++                if let Some(hooks) = &self.host_hooks {
++                    let host_event = match &event {
++                        WindowEvent::PointerPressed { .. } => {
++                            Some(crate::host::HostInputEvent::TouchPressed)
++                        }
++                        WindowEvent::PointerReleased { .. } => {
++                            Some(crate::host::HostInputEvent::TouchReleased)
++                        }
++                        WindowEvent::PointerMoved { .. } => {
++                            Some(crate::host::HostInputEvent::PointerMotion)
++                        }
++                        WindowEvent::KeyPressed { .. } | WindowEvent::KeyReleased { .. } => {
++                            Some(crate::host::HostInputEvent::Key)
++                        }
++                        _ => None,
++                    };
++                    if host_event.is_some_and(|event| {
++                        hooks.input(event, Instant::now())
++                            == crate::host::HostInputDisposition::Consume
++                    }) {
++                        window.force_full_repaint.set(true);
++                        window.request_redraw();
++                        continue;
++                    }
++                }
+                 window.window.dispatch_event(event);
+             }
+             // Input and queued callbacks can schedule zero-delay window-property
+@@ -317,6 +383,17 @@ impl BridgePlatform {
+                 ));
+             }
+             let now = Instant::now();
++            #[cfg(feature = "appos-host")]
++            if let Some(hooks) = &self.host_hooks {
++                if hooks.evaluate_idle(now) {
++                    window.force_full_repaint.set(true);
++                    window.request_redraw();
++                }
++                if crate::host::set_frame_policy(hooks.frame_policy()) {
++                    window.force_full_repaint.set(true);
++                    window.request_redraw();
++                }
++            }
+             if window.visible.get()
+                 && (window.dirty.get() || window.window.has_active_animations())
+                 && self.framebuffer.borrow().can_render()
+@@ -336,7 +413,9 @@ impl BridgePlatform {
+                         .renderer
+                         .set_repaint_buffer_type(RepaintBufferType::ReusedBuffer);
+                 }
+-                render?;
++                if render? {
++                    self.pending_frame_started.set(Some(now));
++                }
+                 // Rendering can occupy the UI thread for a full frame. Return
+                 // to input before starting framebuffer conversion/writeback.
+                 // The prepared frame prevents another render until submission.
+@@ -359,6 +438,12 @@ impl BridgePlatform {
+             let animating = window.visible.get() && window.window.has_active_animations();
+             let redraw_pending = window.visible.get() && window.dirty.get();
+             let mut timeout = platform::duration_until_next_timer_update();
++            #[cfg(feature = "appos-host")]
++            if let Some(hooks) = &self.host_hooks
++                && let Some(idle_wait) = hooks.until_idle_deadline(Instant::now())
++            {
++                timeout = Some(timeout.map_or(idle_wait, |timer| timer.min(idle_wait)));
++            }
+             if (animating || redraw_pending) && self.framebuffer.borrow().can_render() {
+                 // One retained frame can be prepared while the worker owns
+                 // both display pages. Further rendering waits for submission.
+@@ -410,7 +495,11 @@ impl Platform for BridgePlatform {
+                 "only one fullscreen root window is supported".to_string(),
+             ));
+         }
+-        let window = BridgeWindow::new(self.size, self.rotation, self.wake.clone());
++        #[cfg(feature = "appos-host")]
++        let font_paths = self.font_paths.as_slice();
++        #[cfg(not(feature = "appos-host"))]
++        let font_paths = &[];
++        let window = BridgeWindow::new(self.size, self.rotation, self.wake.clone(), font_paths)?;
+         ACTIVE_WINDOW.with(|active| *active.borrow_mut() = Rc::downgrade(&window));
+         *self.window.borrow_mut() = Rc::downgrade(&window);
+         window
+-- 
+2.43.0
+

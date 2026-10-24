@@ -1,0 +1,30 @@
+From df0b459c6b8995498c4edbcc43453754bab52083 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=8D=83=E5=A4=8F?= <qianxia@d-power.com.cn>
+Date: Sat, 24 Oct 2026 22:07:41 +0800
+Subject: [PATCH 3/4] fix: keep host policy out of non-host feature builds
+
+---
+ src/framebuffer.rs | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/framebuffer.rs b/src/framebuffer.rs
+index f1283db..b7e98cd 100644
+--- a/src/framebuffer.rs
++++ b/src/framebuffer.rs
+@@ -294,8 +294,12 @@ impl Layout {
+                 std::slice::from_raw_parts_mut(destination.as_mut_ptr().cast::<u32>(), source.len())
+             };
+             if self.channels.map(|c| (c.offset, c.length)) == [(16, 8), (8, 8), (0, 8), (24, 8)] {
++                #[cfg(feature = "appos-host")]
++                let output_policy_is_identity = crate::host::output_policy_is_identity();
++                #[cfg(not(feature = "appos-host"))]
++                let output_policy_is_identity = true;
+                 if self.alpha_max == 255
+-                    && (!cfg!(feature = "appos-host") || crate::host::output_policy_is_identity())
++                    && output_policy_is_identity
+                     && source.len() >= 16
+                     && source.as_ptr().align_offset(4) == 0
+                 {
+-- 
+2.43.0
+
