@@ -9,6 +9,7 @@ description = "Standalone usage examples and device validation for slint-bridge"
 
 [features]
 default = []
+appos-host = ["slint-bridge/appos-host"]
 fbdev = ["slint-bridge/fbdev"]
 nx1 = ["slint-bridge/nx1"]
 f1 = ["slint-bridge/f1"]
@@ -21,16 +22,16 @@ showcase-preview = ["slint/mcp", "dep:i-slint-backend-testing"]
 
 [dependencies]
 slint-bridge = { path = "..", default-features = false }
-slint = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
+slint = { version = "=1.18.1", git = "https://github.com/omni-stack-gen/slint-swash.git", rev = "c40f989729248185546753d4f5b70b22ed08164e", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
 # Decode the Fluent widgets' embedded SVG icons without a desktop backend.
-i-slint-core = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["image-decoders", "svg"] }
+i-slint-core = { version = "=1.18.1", git = "https://github.com/omni-stack-gen/slint-swash.git", rev = "c40f989729248185546753d4f5b70b22ed08164e", default-features = false, features = ["image-decoders", "svg"] }
 libloading = { version = "0.8.9", optional = true }
 libc = "0.2.190"
-i-slint-backend-testing = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", optional = true, features = ["renderer-software"] }
+i-slint-backend-testing = { version = "=1.18.1", git = "https://github.com/omni-stack-gen/slint-swash.git", rev = "c40f989729248185546753d4f5b70b22ed08164e", optional = true, features = ["renderer-software"] }
 
 [build-dependencies]
 image = { version = "0.25.10", default-features = false, features = ["png"] }
-slint-build = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git" }
+slint-build = { version = "=1.18.1", git = "https://github.com/omni-stack-gen/slint-swash.git", rev = "c40f989729248185546753d4f5b70b22ed08164e" }
 
 [[bin]]
 name = "display"

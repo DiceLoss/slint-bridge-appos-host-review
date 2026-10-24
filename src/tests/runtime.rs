@@ -1,5 +1,49 @@
 use super::*;
 
+#[cfg(feature = "appos-host")]
+#[test]
+fn appos_first_frame_gate_returns_only_after_completed_presentation() {
+    const NAME: &str =
+        "tests::runtime::appos_first_frame_gate_returns_only_after_completed_presentation";
+    if std::env::var("SLINT_BRIDGE_TEST_CHILD").as_deref() != Ok(NAME) {
+        let run = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", NAME, "--nocapture"])
+            .env("SLINT_BRIDGE_TEST_CHILD", NAME)
+            .output()
+            .unwrap();
+        assert!(
+            run.status.success(),
+            "{}{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        return;
+    }
+
+    let (completed, completion) = mpsc::sync_channel(1);
+    let target = surface_with_completion(8, 6, 32, 0, move |_| {
+        completed.send(()).unwrap();
+        Ok(())
+    });
+    let commits = target.commits.clone();
+    let platform = crate::runtime::BridgePlatform::with_inputs(
+        Config::default(),
+        target.fb,
+        Vec::new(),
+        Vec::new(),
+    );
+    slint::platform::set_platform(Box::new(platform)).unwrap();
+    let ui = LoopScene::new().unwrap();
+    ui.show().unwrap();
+
+    crate::runtime::run_until_first_presented_frame().unwrap();
+
+    completion.recv_timeout(Duration::from_secs(1)).unwrap();
+    assert_eq!(commits.lock().unwrap().len(), 1);
+    assert!(ui.window().is_visible());
+    ui.hide().unwrap();
+}
+
 fn send_input(writer: &mut File, events: &[(u16, u16, i32)]) {
     let records: Vec<libc::input_event> = events
         .iter()

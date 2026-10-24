@@ -81,6 +81,7 @@ pub(crate) fn require(backend: Backend) -> Result<Admission, Error> {
     Err(Error::DisplayNotAdmitted {
         backend,
         reason: match backend {
+            Backend::AppOsHost => "this build does not include the AppOS host integration target",
             Backend::Nx1 => "this build does not include the NX1 integration target",
             Backend::Nx5 => "this build does not include the NX5 display implementation",
             Backend::Fbdev => "no framebuffer driver has a reviewed tear-free completion contract",

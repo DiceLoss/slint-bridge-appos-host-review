@@ -32,6 +32,7 @@ ARM `nx5-tde` 默认使用仓库内头文件，不需要设置 `NX5_SDK_INCLUDE`
 
 | feature | 用途 |
 | --- | --- |
+| `appos-host` | AppOS host 接收 launcher 已准入并转移的 FD；只用于集成和主机合同测试 |
 | `fbdev` | X9 当前已验证的纯 CPU framebuffer 路径 |
 | `nx1` | NX1 纯 CPU framebuffer 与明确选择的参考 PAN 约定 |
 | `nx5` | NX5 显示会话及软件渲染 |
@@ -39,7 +40,7 @@ ARM `nx5-tde` 默认使用仓库内头文件，不需要设置 `NX5_SDK_INCLUDE`
 | `nx5-mma-background` | 包含 `nx5-tde`；通过 Config 显式选择 MMA 背景 |
 | `f1` / `f1-g2d` | F1 参考 PAN/VSYNC；后者包含 GE 填充与受限图片混合 |
 
-`fbdev`、`nx1`、`nx5`、`f1` 两两互斥，不使用 `--all-features`。
+`appos-host`、`fbdev`、`nx1`、`nx5`、`f1` 两两互斥，不使用 `--all-features`。
 NX1 的完整构建和 `/mnt` 部署命令见 [设备说明](../test-app/devices/nx1/README.md)；
 F1 的 RISC-V 构建及 SD 卡部署见 [设备说明](../test-app/devices/f1/README.md)。
 两板的参考翻页约定不代表旧页硬件退休已被证明。先运行主机检查：
@@ -109,7 +110,7 @@ NX5 测试部署使用 [归档和上传工具](../test-app/tools/nx5/README.md#�
 
 ## 更新 Slint 与锁文件
 
-Slint 源码修改须先在配套远端发布，再更新适配库依赖：
+Slint 源码修改须先在公开配套远端发布，再把所有 Slint 依赖更新到同一精确 revision：
 
 ```sh
 cargo update -p slint

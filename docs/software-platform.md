@@ -352,7 +352,7 @@ DMA 槽容量保留到画布销毁。新源先按软件相同顺序准备预乘�
 不接触硬件。基线与优化结果分别见 [初始 showcase](f1-showcase.md) 和
 [F1 性能优化](f1-optimization.md)，构建及设备操作见 [设备说明](../test-app/devices/f1/README.md)。
 
-两个 package 均要求 Linux、Rust 1.92 或更新版本，默认 features 为空，必须显式选择 `fbdev`、`nx1`、`nx5` 或 `f1`，四种板级 feature 两两互斥；`nx5-tde` 包含 `nx5`，`nx5-mma-background` 包含 `nx5-tde` 并自动启用 Slint 外部像素 feature。`nx5-test-hooks` 只用于诊断，不用于正式常驻构建。根 workspace 的默认成员只有库；检查测试工程使用 `-p slint-bridge-test-app`，检查两者使用 `--workspace`。
+两个 package 均要求 Linux、Rust 1.92 或更新版本，默认 features 为空，必须显式选择 `appos-host`、`fbdev`、`nx1`、`nx5` 或 `f1`，五种后端 feature 两两互斥；`nx5-tde` 包含 `nx5`，`nx5-mma-background` 包含 `nx5-tde` 并自动启用 Slint 外部像素 feature。`nx5-test-hooks` 只用于诊断，不用于正式常驻构建。根 workspace 的默认成员只有库；检查测试工程使用 `-p slint-bridge-test-app`，检查两者使用 `--workspace`。
 
 设备选择由消费应用负责，按以下范围解释默认值：
 
@@ -364,15 +364,21 @@ DMA 槽容量保留到画布销毁。新源先按软件相同顺序准备预乘�
 
 业务默认设备属于业务工程，不改变适配库或测试工程的默认值。`slint-bridge/nx5` 是 Cargo 的依赖 feature 转发语法，不是文件路径；只定义转发项不会启用它，必须通过应用 `default` 或 `--features` 选择。没有选板时的编译错误表示 feature 未启用，不表示 Git 源码未下载。ARM target 选择工具链和 ABI，不替代板级 feature；设备路径和旋转属于运行时 `Config`。
 
+`appos-host` 是受信 OS host 边界，不是新增板型。它只接受 launcher 转移的 framebuffer
+和 evdev `OwnedFd`，以 AppOS board requirement 的宽高/旋转再次校验 ioctl 结果；路径
+扫描、自动发现和重新打开设备在该模式不可用。首阶段采用单页 private staging-copy，
+一帧全部转换完成后才写可见页。首帧完成、完整重绘、renderer cache 回收和局部视频
+alpha 由窄公开接口提供，Activity、资源和视频会话所有权仍属于 AppOS。
+
 外部业务通过 [适配层 Git 仓库](https://github.com/omni-stack-gen/slint_bridge) 引用本库，Cargo 将依赖和 SDK 头文件放在 Git 缓存中，无需业务目录内的源码副本。本仓库 `test-app` 的 `path = ".."` 仅用于测试同一工作区的适配层改动，不是外部业务的接入要求。交叉编译器仍由业务工程自己的 Cargo 配置指定；完整独立配置见 [使用指南](getting-started.md#业务工程的交叉编译配置)。
 
-Slint 使用用户指定的 Git 仓库 [Slint 源码仓库](http://192.168.253.238/wshl/slint-last.git)，依赖清单不设置 `rev` 或 tag，跟随仓库默认分支。NX5、NX1、X9 与 F1 统一使用同一来源，保留缓存身份、外部像素等现有扩展，不按设备另分 Slint 补丁版本。依赖关闭默认桌面后端，启用 `std`、`renderer-software` 和 `compat-1-18`。所有板级路径都启用同源软件 renderer 的 `experimental` 目标缓冲接口，以使用适配层的公共 CPU 纹理处理。`nx5-tde` 的 ARM 构建额外编译使用仓库内 `third-party/nx5/include/` SDK 头文件的 C 接口，运行时复用已加载的 SDK 会话。
+Slint 使用公开的 [Slint 源码仓库](https://github.com/omni-stack-gen/slint-swash)，运行库、renderer、测试内部 crate 与 `slint-build` 在清单中固定同一受审 revision。NX5、NX1、X9、F1 与 AppOS host 统一使用这一来源，保留缓存身份、外部像素等现有扩展，不按设备另分 Slint 补丁版本。依赖关闭默认桌面后端，启用 `std`、`renderer-software` 和 `compat-1-18`。所有板级路径都启用同源软件 renderer 的 `experimental` 目标缓冲接口，以使用适配层的公共 CPU 纹理处理。`nx5-tde` 的 ARM 构建额外编译使用仓库内 `third-party/nx5/include/` SDK 头文件的 C 接口，运行时复用已加载的 SDK 会话。
 
 NX5 的构建默认头文件、观察器链接所需动态库，以及各设备部署用 DejaVu 字体均纳入 [third-party/](../third-party/README.md)，保留来源、版权说明和 SHA256。`NX5_SDK_INCLUDE` 可覆盖默认头文件目录；构建脚本按 package 根目录定位资源，消费方无需设置原开发机器的路径。运行时仍通过 `libVideoDec.so` 和设备动态库搜索路径加载 SDK，不绑定主机资源目录。交叉工具链和 sysroot 仍需按设备配置安装，Rust/Cargo 依赖仍按锁文件获取。
 
 `fontique` 固定到 Slint 当前使用的 0.11.1，并启用 `fontconfig-dlopen`，避免 ARM 构建依赖主机的 Fontconfig 链接配置。没有系统字体库的设备仍需由应用提供字体，例如设置 `SLINT_DEFAULT_FONT` 或在 `.slint` 中导入字体资源。
 
-运行库、软件 renderer、测试所用内部 crate 与 `slint-build` 均引用同一个 Git 地址。`Cargo.lock` 自动记录本次解析的 Git 提交，以支持 `--locked` 和离线复现；这不是依赖清单中的 `rev` 固定。首次构建前联网执行 `cargo fetch --locked`；需要跟进远端更新时执行 `cargo update -p slint`，核对所有 Slint crate 仍来自同一提交后提交更新的锁文件。现有 `=1.18.1` 版本约束仍保留，升级 Slint 版本号时需同步调整相关依赖。
+运行库、软件 renderer、测试所用内部 crate 与 `slint-build` 均引用同一个 Git 地址和 revision。`Cargo.lock` 记录相同提交，以支持 `--locked` 和离线复现。首次构建前联网执行 `cargo fetch --locked`；需要跟进远端更新时先发布受审提交，再同时更新所有清单引用和锁文件。现有 `=1.18.1` 版本约束仍保留，升级 Slint 版本号时需同步调整相关依赖。
 
 后续升级 Slint 时按功能迁移现有补丁；先检查新版是否已有等价实现，再应用仍需要的补丁，保留独立提交以便追踪。早期纹理优化的增量范围为 `95becfd3d6bc2e840df4956b4004bfef936bfe95..c878901fb9793efc3d515aee37225cbad57de40d`，该范围不代表相对官方 Slint 的全部定制差异。升级验收包括主机 feature 矩阵、缓存/旋转/纹理像素回归、受影响设备的 ARM / RISC-V 交叉构建，以及受影响路径的实机画面、功能和性能对照；补丁应用成功或编译通过不能替代验证。
 
@@ -419,7 +425,7 @@ flowchart LR
 
 原生 [check-native.sh](../test-app/tools/nx5/tde/check-native.sh) 用主机替身 SDK 验证无版本库名在不同目录下的搜索、`RTLD_NOLOAD` 会话复用及引用释放，同时检查 TDE 故障处理与像素转换边界；不代表新源码已部署或通过实机验证。
 
-[test-app/tools/check-feature-matrix.py](../test-app/tools/check-feature-matrix.py) 对 `fbdev`、`nx1`、`nx5`、`nx5-tde`、`nx5-mma-background`、`nx5-test-hooks`、`f1`、`f1-g2d` 八种组合分别执行 workspace 测试，确认未选板级、冲突组合编译失败，并检查库的 `fbdev` 普通依赖树没有桌面或 GPU 后端。脚本将结果输出到标准输出，不自动写入 `evidence/`。
+[test-app/tools/check-feature-matrix.py](../test-app/tools/check-feature-matrix.py) 对 `appos-host`、`fbdev`、`nx1`、`nx5`、`nx5-tde`、`nx5-mma-background`、`nx5-test-hooks`、`f1`、`f1-g2d` 九种组合执行测试，确认未选后端、冲突组合编译失败，并检查库的 `fbdev` 普通依赖树没有桌面或 GPU 后端。`appos-host` 只测试库接口，因为它要求 launcher 转移真实 FD，不是独立 test-app 的设备选择。脚本将结果输出到标准输出，不自动写入 `evidence/`。
 
 2026-10-12，`bccf6b9` 阶段记录的测试分布如下。此后的队列延迟修复为各板级 feature 新增 3 项库内主机回归；当前计数以执行结果为准：
 

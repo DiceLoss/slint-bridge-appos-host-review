@@ -41,12 +41,12 @@ slint_bridge/
 
 ## 接入库
 
-适配代码集中在本仓库；NX5 SDK 所需头文件、动态库及部署字体保存在 [third-party/](third-party/README.md)，构建脚本默认使用仓库内资源。当前从 [Slint 仓库](http://192.168.253.238/wshl/slint-last.git) 获取同源 Slint / 软件 renderer，依赖清单不指定提交哈希；该源码包含所需扩展，不能只凭相同版本号替换为另一个来源。首次构建前联网执行 `cargo fetch --locked`，之后可使用文档中的离线构建命令。
+适配代码集中在本仓库；NX5 SDK 所需头文件、动态库及部署字体保存在 [third-party/](third-party/README.md)，构建脚本默认使用仓库内资源。当前从公开的 [Slint 仓库](https://github.com/omni-stack-gen/slint-swash) 获取同源 Slint / 软件 renderer，并在清单与锁文件中固定同一精确 revision；该源码包含所需扩展，不能只凭相同版本号替换为另一个来源。首次构建前联网执行 `cargo fetch --locked`，之后可使用文档中的离线构建命令。
 
 ```toml
 [dependencies]
 slint-bridge = { git = "ssh://git@github.com/omni-stack-gen/slint_bridge.git", default-features = false, features = ["nx5-tde"] }
-slint = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
+slint = { version = "=1.18.1", git = "https://github.com/omni-stack-gen/slint-swash.git", rev = "<与 slint-bridge Cargo.toml 相同的受审 revision>", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
 ```
 
 上例直接为业务应用启用 NX5 TDE，不需要将适配层源码放入业务目录，也不需要再定义应用 feature 转发。X9 将依赖的 `features` 改为 `["fbdev"]`；需要同一应用切换设备时使用 [业务模板](docs/getting-started.md#在自己的-rust-应用中接入)。本仓库的库和 `test-app` 默认均不选板，运行仓库构建命令时必须显式传 `--features`，具体分层规则见 [平台说明](docs/software-platform.md#构建依赖)。
@@ -66,8 +66,26 @@ slint_bridge::init(Config {
 不固定 event 编号时，可将触摸配置替换为 `InputDevice::auto_touchscreen()`；
 它在启动时选择唯一支持的触摸屏。候选歧义、旧驱动兼容和手动路径规则见[输入说明](docs/software-platform.md#统一-api)。
 
+AppOS 集成不使用上述路径接口。可信 launcher 先按 board profile 准入并打开设备，再把
+`OwnedFd` 转给 `HostConfig`；`init_host()` 消费所有权，拒绝后和退出时都关闭描述符。
+host 模式不扫描 `/dev/input`，也不会按路径重新打开 framebuffer。当前首阶段只接受
+`yoffset=0` 的完整单页映射，并把私有 staging frame 完整复制到可见页：
+
+```rust,no_run
+use slint_bridge::{HostConfig, HostInputDevice};
+
+let mut config = HostConfig::single_page(framebuffer_fd, 1024, 600);
+config.inputs.push(HostInputDevice::touchscreen(touch_fd));
+slint_bridge::init_host(config)?;
+```
+
+Activity host 可用 `run_event_loop_until_first_presented_frame()` 在提交 `Resumed` 前等待首帧
+完成，用 `release_application_graphics_caches()` 响应 UI 回收，并通过受校验的
+`set_video_surface_rect()` 设置框架拥有的视频透明矩形。以上接口不向数据态 APP 暴露。
+
 | Feature | 行为 |
 | --- | --- |
+| `appos-host` | AppOS launcher 转移已准入的 framebuffer/input FD；单页 staged-copy，不扫描或重开设备路径 |
 | `fbdev` | 纯 CPU framebuffer；当前接入 X9 Lombo #452 板级完成契约 |
 | `nx1` | NX1 ARM32；纯 CPU 渲染，采用已明确选择的参考 PAN 双页约定 |
 | `f1` / `f1-g2d` | F1 RISC-V；使用参考 PAN + WAITFORVSYNC，后者包含 GE 填充与受限图片混合 |
@@ -75,7 +93,7 @@ slint_bridge::init(Config {
 | `nx5-mma-background` | 包含 `nx5-tde` 与同源 Slint 外部像素支持；运行时由 Config 选择背景存储 |
 | `nx5-tde` | 包含 `nx5`，加速大块 RGBA 复制和透明混合；另有 QuickFill 诊断开关 |
 
-必须选择一个板级 feature；`fbdev`、`nx1`、`nx5` 与 `f1` 两两互斥。NX5 按 SDK/驱动接口和双页布局运行，不比对内核版本、驱动名称或文件摘要；`fbdev` 仅准入已验证的 X9 Lombo 固件与布局，其他 framebuffer 仍拒绝。NX1 和 F1 按用户明确选定的参考翻页约定运行，适用固件及验证限制分别见 [NX1 设备说明](test-app/devices/nx1/README.md) 和 [F1 设备说明](test-app/devices/f1/README.md)。SDK 目录由系统动态库搜索路径决定，见 [平台说明](docs/software-platform.md#准入边界)。
+必须选择一个后端 feature；`appos-host`、`fbdev`、`nx1`、`nx5` 与 `f1` 两两互斥。`appos-host` 只供可信 AppOS host 集成，独立业务程序应继续选择具体板级后端。NX5 按 SDK/驱动接口和双页布局运行，不比对内核版本、驱动名称或文件摘要；`fbdev` 仅准入已验证的 X9 Lombo 固件与布局，其他 framebuffer 仍拒绝。NX1 和 F1 按用户明确选定的参考翻页约定运行，适用固件及验证限制分别见 [NX1 设备说明](test-app/devices/nx1/README.md) 和 [F1 设备说明](test-app/devices/f1/README.md)。SDK 目录由系统动态库搜索路径决定，见 [平台说明](docs/software-platform.md#准入边界)。
 
 `Config::background_storage` 默认为 `BackgroundStorage::Heap`。需要 MMA 时设为 `Mma`，在 `init(config.clone())` 后、首次绘制前通过 `config.prepare_background(image)` 准备图像；其他设备显式选择 MMA 会被拒绝。见 [背景接入与限制](test-app/devices/nx5/mma-background/README.md)。
 

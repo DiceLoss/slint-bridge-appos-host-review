@@ -1,6 +1,6 @@
 //! A single fullscreen Slint platform for embedded Linux.
 //!
-//! Select exactly one board feature (`fbdev`, `nx1`, `nx5` or `f1`).
+//! Select exactly one board feature (`appos-host`, `fbdev`, `nx1`, `nx5` or `f1`).
 //! `nx5-tde` implies `nx5`. NX1 uses the inspected firmware's reference PAN
 //! convention, whose internal wait errors are not exposed to userspace.
 //! NX5 supports the current firmware's blocking double-buffered presentation.
@@ -10,12 +10,22 @@
 
 #[cfg(not(target_os = "linux"))]
 compile_error!("slint-bridge currently supports Linux only");
-#[cfg(not(any(feature = "fbdev", feature = "nx1", feature = "nx5", feature = "f1")))]
+#[cfg(not(any(
+    feature = "appos-host",
+    feature = "fbdev",
+    feature = "nx1",
+    feature = "nx5",
+    feature = "f1"
+)))]
 compile_error!(
-    "select one board feature: fbdev, nx1, nx5 or f1 (nx5-tde implies nx5). \
+    "select one board feature: appos-host, fbdev, nx1, nx5 or f1 (nx5-tde implies nx5). \
      Enable it in the slint-bridge dependency's features, or select an application feature that forwards to it."
 );
 #[cfg(any(
+    all(
+        feature = "appos-host",
+        any(feature = "fbdev", feature = "nx1", feature = "nx5", feature = "f1")
+    ),
     all(feature = "fbdev", feature = "nx5"),
     all(feature = "f1", feature = "nx5"),
     all(feature = "f1", feature = "fbdev"),
@@ -24,12 +34,14 @@ compile_error!(
         any(feature = "fbdev", feature = "nx5", feature = "f1")
     )
 ))]
-compile_error!("fbdev, nx1, nx5 and f1 are mutually exclusive board features");
+compile_error!("appos-host, fbdev, nx1, nx5 and f1 are mutually exclusive board features");
 
 mod backends;
 mod event_wait;
 mod framebuffer;
 mod geometry;
+#[cfg(feature = "appos-host")]
+mod host;
 mod input;
 mod presentation;
 mod runtime;
@@ -41,6 +53,10 @@ mod texture_renderer;
 mod wake;
 
 pub use geometry::Rotation;
+#[cfg(feature = "appos-host")]
+pub use host::{
+    HostConfig, HostInputDevice, HostVideoSurfaceRect, init_host, set_video_surface_rect,
+};
 pub use input::{InputDevice, KeyBinding};
 
 use std::{fmt, io, path::PathBuf, time::Duration};
@@ -48,6 +64,8 @@ use std::{fmt, io, path::PathBuf, time::Duration};
 /// Compile-time board selection. This is not a statement of hardware admission.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Backend {
+    /// AppOS-owned resources transferred by a trusted launcher.
+    AppOsHost,
     Fbdev,
     /// NX1 / sun8i, using the explicitly selected reference PAN convention.
     Nx1,
@@ -58,7 +76,9 @@ pub enum Backend {
 
 /// The board selected by Cargo features.
 pub const fn selected_backend() -> Backend {
-    if cfg!(feature = "nx5") {
+    if cfg!(feature = "appos-host") {
+        Backend::AppOsHost
+    } else if cfg!(feature = "nx5") {
         Backend::Nx5
     } else if cfg!(feature = "f1") {
         Backend::F1
@@ -281,6 +301,27 @@ pub fn init(config: Config) -> Result<(), Error> {
     }
     let platform = runtime::BridgePlatform::new(config, framebuffer, admitted.timer_quantum)?;
     slint::platform::set_platform(Box::new(platform)).map_err(Error::Platform)
+}
+
+/// Run the event loop until the first framebuffer presentation completes.
+///
+/// AppOS uses this gate before committing an Activity to `Resumed`.
+#[cfg(feature = "appos-host")]
+pub fn run_event_loop_until_first_presented_frame() -> Result<(), slint::PlatformError> {
+    runtime::run_until_first_presented_frame()
+}
+
+/// Request a redraw after AppOS-owned composition state changes outside Slint.
+#[cfg(feature = "appos-host")]
+pub fn request_redraw() {
+    runtime::request_redraw();
+}
+
+/// Release renderer-owned application caches and schedule a complete repaint.
+/// This must be called on the UI thread.
+#[cfg(feature = "appos-host")]
+pub fn release_application_graphics_caches() {
+    runtime::release_graphics_caches();
 }
 
 #[cfg(test)]

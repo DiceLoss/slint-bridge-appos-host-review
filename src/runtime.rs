@@ -20,12 +20,70 @@ use std::{
     time::{Duration, Instant},
 };
 
+thread_local! {
+    static ACTIVE_WINDOW: RefCell<Weak<BridgeWindow>> = const { RefCell::new(Weak::new()) };
+    static FIRST_FRAME_ONLY: Cell<bool> = const { Cell::new(false) };
+    static FIRST_FRAME_SUBMITTED: Cell<bool> = const { Cell::new(false) };
+}
+
+#[cfg(feature = "appos-host")]
+pub(crate) fn request_redraw() {
+    ACTIVE_WINDOW.with(|active| {
+        if let Some(window) = active.borrow().upgrade() {
+            window.request_redraw();
+        }
+    });
+}
+
+#[cfg(feature = "appos-host")]
+pub(crate) fn request_full_redraw() {
+    ACTIVE_WINDOW.with(|active| {
+        if let Some(window) = active.borrow().upgrade() {
+            window.force_full_repaint.set(true);
+            window.request_redraw();
+        }
+    });
+}
+
+#[cfg(feature = "appos-host")]
+pub(crate) fn release_graphics_caches() {
+    ACTIVE_WINDOW.with(|active| {
+        if let Some(window) = active.borrow().upgrade() {
+            window.renderer.clear_font_caches();
+            window.renderer.clear_image_caches();
+            window.force_full_repaint.set(true);
+            window.request_redraw();
+        }
+    });
+}
+
+#[cfg(feature = "appos-host")]
+pub(crate) fn run_until_first_presented_frame() -> Result<(), slint::PlatformError> {
+    let already_active = FIRST_FRAME_ONLY.with(|mode| mode.replace(true));
+    if already_active {
+        return Err(slint::PlatformError::Other(
+            "first-frame event loop is already active".into(),
+        ));
+    }
+    FIRST_FRAME_SUBMITTED.with(|submitted| submitted.set(false));
+    struct Reset;
+    impl Drop for Reset {
+        fn drop(&mut self) {
+            FIRST_FRAME_ONLY.with(|mode| mode.set(false));
+            FIRST_FRAME_SUBMITTED.with(|submitted| submitted.set(false));
+        }
+    }
+    let _reset = Reset;
+    slint::run_event_loop()
+}
+
 pub(crate) struct BridgeWindow {
     window: Window,
     renderer: SoftwareRenderer,
     size: PhysicalSize,
     visible: Cell<bool>,
     dirty: Cell<bool>,
+    force_full_repaint: Cell<bool>,
     incompatible_layout: Cell<bool>,
     rolling_back_show: Cell<bool>,
     wake: Arc<WakeQueue>,
@@ -43,6 +101,7 @@ impl BridgeWindow {
                 size,
                 visible: Cell::new(false),
                 dirty: Cell::new(true),
+                force_full_repaint: Cell::new(false),
                 incompatible_layout: Cell::new(false),
                 rolling_back_show: Cell::new(false),
                 wake,
@@ -212,7 +271,13 @@ impl BridgePlatform {
         let mut events = std::mem::take(&mut *self.initial_events.borrow_mut());
         loop {
             self.wake.drain_signal()?;
-            self.framebuffer.borrow_mut().poll_present()?;
+            let presented = self.framebuffer.borrow_mut().poll_presented()?;
+            if presented
+                && FIRST_FRAME_ONLY.with(Cell::get)
+                && FIRST_FRAME_SUBMITTED.with(Cell::get)
+            {
+                return Ok(());
+            }
             if self.wake.quit_requested() {
                 return Ok(());
             }
@@ -259,16 +324,32 @@ impl BridgePlatform {
             {
                 window.dirty.set(false);
                 next_frame = now + self.frame_interval;
-                self.framebuffer.borrow_mut().render(&window.renderer)?;
+                let full_repaint = window.force_full_repaint.replace(false);
+                if full_repaint {
+                    window
+                        .renderer
+                        .set_repaint_buffer_type(RepaintBufferType::NewBuffer);
+                }
+                let render = self.framebuffer.borrow_mut().render(&window.renderer);
+                if full_repaint {
+                    window
+                        .renderer
+                        .set_repaint_buffer_type(RepaintBufferType::ReusedBuffer);
+                }
+                render?;
                 // Rendering can occupy the UI thread for a full frame. Return
                 // to input before starting framebuffer conversion/writeback.
                 // The prepared frame prevents another render until submission.
                 continue;
             }
             if window.visible.get() && self.framebuffer.borrow().ready_to_present() {
-                self.framebuffer
+                let submitted = self
+                    .framebuffer
                     .borrow_mut()
                     .present(Some(Duration::from_millis(1)))?;
+                if submitted && FIRST_FRAME_ONLY.with(Cell::get) {
+                    FIRST_FRAME_SUBMITTED.with(|first| first.set(true));
+                }
                 if self.framebuffer.borrow().ready_to_present() {
                     // A partially copied page is not submitted. Process input
                     // before the next slice, without sleeping or re-rendering.
@@ -330,6 +411,7 @@ impl Platform for BridgePlatform {
             ));
         }
         let window = BridgeWindow::new(self.size, self.rotation, self.wake.clone());
+        ACTIVE_WINDOW.with(|active| *active.borrow_mut() = Rc::downgrade(&window));
         *self.window.borrow_mut() = Rc::downgrade(&window);
         window
             .window

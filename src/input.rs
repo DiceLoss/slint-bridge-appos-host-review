@@ -11,6 +11,9 @@ use std::{
     path::PathBuf,
 };
 
+#[cfg(feature = "appos-host")]
+use std::os::fd::OwnedFd;
+
 /// An evdev key code and the Slint character or special key it emits.
 #[derive(Debug, Clone)]
 pub struct KeyBinding {
@@ -401,6 +404,45 @@ impl Evdev {
             .custom_flags(libc::O_NONBLOCK | libc::O_CLOEXEC)
             .open(path)
             .map_err(|e| Error::io("open evdev input", e))?;
+        Self::from_file(file, touch, bindings, panel, rotation)
+    }
+
+    #[cfg(feature = "appos-host")]
+    pub(crate) fn from_owned_fd(
+        descriptor: OwnedFd,
+        touch: bool,
+        bindings: &[KeyBinding],
+        panel: PhysicalSize,
+        rotation: Rotation,
+    ) -> Result<Self, Error> {
+        let file = File::from(descriptor);
+        let fd = file.as_raw_fd();
+        let flags = unsafe { libc::fcntl(fd, libc::F_GETFL) };
+        if flags < 0 || unsafe { libc::fcntl(fd, libc::F_SETFL, flags | libc::O_NONBLOCK) } < 0 {
+            return Err(Error::io(
+                "make inherited evdev input nonblocking",
+                io::Error::last_os_error(),
+            ));
+        }
+        let descriptor_flags = unsafe { libc::fcntl(fd, libc::F_GETFD) };
+        if descriptor_flags < 0
+            || unsafe { libc::fcntl(fd, libc::F_SETFD, descriptor_flags | libc::FD_CLOEXEC) } < 0
+        {
+            return Err(Error::io(
+                "make inherited evdev input close-on-exec",
+                io::Error::last_os_error(),
+            ));
+        }
+        Self::from_file(file, touch, bindings, panel, rotation)
+    }
+
+    fn from_file(
+        file: File,
+        touch: bool,
+        bindings: &[KeyBinding],
+        panel: PhysicalSize,
+        rotation: Rotation,
+    ) -> Result<Self, Error> {
         let type_a = if touch {
             let mut bits = [0u8; 8];
             // EVIOCGBIT(EV_ABS, 8). Unsupported EVIOCGABS can return a zero

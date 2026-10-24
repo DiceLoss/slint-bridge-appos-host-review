@@ -60,6 +60,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 `config_from_args()` 是测试工程的辅助函数，最终产生库的普通 `Config`。业务工程也可以直接构造 `Config`，不依赖本测试工程。
 
+AppOS host 不使用本例的路径参数。其 launcher 先完成 board/profile 准入，再调用
+`HostConfig::single_page()` 和 `HostInputDevice` 转移已打开的 `OwnedFd`。因此 feature
+matrix 只对 `slint-bridge` 库执行 `appos-host` 合同测试，不把 test-app 路径发现伪装成
+OS host 集成。
+
 也可先安装平台并投递创建/显示窗口的任务，再调用 `slint::run_event_loop()`；窗口尚未创建时任务和定时器仍可执行。首次显示因布局约束失败会回滚可见状态，修正同一组件后可以重试。运行行为与回归范围见 [窗口创建与显示失败](../docs/software-platform.md#窗口创建与显示失败)。
 
 选择设备由编译期 feature 决定；运行时路径由参数决定：
@@ -80,6 +85,7 @@ F1 showcase 在 `init()` 前通过 `slint_bridge::try_decode_png` 尝试加载�
 
 | 项目 | 选择方式 |
 | --- | --- |
+| AppOS host 合同测试 | `--features appos-host` 仅测试库；实际 FD 由 AppOS launcher 转移 |
 | X9 软件渲染与 DRM 完成事件 | `--features fbdev` |
 | NX1 软件渲染与参考 PAN | `--features nx1` |
 | F1 参考 PAN/VSYNC | `--features f1`（软件）或 `--features f1-g2d`（含 GE 加速） |
@@ -91,7 +97,7 @@ F1 showcase 在 `init()` 前通过 `slint_bridge::try_decode_png` 尝试加载�
 | 触摸设备 | `--touch=auto` 启动识别唯一支持的触摸屏；或 `--touch=/dev/input/event0` 手动指定；默认不开启输入设备 |
 | Slint MCP | 构建加 `slint/mcp`，并按 [MCP 指南](../docs/slint-mcp.md) 设置环境变量 |
 
-本库和测试工程的 `default = []`，必须在构建命令中选择一个板级 feature；`fbdev`、`nx1`、`nx5`、`f1` 两两互斥。业务模板中的默认 NX5 TDE 仅属于该业务应用，不会改变本测试工程。NX5 使用板级阻塞翻页契约，不比对固定内核版本、驱动名称或文件摘要；`fbdev` 在真实设备运行时仍会拒绝未验证的提交契约。NX1/F1 的明确参考约定不放宽其他设备的检查。
+本库和测试工程的 `default = []`，必须在构建命令中选择一个后端 feature；`appos-host`、`fbdev`、`nx1`、`nx5`、`f1` 两两互斥。`appos-host` 不是独立测试程序的设备配置；它由 AppOS host 通过 `init_host()` 消费转移的 FD。业务模板中的默认 NX5 TDE 仅属于该业务应用，不会改变本测试工程。NX5 使用板级阻塞翻页契约，不比对固定内核版本、驱动名称或文件摘要；`fbdev` 在真实设备运行时仍会拒绝未验证的提交契约。NX1/F1 的明确参考约定不放宽其他设备的检查。
 
 ## 用例与预期
 

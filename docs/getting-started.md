@@ -24,13 +24,13 @@ NX5 与 NX1 共用 Rust target 名称，但工具链分别位于 `/opt/X5`、`/o
 | 仓库 | 地址 | 用途 |
 | --- | --- | --- |
 | 适配层 | [slint_bridge](https://github.com/omni-stack-gen/slint_bridge) | Rust 适配库、测试应用、设备工具、NX5 SDK 资源和字体 |
-| Slint | [slint-last](http://192.168.253.238/wshl/slint-last.git) | 与适配层配套的 Slint 运行库、软件 renderer 和构建工具 |
+| Slint | [slint-swash](https://github.com/omni-stack-gen/slint-swash) | 与适配层配套的 Slint 运行库、软件 renderer 和构建工具 |
 
-适配层仓库使用 GitHub SSH 地址 `git@github.com:omni-stack-gen/slint_bridge.git`，开发机需配置具有仓库访问权限的 SSH 密钥。Slint 依赖仍位于 `192.168.253.238`，首次获取或更新依赖仍需内网连通性及对应 Git 凭据；本次迁移不改变 Slint 来源。不要把密码、私钥或令牌写入仓库。可用下面的只读命令分别检查访问权限：
+适配层仓库使用 GitHub SSH 地址 `git@github.com:omni-stack-gen/slint_bridge.git`。Slint 使用公开 GitHub 仓库并固定受审 revision，不依赖旧内网源码服务。不要把密码、私钥或令牌写入仓库。可用下面的只读命令分别检查访问权限：
 
 ```sh
 git ls-remote git@github.com:omni-stack-gen/slint_bridge.git HEAD
-git ls-remote http://192.168.253.238/wshl/slint-last.git HEAD
+git ls-remote https://github.com/omni-stack-gen/slint-swash.git HEAD
 ```
 
 ## 准备开发环境
@@ -89,7 +89,7 @@ CARGO_NET_GIT_FETCH_WITH_CLI=true cargo fetch --locked
 
 ## 在自己的 Rust 应用中接入
 
-业务工程直接声明两个 Git 依赖；Cargo 将源码下载到自己的 Git 缓存，不要求业务目录中存在 `slint-bridge/`，也不需要 `path` 依赖。下面的应用默认选择 NX5 TDE；NX1、X9、F1 构建时关闭默认 feature，再选择对应板级 feature。所有 Slint 包使用同一 Git 地址，不设置提交哈希。
+业务工程直接声明两个 Git 依赖；Cargo 将源码下载到自己的 Git 缓存，不要求业务目录中存在 `slint-bridge/`，也不需要 `path` 依赖。下面的应用默认选择 NX5 TDE；NX1、X9、F1 构建时关闭默认 feature，再选择对应板级 feature。所有 Slint 包使用同一 Git 地址和受审 revision。
 
 ### Cargo.toml
 
@@ -111,10 +111,10 @@ f1-g2d = ["f1", "slint-bridge/f1-g2d"]
 
 [dependencies]
 slint-bridge = { git = "ssh://git@github.com/omni-stack-gen/slint_bridge.git", default-features = false }
-slint = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
+slint = { version = "=1.18.1", git = "https://github.com/omni-stack-gen/slint-swash.git", rev = "<与 slint-bridge Cargo.toml 相同的受审 revision>", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
 
 [build-dependencies]
-slint-build = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git" }
+slint-build = { version = "=1.18.1", git = "https://github.com/omni-stack-gen/slint-swash.git", rev = "<与 slint-bridge Cargo.toml 相同的受审 revision>" }
 
 [profile.release]
 lto = "thin"

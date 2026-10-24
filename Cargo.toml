@@ -14,6 +14,7 @@ description = "Slint platform support for embedded Linux with explicit display a
 [features]
 default = []
 fbdev = []
+appos-host = []
 nx1 = []
 f1 = ["dep:crc32fast"]
 f1-g2d = ["f1"]
@@ -30,8 +31,8 @@ libloading = { version = "0.8.9", optional = true }
 # build-host fontconfig into ARM binaries. Missing system fonts can be registered
 # explicitly by the application via SLINT_DEFAULT_FONT or .slint font imports.
 fontique = { version = "=0.11.1", default-features = false, features = ["fontconfig-dlopen"] }
-slint = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
-i-slint-renderer-software = { version = "=1.18.1", git = "http://192.168.253.238/wshl/slint-last.git", default-features = false, features = ["std", "experimental"] }
+slint = { version = "=1.18.1", git = "https://github.com/omni-stack-gen/slint-swash.git", rev = "c40f989729248185546753d4f5b70b22ed08164e", default-features = false, features = ["std", "renderer-software", "compat-1-18"] }
+i-slint-renderer-software = { version = "=1.18.1", git = "https://github.com/omni-stack-gen/slint-swash.git", rev = "c40f989729248185546753d4f5b70b22ed08164e", default-features = false, features = ["std", "experimental"] }
 
 [build-dependencies]
 cc = { version = "1.2", optional = true }

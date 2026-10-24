@@ -12,13 +12,28 @@ def cargo(*args):
 
 
 def main():
+    source_check = subprocess.run(
+        ["python3", str(ROOT / "test-app" / "tools" / "check-slint-source.py")],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+    )
+    if source_check.returncode:
+        raise SystemExit(source_check.stdout + source_check.stderr)
     results = {}
-    for feature in ("fbdev", "nx1", "nx5", "nx5-tde", "nx5-mma-background", "nx5-test-hooks", "f1", "f1-g2d"):
-        run = cargo("test", "--workspace", "--offline", "--locked", "--no-default-features", "--features", feature, "-j", "4")
+    results["slint_source"] = source_check.stdout.strip()
+    for feature in ("appos-host", "fbdev", "nx1", "nx5", "nx5-tde", "nx5-mma-background", "nx5-test-hooks", "f1", "f1-g2d"):
+        scope = ("-p", "slint-bridge") if feature == "appos-host" else ("--workspace",)
+        run = cargo("test", *scope, "--offline", "--locked", "--no-default-features", "--features", feature, "-j", "4")
         if run.returncode:
             raise SystemExit(run.stdout + run.stderr)
         results[feature] = "tests passed"
-    for feature, expected in ((None, "select one board feature"), ("fbdev,nx5", "mutually exclusive"),
+    for feature, expected in ((None, "select one board feature"),
+                              ("appos-host,fbdev", "mutually exclusive"),
+                              ("appos-host,nx1", "mutually exclusive"),
+                              ("appos-host,nx5", "mutually exclusive"),
+                              ("appos-host,f1", "mutually exclusive"),
+                              ("fbdev,nx5", "mutually exclusive"),
                               ("fbdev,nx5-tde", "mutually exclusive"),
                               ("fbdev,nx5-mma-background", "mutually exclusive"),
                               ("f1,fbdev", "mutually exclusive"),

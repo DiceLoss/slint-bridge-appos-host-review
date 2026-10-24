@@ -16,6 +16,9 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[cfg(feature = "appos-host")]
+use std::os::fd::OwnedFd;
+
 // Rounded straight-alpha output without per-channel division. The native
 // conversion borrows the same table; exhaustive tests compare with division.
 pub(crate) static ALPHA_RECIPROCALS: [u32; 256] = {
@@ -115,6 +118,7 @@ pub(crate) struct Layout {
     pub stride: usize,
     pub page_bytes: usize,
     pub initial_page: usize,
+    pub page_count: usize,
     // Board scanout alpha range; independent of the fbdev channel bit width.
     pub alpha_max: u8,
     bytes_per_pixel: usize,
@@ -122,8 +126,23 @@ pub(crate) struct Layout {
 }
 
 impl Layout {
+    #[cfg(any(test, not(feature = "appos-host")))]
     pub(crate) fn new(f: &FixedInfo, v: &VariableInfo) -> Result<Self, Error> {
+        Self::with_page_count(f, v, 2)
+    }
+
+    #[cfg(feature = "appos-host")]
+    pub(crate) fn single_page(f: &FixedInfo, v: &VariableInfo) -> Result<Self, Error> {
+        Self::with_page_count(f, v, 1)
+    }
+
+    fn with_page_count(f: &FixedInfo, v: &VariableInfo, page_count: usize) -> Result<Self, Error> {
         let unsupported = Error::UnsupportedFramebuffer;
+        if !matches!(page_count, 1 | 2) {
+            return Err(unsupported(
+                "only one or two presentation pages are supported",
+            ));
+        }
         if f.kind != 0 || f.visual != 2 || v.grayscale != 0 || v.nonstd != 0 {
             return Err(unsupported("only packed true-color pixels are supported"));
         }
@@ -171,26 +190,35 @@ impl Layout {
             .checked_mul(v.yres as usize)
             .ok_or(unsupported("page size overflow"))?;
         let mapping_size = page_bytes
-            .checked_mul(2)
+            .checked_mul(page_count)
             .ok_or(unsupported("mapping size overflow"))?;
         if mapping_size > isize::MAX as usize {
             return Err(unsupported("mapping exceeds addressable slice size"));
         }
         if stride < v.xres as usize * bytes_per_pixel
             || v.xres_virtual < v.xres
-            || v.yres_virtual < v.yres * 2
+            || v.yres_virtual < v.yres.saturating_mul(page_count as u32)
             || (f.smem_len as usize) < mapping_size
-            || !matches!(v.yoffset, 0) && v.yoffset != v.yres
+            || if page_count == 1 {
+                v.yoffset != 0
+            } else {
+                !matches!(v.yoffset, 0) && v.yoffset != v.yres
+            }
         {
             return Err(unsupported(
-                "two complete pages with a valid stride and front page are required",
+                "the requested complete presentation pages, stride, and front page are required",
             ));
         }
         Ok(Self {
             size: PhysicalSize::new(v.xres, v.yres),
             stride,
             page_bytes,
-            initial_page: (v.yoffset / v.yres) as usize,
+            initial_page: if page_count == 1 {
+                0
+            } else {
+                (v.yoffset / v.yres) as usize
+            },
+            page_count,
             alpha_max: 255,
             bytes_per_pixel,
             channels,
@@ -203,6 +231,7 @@ impl Layout {
             && self.stride == other.stride
             && self.bytes_per_pixel == other.bytes_per_pixel
             && self.channels == other.channels
+            && self.page_count == other.page_count
     }
 
     fn pixel(self, pixel: PremultipliedRgbaColor) -> u32 {
@@ -462,6 +491,7 @@ mod row_tests {
                 stride: 160,
                 page_bytes: 160,
                 initial_page: 0,
+                page_count: 2,
                 alpha_max: 255,
                 bytes_per_pixel,
                 channels: fields.map(|(offset, length)| Bitfield {
@@ -622,6 +652,14 @@ struct Writeback {
 }
 
 impl Framebuffer {
+    fn back_page(&self) -> usize {
+        if self.layout.page_count == 1 {
+            0
+        } else {
+            1 - self.front
+        }
+    }
+
     #[cfg(feature = "nx5-mma-background")]
     pub(crate) fn enable_mma_background(&self) -> Result<(), Error> {
         self.retained.enable_mma_background()
@@ -633,6 +671,18 @@ impl Framebuffer {
             .write(true)
             .open(path)
             .map_err(|e| Error::io("open framebuffer", e))?;
+        Self::open_file(file, contract)
+    }
+
+    #[cfg(feature = "appos-host")]
+    pub(crate) fn from_owned_fd(
+        descriptor: OwnedFd,
+        contract: PresentationContract,
+    ) -> Result<Self, Error> {
+        Self::open_file(File::from(descriptor), contract)
+    }
+
+    fn open_file(file: File, contract: PresentationContract) -> Result<Self, Error> {
         // Advisory exclusion for cooperating users; board admission additionally
         // requires exclusive ownership of the actual display hardware.
         crate::backends::lock_exclusive(file.as_fd(), "lock framebuffer")?;
@@ -656,7 +706,7 @@ impl Framebuffer {
         layout: Layout,
         contract: PresentationContract,
     ) -> Result<Self, Error> {
-        let mapping = Mapping::new(&file, layout.page_bytes * 2)?;
+        let mapping = Mapping::new(&file, layout.page_bytes * layout.page_count)?;
         let presentation = Presentation::new(
             file.try_clone()
                 .map_err(|e| Error::io("duplicate framebuffer for presentation", e))?,
@@ -719,6 +769,9 @@ impl Framebuffer {
         let damage = self.retained.render(renderer)?;
         #[cfg(all(feature = "f1-g2d", not(feature = "nx5-tde")))]
         let damage = self.retained.render(renderer)?;
+        #[cfg(feature = "appos-host")]
+        let video_damage =
+            crate::host::apply_video_surface(&mut self.retained, self.layout.size.width as usize);
         let mut current = std::mem::take(&mut self.unsubmitted_damage);
         current.extend(damage.iter().filter_map(|(origin, size)| {
             let rect = Rect {
@@ -731,6 +784,15 @@ impl Framebuffer {
             };
             (rect.x0 < rect.x1 && rect.y0 < rect.y1).then_some(rect)
         }));
+        #[cfg(feature = "appos-host")]
+        if let Some((origin, size)) = video_damage {
+            current.push(Rect {
+                x0: origin.x as usize,
+                y0: origin.y as usize,
+                x1: origin.x as usize + size.width as usize,
+                y1: origin.y as usize + size.height as usize,
+            });
+        }
         let changed = !current.is_empty();
         self.prepared_damage = Some(current);
         Ok(changed)
@@ -745,7 +807,7 @@ impl Framebuffer {
             fence(Ordering::SeqCst);
             // The unsubmitted back page contains only part of this frame.
             // Reinitialize it on the next write and carry damage to the other page.
-            self.initialized[1 - self.front] = false;
+            self.initialized[self.back_page()] = false;
             self.unsubmitted_damage.extend(writeback.damage);
             return true;
         }
@@ -768,28 +830,35 @@ impl Framebuffer {
     }
 
     pub(crate) fn poll_present(&mut self) -> Result<(), Error> {
+        self.poll_presented().map(|_| ())
+    }
+
+    pub(crate) fn poll_presented(&mut self) -> Result<bool, Error> {
         self.complete_present(false)
     }
 
     pub(crate) fn wait_for_present(&mut self) -> Result<(), Error> {
-        self.complete_present(true)
+        self.complete_present(true).map(|_| ())
     }
 
-    fn complete_present(&mut self, wait: bool) -> Result<(), Error> {
-        if self.presentation.complete(wait)? {
-            self.front = 1 - self.front;
+    fn complete_present(&mut self, wait: bool) -> Result<bool, Error> {
+        let completed = self.presentation.complete(wait)?;
+        if completed {
+            self.front = self.back_page();
             self.initialized[self.front] = true;
             self.previous_damage = self.pending_damage.take().expect("submitted damage");
         }
-        Ok(())
+        Ok(completed)
     }
 
     pub(crate) fn present(&mut self, budget: Option<Duration>) -> Result<bool, Error> {
         // Drawing touches only the retained canvas. Both physical pages stay
         // untouched until the preceding blocking submission has completed.
         self.wait_for_present()?;
-        let deadline = budget.map(|budget| Instant::now() + budget);
-        let back = 1 - self.front;
+        let deadline = (self.layout.page_count > 1)
+            .then(|| budget.map(|budget| Instant::now() + budget))
+            .flatten();
+        let back = self.back_page();
         if self.writeback.is_none() {
             let Some(current) = self.prepared_damage.take() else {
                 return Ok(false);
