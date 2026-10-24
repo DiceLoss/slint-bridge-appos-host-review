@@ -294,8 +294,12 @@ impl Layout {
                 std::slice::from_raw_parts_mut(destination.as_mut_ptr().cast::<u32>(), source.len())
             };
             if self.channels.map(|c| (c.offset, c.length)) == [(16, 8), (8, 8), (0, 8), (24, 8)] {
+                #[cfg(feature = "appos-host")]
+                let output_policy_is_identity = crate::host::output_policy_is_identity();
+                #[cfg(not(feature = "appos-host"))]
+                let output_policy_is_identity = true;
                 if self.alpha_max == 255
-                    && (!cfg!(feature = "appos-host") || crate::host::output_policy_is_identity())
+                    && output_policy_is_identity
                     && source.len() >= 16
                     && source.as_ptr().align_offset(4) == 0
                 {
