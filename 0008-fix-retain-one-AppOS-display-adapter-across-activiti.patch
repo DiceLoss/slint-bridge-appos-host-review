@@ -1,0 +1,124 @@
+From 60a0e1e7ed9754d3d504099aadd0f43870fdc4fb Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=8D=83=E5=A4=8F?= <qianxia@d-power.com.cn>
+Date: Sun, 25 Oct 2026 03:30:17 +0800
+Subject: [PATCH 8/8] fix: retain one AppOS display adapter across activities
+
+---
+ src/runtime.rs       | 28 +++++++++++++++++++++++++++-
+ src/tests/runtime.rs | 18 +++++++++++-------
+ 2 files changed, 38 insertions(+), 8 deletions(-)
+
+diff --git a/src/runtime.rs b/src/runtime.rs
+index e37ed51..586e462 100644
+--- a/src/runtime.rs
++++ b/src/runtime.rs
+@@ -26,6 +26,16 @@ thread_local! {
+     static FIRST_FRAME_SUBMITTED: Cell<bool> = const { Cell::new(false) };
+ }
+ 
++#[cfg(test)]
++pub(crate) fn active_window_address() -> Option<usize> {
++    ACTIVE_WINDOW.with(|active| {
++        active
++            .borrow()
++            .upgrade()
++            .map(|window| Rc::as_ptr(&window) as usize)
++    })
++}
++
+ #[cfg(feature = "appos-host")]
+ pub(crate) fn request_redraw() {
+     ACTIVE_WINDOW.with(|active| {
+@@ -219,7 +229,6 @@ impl WindowAdapter for BridgeWindow {
+ }
+ 
+ pub(crate) struct BridgePlatform {
+-    // Window owns a Slint context, which owns this platform: keep this edge weak.
+     window: RefCell<Weak<BridgeWindow>>,
+     size: PhysicalSize,
+     rotation: Rotation,
+@@ -235,6 +244,10 @@ pub(crate) struct BridgePlatform {
+     host_hooks: Option<Arc<dyn crate::host::HostHooks>>,
+     #[cfg(feature = "appos-host")]
+     font_paths: Vec<std::path::PathBuf>,
++    #[cfg(feature = "appos-host")]
++    retain_window_across_roots: Cell<bool>,
++    #[cfg(feature = "appos-host")]
++    retained_window: RefCell<Option<Rc<BridgeWindow>>>,
+ }
+ 
+ impl BridgePlatform {
+@@ -280,6 +293,10 @@ impl BridgePlatform {
+             host_hooks: None,
+             #[cfg(feature = "appos-host")]
+             font_paths: Vec::new(),
++            #[cfg(feature = "appos-host")]
++            retain_window_across_roots: Cell::new(false),
++            #[cfg(feature = "appos-host")]
++            retained_window: RefCell::new(None),
+         }
+     }
+ 
+@@ -295,6 +312,11 @@ impl BridgePlatform {
+         let mut platform = Self::with_inputs(config, framebuffer, inputs, initial_events);
+         platform.host_hooks = hooks;
+         platform.font_paths = font_paths;
++        // AppOS owns one physical fullscreen adapter for the process. Its
++        // Activity model deliberately drops every component between roots;
++        // retaining the adapter here prevents renderer recreation while the
++        // generic bridge lifecycle continues releasing resources normally.
++        platform.retain_window_across_roots.set(true);
+         platform
+     }
+ 
+@@ -534,6 +556,10 @@ impl Platform for BridgePlatform {
+         let window = BridgeWindow::new(self.size, self.rotation, self.wake.clone(), font_paths)?;
+         ACTIVE_WINDOW.with(|active| *active.borrow_mut() = Rc::downgrade(&window));
+         *self.window.borrow_mut() = Rc::downgrade(&window);
++        #[cfg(feature = "appos-host")]
++        if self.retain_window_across_roots.get() {
++            *self.retained_window.borrow_mut() = Some(window.clone());
++        }
+         window
+             .window
+             .dispatch_event(WindowEvent::ScaleFactorChanged { scale_factor: 1.0 });
+diff --git a/src/tests/runtime.rs b/src/tests/runtime.rs
+index f5cc76d..3e4bd1a 100644
+--- a/src/tests/runtime.rs
++++ b/src/tests/runtime.rs
+@@ -118,21 +118,25 @@ fn appos_host_reuses_one_adapter_across_sequential_activity_roots() {
+ 
+     let outgoing = LoopScene::new().unwrap();
+     let outgoing_weak = outgoing.as_weak();
++    let adapter_before = crate::runtime::active_window_address().unwrap();
+     outgoing.show().unwrap();
+     outgoing.hide().unwrap();
+-    // Keep the outgoing component alive while constructing the incoming one;
+-    // this is the Activity transition ordering used by AppOS.
++    drop(outgoing);
++    assert!(
++        outgoing_weak.upgrade().is_none(),
++        "the reused adapter retained the hidden outgoing Activity root"
++    );
++
++    // AppOS drops the outgoing Activity before constructing its successor.
++    // The physical adapter and renderer must nevertheless remain stable.
+     let incoming = LoopScene::new().unwrap();
++    let adapter_after = crate::runtime::active_window_address().unwrap();
++    assert_eq!(adapter_before, adapter_after);
+     incoming.show().unwrap();
+ 
+     crate::runtime::run_until_first_presented_frame().unwrap();
+ 
+     assert!(incoming.window().is_visible());
+-    drop(outgoing);
+-    assert!(
+-        outgoing_weak.upgrade().is_none(),
+-        "the reused adapter retained the hidden outgoing Activity root"
+-    );
+     incoming.hide().unwrap();
+ }
+ 
+-- 
+2.43.0
+
