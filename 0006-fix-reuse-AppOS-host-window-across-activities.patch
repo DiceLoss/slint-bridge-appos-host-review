@@ -1,0 +1,108 @@
+From 7d80ab2b8dd6d68ee5272efe99a03cf7d39e9555 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=E5=8D=83=E5=A4=8F?= <qianxia@d-power.com.cn>
+Date: Sun, 25 Oct 2026 02:11:23 +0800
+Subject: [PATCH] fix: reuse AppOS host window across activities
+
+---
+ src/runtime.rs       | 13 +++++++------
+ src/tests/runtime.rs | 46 ++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 53 insertions(+), 6 deletions(-)
+
+diff --git a/src/runtime.rs b/src/runtime.rs
+index 45fa8fb..2581487 100644
+--- a/src/runtime.rs
++++ b/src/runtime.rs
+@@ -217,7 +217,6 @@ pub(crate) struct BridgePlatform {
+     pub(crate) wake: Arc<WakeQueue>,
+     frame_interval: Duration,
+     timer_quantum: Duration,
+-    created: Cell<bool>,
+     running: Cell<bool>,
+     pending_frame_started: Cell<Option<Instant>>,
+     #[cfg(feature = "appos-host")]
+@@ -263,7 +262,6 @@ impl BridgePlatform {
+             wake,
+             frame_interval: config.frame_interval,
+             timer_quantum: Duration::ZERO,
+-            created: Cell::new(false),
+             running: Cell::new(false),
+             pending_frame_started: Cell::new(None),
+             #[cfg(feature = "appos-host")]
+@@ -509,10 +507,13 @@ impl BridgePlatform {
+ 
+ impl Platform for BridgePlatform {
+     fn create_window_adapter(&self) -> Result<Rc<dyn WindowAdapter>, PlatformError> {
+-        if self.created.replace(true) {
+-            return Err(PlatformError::from(
+-                "only one fullscreen root window is supported".to_string(),
+-            ));
++        // AppOS owns exactly one physical fullscreen surface, but Activity
++        // transitions may construct the incoming Slint root before dropping
++        // the outgoing one.  Reuse the same adapter for those roots, matching
++        // the legacy AppOS platform: creating a second component must not be
++        // mistaken for creating a second display window.
++        if let Some(window) = self.window.borrow().upgrade() {
++            return Ok(window);
+         }
+         #[cfg(feature = "appos-host")]
+         let font_paths = self.font_paths.as_slice();
+diff --git a/src/tests/runtime.rs b/src/tests/runtime.rs
+index 7309990..90664be 100644
+--- a/src/tests/runtime.rs
++++ b/src/tests/runtime.rs
+@@ -85,6 +85,52 @@ fn appos_host_defers_font_registration_until_the_window_has_a_slint_context() {
+     ui.hide().unwrap();
+ }
+ 
++#[cfg(feature = "appos-host")]
++#[test]
++fn appos_host_reuses_one_adapter_across_sequential_activity_roots() {
++    const NAME: &str =
++        "tests::runtime::appos_host_reuses_one_adapter_across_sequential_activity_roots";
++    if std::env::var("SLINT_BRIDGE_TEST_CHILD").as_deref() != Ok(NAME) {
++        let run = std::process::Command::new(std::env::current_exe().unwrap())
++            .args(["--exact", NAME, "--nocapture"])
++            .env("SLINT_BRIDGE_TEST_CHILD", NAME)
++            .output()
++            .unwrap();
++        assert!(
++            run.status.success(),
++            "{}{}",
++            String::from_utf8_lossy(&run.stdout),
++            String::from_utf8_lossy(&run.stderr)
++        );
++        return;
++    }
++
++    let target = surface_with_completion(8, 6, 32, 0, |_| Ok(()));
++    let platform = crate::runtime::BridgePlatform::with_host_inputs(
++        Config::default(),
++        target.fb,
++        Vec::new(),
++        Vec::new(),
++        Vec::new(),
++        None,
++    );
++    slint::platform::set_platform(Box::new(platform)).unwrap();
++
++    let outgoing = LoopScene::new().unwrap();
++    outgoing.show().unwrap();
++    outgoing.hide().unwrap();
++    // Keep the outgoing component alive while constructing the incoming one;
++    // this is the Activity transition ordering used by AppOS.
++    let incoming = LoopScene::new().unwrap();
++    incoming.show().unwrap();
++
++    crate::runtime::run_until_first_presented_frame().unwrap();
++
++    assert!(incoming.window().is_visible());
++    incoming.hide().unwrap();
++    drop(outgoing);
++}
++
+ fn send_input(writer: &mut File, events: &[(u16, u16, i32)]) {
+     let records: Vec<libc::input_event> = events
+         .iter()
+-- 
+2.43.0
+
