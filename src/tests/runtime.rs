@@ -140,6 +140,90 @@ fn appos_host_reuses_one_adapter_across_sequential_activity_roots() {
     incoming.hide().unwrap();
 }
 
+#[cfg(feature = "appos-host")]
+#[test]
+fn appos_consumed_wake_input_reloads_frame_policy_and_repaints() {
+    const NAME: &str =
+        "tests::runtime::appos_consumed_wake_input_reloads_frame_policy_and_repaints";
+    if std::env::var("SLINT_BRIDGE_TEST_CHILD").as_deref() != Ok(NAME) {
+        let run = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", NAME, "--nocapture"])
+            .env("SLINT_BRIDGE_TEST_CHILD", NAME)
+            .output()
+            .unwrap();
+        assert!(
+            run.status.success(),
+            "{}{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        return;
+    }
+
+    struct WakeHooks(Arc<AtomicBool>);
+    impl crate::host::HostHooks for WakeHooks {
+        fn input(
+            &self,
+            _event: crate::host::HostInputEvent,
+            _at: std::time::Instant,
+        ) -> crate::host::HostInputDisposition {
+            self.0.store(false, Ordering::SeqCst);
+            crate::host::HostInputDisposition::Consume
+        }
+
+        fn frame_policy(&self) -> crate::host::HostFramePolicy {
+            crate::host::HostFramePolicy {
+                blanked: self.0.load(Ordering::SeqCst),
+                luminance: u8::MAX,
+            }
+        }
+    }
+
+    let (presented, frame_ready) = mpsc::sync_channel(4);
+    let target = surface_with_completion(8, 6, 32, 0, move |_| {
+        let _ = presented.try_send(());
+        Ok(())
+    });
+    let commits = target.commits.clone();
+    let (reader, mut writer) = input_pipe();
+    let blanked = Arc::new(AtomicBool::new(true));
+    let platform = crate::runtime::BridgePlatform::with_host_inputs(
+        Config {
+            frame_interval: Duration::from_millis(1),
+            ..Config::default()
+        },
+        target.fb,
+        vec![Evdev {
+            file: reader,
+            decoder: super::input::touch_decoder(Rotation::None),
+        }],
+        Vec::new(),
+        Vec::new(),
+        Some(Arc::new(WakeHooks(blanked.clone()))),
+    );
+    slint::platform::set_platform(Box::new(platform)).unwrap();
+    let ui = LoopScene::new().unwrap();
+    ui.set_paint(slint::Color::from_rgb_u8(255, 0, 0));
+    let control = thread::spawn(move || {
+        frame_ready.recv_timeout(Duration::from_secs(3)).unwrap();
+        send_input(
+            &mut writer,
+            &[(3, 0, 400), (3, 1, 500), (1, 330, 1), (0, 0, 0)],
+        );
+        frame_ready.recv_timeout(Duration::from_secs(3)).unwrap();
+        slint::quit_event_loop().unwrap();
+    });
+
+    ui.run().unwrap();
+    control.join().unwrap();
+
+    assert!(!blanked.load(Ordering::SeqCst));
+    let frames = commits.lock().unwrap();
+    assert!(frames.len() >= 2);
+    assert_eq!(&frames[0][..4], &[0, 0, 0, 255]);
+    assert_eq!(&frames.last().unwrap()[..4], &[0, 0, 255, 255]);
+}
+
 fn send_input(writer: &mut File, events: &[(u16, u16, i32)]) {
     let records: Vec<libc::input_event> = events
         .iter()
